@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "simharness2" # FIXME
-version = "0.1.0" # FIXME
+name = "simharness"
+version = "1.0.0"
 description = "Reinforcement learning harness to train a variety of agents within environments wrapped around wildfire projection modelers."
 authors = ["Tim Welsh <twelsh@mitre.org>", "Marissa Dotter <mdotter@mitre.org>",
            "Michael Doyle <mdoyle@mitre.org>", "Dhanuj Gandikota <dgandikota@mitre.org>",
