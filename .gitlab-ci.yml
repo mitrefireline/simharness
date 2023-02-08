@@ -1,0 +1,104 @@
+image: "python:3.9"
+
+before_script:
+  - python --version
+
+stages:
+  - Static Analysis
+  - Security
+  - Documentation
+
+###################
+# Static Analysis #
+###################
+flake8:
+  stage: Static Analysis
+  tags:
+    - lslab2
+  script:
+    - pip install flake8
+    - flake8 .
+  needs: []
+  only:
+    - merge_requests
+
+black:
+  stage: Static Analysis
+  tags:
+    - lslab2
+  script:
+    - pip install black
+    - black --check ./
+  needs: []
+  only:
+    - merge_requests
+
+mypy:
+  stage: Static Analysis
+  tags:
+    - lslab2
+  script:
+    - pip install mypy types-PyYAML
+    - mypy --config-file .mypy.ini .
+  needs: []
+  only:
+    - merge_requests
+
+isort:
+  stage: Static Analysis
+  tags:
+    - lslab2
+  script:
+    - pip install isort
+    - isort --check --trailing-comma -m=3 .
+  needs: []
+  only:
+    - merge_requests
+
+############
+# Security #
+############
+bandit:
+  stage: Security
+  tags:
+    - lslab2
+  script:
+    - pip install bandit
+    - bandit -r .
+  needs: []
+  only:
+    - merge_requests
+
+################
+# GitLab Pages #
+################
+.pages:
+  script:
+    - pip install -U sphinx sphinx-autoapi sphinx-rtd-theme myst-parser furo
+    - sphinx-build -d docs/build/doctrees docs/source docs/build/html
+    - mv docs/build/html public/
+
+test-pages:
+  stage: Documentation
+  tags:
+    - lslab2
+  extends: .pages
+  needs: []
+  artifacts:
+    expose_as: 'HTML Documentation'
+    paths:
+      - public/
+    expire_in: 1 week
+  only:
+    - merge_requests
+
+pages:
+  stage: Documentation
+  tags:
+    - lslab2
+  extends: .pages
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
