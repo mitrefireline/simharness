@@ -17,8 +17,7 @@ repository = "https://gitlab.mitre.org/fireline/reinforcementlearning/simharness
 python = "~3.9"
 numpy = "^1.22"
 ray = {extras = ["default", "rllib"], version = "^2.2.0"}
-grpcio = "1.51.1"
-gymnasium = {extras = ["atari", "mujoco"], version = "0.26.3"}
+gymnasium = "^0.26.3"
 PyYAML = "^6.0"
 tensorboard = "^2.9.1"
 nni = "^2.8"
