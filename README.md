@@ -3,7 +3,7 @@
 <figure>
     <p align="center">
         <p align="center">
-            <img src="assets/icons/simharness2-dalle.png">
+            <img src="assets/icons/simharness2-logo.png">
         </p>
 </figure>
 
