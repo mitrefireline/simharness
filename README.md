@@ -7,6 +7,9 @@
         </p>
 </figure>
 
+.. image:: https://img.shields.io/badge/%20style-google-3666d6.svg
+    :target: https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings
+
 # Introduction
 
 SimHarness is a modular reinforcement learning harness based on the RLlib framework written in PyTorch made to interact with natural disaster modelers.

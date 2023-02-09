@@ -63,6 +63,12 @@ exclude = [
     'tests/'
 ]
 
+[tool.pydocstyle]
+# Possible conventions: pep257, numpy, google (see http://www.pydocstyle.org/en/stable/error_codes.html#default-conventions).
+convention = "google"
+# match '*.py' files that don't start with 'test_' (this is the default)
+match = '(?!test_).*\.py'
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
