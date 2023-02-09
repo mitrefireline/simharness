@@ -1,11 +1,12 @@
-# SimHarness-2: Modular Reinforcement Learning Harness for Natural Disaster Modelers (RLlib)
+# SimHarness2: Modular Reinforcement Learning Harness for Natural Disaster Modelers (RLlib)
 
 <figure>
     <p align="center">
         <p align="center">
-            <img src="assets/icons/simharness_logo.png">
+            <img src="assets/icons/simharness2-dalle.png">
         </p>
 </figure>
+
 
 # Introduction
 
@@ -16,15 +17,15 @@ SimHarness's easy-to-use interface allows for the quick and simple training of i
 Clone the repository
 
 ```shell
-git clone https://gitlab.mitre.org/fireline/reinforcementlearning/simharness-2.git
-cd simharness/
+git clone https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2.git
+cd simharness2/
 ```
 
 Create a conda environment
 
 ```shell
-conda env create --file conda-env.yml
-conda activate sh
+conda env create --file conda-env.yaml
+conda activate sh2
 ```
 
 Install poetry
@@ -33,11 +34,11 @@ Install poetry
 curl -sSL https://install.python-poetry.org | python -
 echo "export PATH=$PATH:$HOME/.local/bin" >> $HOME/.bashrc
 source $HOME/.bashrc
-conda activate sh
+conda activate sh2
 ```
 
 Install remaining requirements
 
 ```shell
-poetry install --without dev,docs,coverage
+poetry install
 ```

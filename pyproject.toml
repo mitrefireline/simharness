@@ -1,0 +1,74 @@
+[tool.poetry]
+name = "simharness"
+version = "1.0.0"
+description = "Reinforcement learning harness to train a variety of agents within environments wrapped around wildfire projection modelers."
+authors = ["Tim Welsh <twelsh@mitre.org>", "Marissa Dotter <mdotter@mitre.org>",
+           "Michael Doyle <mdoyle@mitre.org>", "Dhanuj Gandikota <dgandikota@mitre.org>",
+           "Chris Kempis <ckempis@mitre.org>", "Lauren Schambach <lschambach@mitre.org>",
+           "Alex Tapley <atapley@mitre.org>", "Michael Threet <mthreet@mitre.org>",
+           "Aidan Fennelly <afennelly@mitre.org", "Savanna Smith <sosmith@mitre.org"]
+readme = "README.md"
+include = ["simharness2/assets/simharness2-dalle.png"]
+keywords = ["python", "reinforcement learning", "simulation", "fire"]
+documentation = "https://fireline.pages.mitre.org/reinforcementlearning/simharness2/"
+repository = "https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2"
+
+[tool.poetry.dependencies]
+python = "~3.9"
+numpy = "^1.22"
+ray = {extras = ["default", "rllib"], version = "^2.2.0"}
+gymnasium = "^0.26.3"
+PyYAML = "^6.0"
+tensorboard = "^2.9.1"
+nni = "^2.8"
+simfire = "^1.4.29"
+torch = "^1.12.0"
+torchaudio = "^0.12.0"
+torchvision = "^0.13.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.3.0"
+certifi = "^2022.6.15"
+flake8 = "^4.0.1"
+isort = "^5.10.1"
+mypy = "^0.961"
+pre-commit = "^2.19.0"
+pytest = "^7.1.2"
+bandit = "^1.7.4"
+
+[tool.poetry.group.coverage.dependencies]
+pytest-cov = "^3.0.0"
+
+[tool.poetry.group.docs.dependencies]
+Sphinx = "^5.0.2"
+sphinx-autoapi = "^1.8.4"
+sphinx-rtd-theme = "^1.0.0"
+myst-parser = "^0.18.0"
+furo = "^2022.6.4.1"
+
+[[tool.poetry.source]]
+name = "simfire"
+url = "https://artifacts.mitre.org/artifactory/api/pypi/python/simple"
+
+[tool.black]
+line-length = 90
+target-version = ['py39']
+
+[tool.mypy]
+ignore_missing_imports = true
+allow_redefinition = true
+exclude = [
+    '/_tests/',
+    '^generate_cfd_wind_layer\.py$',
+    'tests/'
+]
+
+[tool.pydocstyle]
+# Possible conventions: pep257, numpy, google (see http://www.pydocstyle.org/en/stable/error_codes.html#default-conventions).
+convention = "google"
+# match '*.py' files that don't start with 'test_' (this is the default)
+match = '(?!test_).*\.py'
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
