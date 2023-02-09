@@ -35,7 +35,7 @@ repos:
         exclude: /_tests/
         language: python
         entry: mypy
-        args: [--config-file, .mypy.ini]
+        args: [--config-file, pyproject.toml]
         # use your preferred Python version
         types: [python]
       - id: isort
