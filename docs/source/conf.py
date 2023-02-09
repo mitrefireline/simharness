@@ -18,11 +18,11 @@ from datetime import date
 
 # -- Project information -----------------------------------------------------
 
-project = "SimHarness"
+project = "SimHarness2"
 copyright = f"{date.today().year}, fiReLine"
 author = (
-    "Marissa Dotter, Michael Doyle, Dhanuj Gandikota, Chris Kempis, Lauren Schambach, "
-    "Alex Tapley, Michael Threet, Tim Welsh"
+    "Marissa Dotter, Michael Doyle, Aidan Fennelly, Dhanuj Gandikota, Chris Kempis, Lauren Schambach, "
+    "Savanna Smith, Alex Tapley, Michael Threet, Tim Welsh"
 )
 
 # The full version, including alpha/beta/rc tags
@@ -62,7 +62,7 @@ autodoc_typehints = "description"
 autoapi_options = ["members", "undoc-members", "show-inheritance", "show-module-summary"]
 autoapi_python_class_content = "both"
 autoapi_type = "python"
-autoapi_dirs = ["../../src/"]
+autoapi_dirs = ["../../simharness2/"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
