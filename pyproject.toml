@@ -66,8 +66,8 @@ exclude = [
 [tool.pydocstyle]
 # Possible conventions: pep257, numpy, google (see http://www.pydocstyle.org/en/stable/error_codes.html#default-conventions).
 convention = "google"
-# match '*.py' files that don't start with 'test_' (this is the default)
-match = '(?!test_).*\.py'
+# match '*.py' files that don't start with 'test_' or '__init'
+match = '(?![test_|__init]).*\.py'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
