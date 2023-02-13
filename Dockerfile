@@ -7,6 +7,6 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_
     && conda activate sh2 \
     && curl -sSL https://install.python-poetry.org | python - \
     && echo "export PATH=$PATH:$HOME/.local/bin" >> $HOME/.bashrc \
-    && source ~/.bashrc
+    && source ~/.bashrc \
     && conda activate sh2 \
     && poetry install
