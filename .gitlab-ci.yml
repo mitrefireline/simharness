@@ -108,7 +108,7 @@ pages:
 # Build #
 #########
 docker:
-  stage: build
+  stage: Build
   script:
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
