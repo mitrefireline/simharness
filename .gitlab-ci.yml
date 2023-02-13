@@ -107,8 +107,10 @@ pages:
 #########
 # Build #
 #########
-docker:
+docker-build:
   stage: Build
+  tags:
+    - lslab2
   script:
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
