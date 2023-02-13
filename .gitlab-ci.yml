@@ -114,7 +114,7 @@ docker-build:
   image: docker:20.10.16
   services:
     - docker:20.10.16-dind
-  before-script:
+  before_script:
     - docker --version
   script:
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
