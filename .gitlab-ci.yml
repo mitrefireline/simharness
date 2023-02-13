@@ -111,6 +111,7 @@ docker-build:
   stage: Build
   tags:
     - lslab2
+  image: docker:20.10.16
   script:
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
