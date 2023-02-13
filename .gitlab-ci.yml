@@ -112,6 +112,8 @@ docker-build:
   tags:
     - lslab2
   image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
   script:
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
