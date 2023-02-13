@@ -115,5 +115,6 @@ docker-build:
   services:
     - docker:20.10.16-dind
   script:
+    - apt install python
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
