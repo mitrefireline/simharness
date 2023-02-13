@@ -7,6 +7,7 @@ stages:
   - Static Analysis
   - Security
   - Documentation
+  - Build
 
 ###################
 # Static Analysis #
@@ -102,3 +103,12 @@ pages:
       - public
   only:
     - main
+
+#########
+# Build #
+#########
+docker:
+  stage: build
+  script:
+    - docker build -t butler.mitre.org/simfire/simharness2:latest .
+    - docker push butler.mitre.org/simfire/simharness2:latest
