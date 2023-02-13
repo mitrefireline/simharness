@@ -111,7 +111,7 @@ docker-build:
   stage: Build
   tags:
     - lslab2
-  image: docker:20.10.16
+  image: docker:20.10.16-dind
   services:
     - docker:20.10.16-dind
   before_script:
