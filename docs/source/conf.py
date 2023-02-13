@@ -21,8 +21,8 @@ from datetime import date
 project = "SimHarness2"
 copyright = f"{date.today().year}, fiReLine"
 author = (
-    "Marissa Dotter, Michael Doyle, Aidan Fennelly, Dhanuj Gandikota, Chris Kempis, Lauren Schambach, "
-    "Savanna Smith, Alex Tapley, Michael Threet, Tim Welsh"
+    "Marissa Dotter, Michael Doyle, Aidan Fennelly, Dhanuj Gandikota, Chris Kempis, "
+    "Lauren Schambach, Savanna Smith, Alex Tapley, Michael Threet, Tim Welsh"
 )
 
 # The full version, including alpha/beta/rc tags
