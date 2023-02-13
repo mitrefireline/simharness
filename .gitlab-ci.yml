@@ -40,7 +40,7 @@ mypy:
     - lslab2
   script:
     - pip install mypy types-PyYAML
-    - mypy --config-file .mypy.ini .
+    - mypy .
   needs: []
   only:
     - merge_requests
@@ -114,7 +114,8 @@ docker-build:
   image: docker:20.10.16
   services:
     - docker:20.10.16-dind
+  before-script:
+    - docker --version
   script:
-    - apt install python
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
