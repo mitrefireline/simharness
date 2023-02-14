@@ -3,7 +3,7 @@ FROM python:3.9.16
 ARG CI_PROJECT_DIR
 ENV CODE_DIR=/code/
 
-COPY $CI_PROJECT_DIR/* $CODE_DIR
+COPY "$CI_PROJECT_DIR/*" $CODE_DIR
 WORKDIR $CODE_DIR
 
 # Install anaconda, create the environment, install poetry, install the Python packages
