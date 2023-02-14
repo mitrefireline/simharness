@@ -118,5 +118,5 @@ docker-build:
     - docker --version
   script:
     - export
-    - docker build -t butler.mitre.org/simfire/simharness2:latest .
+    - docker build -t butler.mitre.org/simfire/simharness2:latest --build_arg CI_PROJECT_DIR=$CI_PROJECT_DIR .
     - docker push butler.mitre.org/simfire/simharness2:latest

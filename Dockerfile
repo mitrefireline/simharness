@@ -1,5 +1,7 @@
 FROM python:3.9.16
 
+ARG CI_PROJECT_DIR
+
 WORKDIR $CI_PROJECT_DIR
 
 # Install anaconda, create the environment, install poetry, install the Python packages
