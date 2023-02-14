@@ -117,5 +117,6 @@ docker-build:
   before_script:
     - docker --version
   script:
+    - export
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
