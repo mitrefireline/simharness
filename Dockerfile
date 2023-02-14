@@ -11,5 +11,5 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_
     && rm Miniconda3-py39_23.1.0-1-Linux-x86_64.sh \
     && /root/miniconda3/bin/conda config --set ssl_verify false \
     && /root/miniconda3/bin/conda env create --file conda-env.yaml \
-    && curl -sSL https://install.python-poetry.org | /root/miniconda3/envs/sh2/bin/python - \
+    && curl --insecure -sSL https://install.python-poetry.org | /root/miniconda3/envs/sh2/bin/python - \
     && /root/.local/bin/poetry install
