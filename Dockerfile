@@ -1,10 +1,9 @@
 FROM python:3.9.16
 
-ARG CI_PROJECT_DIR
 ENV CODE_DIR=/code/
 
-COPY ./* ./
 WORKDIR $CODE_DIR
+COPY ./* ./
 
 # Install anaconda, create the environment, install poetry, install the Python packages
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_64.sh \
