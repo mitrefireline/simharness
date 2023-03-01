@@ -12,7 +12,9 @@ simulation:
   runtime: 24hr
   headless: True
   record: false
+  save_data: false
   draw_spread_graph: false
+  data_type: "npy"
   save_path: "./outputs/gifs/"
 
 mitigation:
