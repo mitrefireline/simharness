@@ -118,6 +118,6 @@ docker-build:
     - docker --version
   script:
     - cd $CI_PROJECT_DIR
-    - docker login butler.mitre.org --username "robot$gitlab-ci" --password $CI_HARBOR_TOKEN
+    - docker login butler.mitre.org --username $CI_HARBOR_USERNAME --password $CI_HARBOR_TOKEN
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
