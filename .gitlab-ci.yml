@@ -121,3 +121,5 @@ docker-build:
     - docker login butler.mitre.org --username $CI_HARBOR_USERNAME --password $CI_HARBOR_TOKEN
     - docker build -t butler.mitre.org/simfire/simharness2:latest .
     - docker push butler.mitre.org/simfire/simharness2:latest
+  only:
+    - main
