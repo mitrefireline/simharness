@@ -1,18 +1,25 @@
-FROM python:3.9.16
+FROM continuumio/miniconda3:latest
 
 ENV CODE_DIR=/code/
 
 WORKDIR $CODE_DIR
-COPY ./* ./
+COPY . .
 
-# Install anaconda, create the environment, install poetry, install the Python packages
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_64.sh \
-    && bash Miniconda3-py39_23.1.0-1-Linux-x86_64.sh -b -p /root/miniconda3 \
-    && rm Miniconda3-py39_23.1.0-1-Linux-x86_64.sh \
-    && /root/miniconda3/bin/conda config --set ssl_verify false \
-    && /root/miniconda3/bin/conda env create --file conda-env.yaml \
-    && curl --insecure -sSL https://install.python-poetry.org | /root/miniconda3/envs/sh2/bin/python - \
-    && /root/.local/bin/poetry install
+RUN conda config --set ssl_verify false &&\
+    conda env create -f conda-env.yml &&\
+    mkdir /root/.local &&\
+    mkdir /root/.local/bin &&\
+    apt update -y &&\
+    apt install curl -y
 
-ENTRYPOINT [ "/root/miniconda3/bin/conda", "activate" "sh2" ]
-CMD [ "echo", "Simharness 2 Container Image" ]
+# Make RUN commands use the new environment:
+SHELL ["conda", "run", "-n", "sh2", "/bin/bash", "-c"]
+ENV PATH=$PATH:/root/.local/bin
+ENV PATH=/opt/conda/envs/sh/bin:$PATH
+
+RUN curl -sSkL https://install.python-poetry.org >> python - &&\
+    sed -i '$d' /root/.bashrc &&\
+    echo "conda activate sh" >> /root/.bashrc &&\
+    echo "conda activate sh" >> /root/.profile
+
+CMD [ "echo" "SimHarness2 Container"]
