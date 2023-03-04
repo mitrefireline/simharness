@@ -281,16 +281,20 @@ class RLHarness(gym.Env, ABC):
 
         return observations
 
-    # -----------------------------------------------------------------------------------
-
     def reset(self) -> np.ndarray:
         """Reset environment to initial state.
 
-        If the environment is not deterministic, the fire initial position and elevation
-        are randomized.
+        Longer method information... FIXME.
+
+        Subclasses, such as the ReactiveHarness, typically do the following within
+        the overriden reset() method:
+            1. set `self.num_burned = 0`.
+            2. handle `self.deterministic`
+            3. set `output = super().reset()`, which executes the below code and sets
+               `output` (in child class reset()) to the return value, `self.state`.
 
         Returns:
-            np.ndarray: Initial observation
+            An ndarray containing the initial state of the environment.
         """
         self.simulation.reset()
         sim_observations = self._select_from_dict(
