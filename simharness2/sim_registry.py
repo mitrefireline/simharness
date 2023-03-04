@@ -13,7 +13,7 @@ def register_simulation(
     Register a new simulation class and associated config files into the simulation
     registry so it can be retrieved via string.
 
-    Args:
+    Arguments:
         name (str): Name of the simulation class
         simulation (Type[Simulation]): Class implementation of the Simulation
         abstract class
@@ -53,7 +53,7 @@ def get_simulation_from_name(name: str) -> Tuple[Type[Simulation], Config, Confi
     """
     Return the simulation class and config files associated with the given name.
 
-    Args:
+    Arguments:
         name (str): Name of the requested simulation
 
     Raises:
