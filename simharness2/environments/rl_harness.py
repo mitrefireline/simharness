@@ -91,7 +91,7 @@ class RLHarness(gym.Env, ABC):
                 f"in attributes ({str(self.attributes)})!"
             )
 
-        # Set the value of the agent within the observations
+        # Retrieve the observation space and action space for the simulation.
         sim_attributes = self.simulation.get_attribute_data()
         sim_actions = self.simulation.get_actions()
 
@@ -117,6 +117,7 @@ class RLHarness(gym.Env, ABC):
         self.movements.insert(0, "none")  # "don't move", "stay put", etc.
         self.interactions.insert(0, "none")  # "don't interact", "do nothing", etc.
 
+        # FIXME review purpose of sim_nonsim conversions + add brief comment
         self._separate_sim_nonsim(sim_attributes)
         self.harness_to_sim, self.sim_to_harness = self._sim_harness_conv(sim_actions)
         self.min_maxes = self._get_min_maxes()
@@ -169,7 +170,6 @@ class RLHarness(gym.Env, ABC):
                 categories.append(cat)
         return categories
 
-    # -----------------------------------------------------------------------------------
     def _separate_sim_nonsim(self, sim_attributes: OrderedDict[str, np.ndarray]) -> None:
         """Separate attributes based on if they are supported by the Simulation or not.
 
@@ -177,6 +177,7 @@ class RLHarness(gym.Env, ABC):
             sim_attributes: An ordered dictionary linking all attributes of
                 the Simulation to their respective data within the Sim.
         """
+        # TODO add comments and refactor as needed
         self.sim_attributes = []
         self.nonsim_attributes = []
         for attribute in self.attributes:
@@ -184,8 +185,6 @@ class RLHarness(gym.Env, ABC):
                 self.nonsim_attributes.append(attribute)
             else:
                 self.sim_attributes.append(attribute)
-
-    # -----------------------------------------------------------------------------------
 
     def _sim_harness_conv(
         self, sim_actions: Dict[str, IntEnum]
@@ -201,6 +200,7 @@ class RLHarness(gym.Env, ABC):
             first will map interaction to action. and the second will map action to
             interaction.
         """
+        # NOTE: hts == "harness_to_sim" and sth == "sim_to_harness"
         hts_action_conv = ordered_dict()
         sth_action_conv = ordered_dict()
 
@@ -215,8 +215,6 @@ class RLHarness(gym.Env, ABC):
                 sth_action_conv[sim_actions[action].value] = e + 1
 
         return hts_action_conv, sth_action_conv
-
-    # -----------------------------------------------------------------------------------
 
     def _select_from_dict(
         self, dictionary: OrderedDict[str, Any], selections: List[str]
@@ -237,11 +235,12 @@ class RLHarness(gym.Env, ABC):
 
         return return_dict
 
-    # -----------------------------------------------------------------------------------
-
     def _get_min_maxes(self) -> OrderedDict[str, Dict[str, Tuple[int, int]]]:
         """Retrieves the minimum and maximum for all relevant attributes."""
+        # TODO update docstring to be more specific
+        # TODO add comments and refactor as needed
         sim_min_maxes = ordered_dict()
+        # fetch the observation space bounds for the simulation.
         sim_bounds = self.simulation.get_attribute_bounds()
         for attribute in self.sim_attributes:
             sim_min_maxes[attribute] = sim_bounds[attribute]
@@ -260,14 +259,13 @@ class RLHarness(gym.Env, ABC):
 
         return min_maxes
 
-    # -----------------------------------------------------------------------------------
-
     def _normalize_obs(
         self, observations: Dict[str, np.ndarray]
     ) -> Dict[str, np.ndarray]:
         """Convert an observation to the [0,1] range based on known min and max."""
 
         def normalize(data, min_max):
+            # FIXME: Explain purpose/intention behind using a nested class here.
             return (data - min_max["min"]) / (min_max["max"] - min_max["min"])
 
         for attribute in self.normalized_attributes:
