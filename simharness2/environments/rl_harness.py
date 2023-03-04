@@ -292,16 +292,6 @@ class RLHarness(gym.Env, ABC):
         Returns:
             np.ndarray: Initial observation
         """
-        if not self.deterministic:
-            # Set seeds for randomization
-            fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
-            elevation_seed = self.simulation.get_seeds()["elevation"]
-            seed_dict = {
-                "fire_initial_position": fire_init_seed + 1,
-                "elevation": elevation_seed + 1,
-            }
-            self.simulation.set_seeds(seed_dict)
-
         self.simulation.reset()
         sim_observations = self._select_from_dict(
             self.simulation.get_attribute_data(), self.sim_attributes
