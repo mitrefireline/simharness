@@ -322,27 +322,32 @@ class RLHarness(gym.Env, ABC):
     ) -> Tuple[np.ndarray, float, bool, Dict[Any, Any]]:
         """Run one timestep of the environment's dynamics.
 
-        When end of episode is reached, you are responsible for calling :meth:`reset` to
-        reset this environment's state. Accepts an action and returns either a tuple
-        `(observation, reward, terminated, truncated, info)`.
+        When end of episode is reached (`terminated or truncated` is True), you are
+        responsible for calling `reset()` to reset the environment's state for the next
+        episode.
 
-        Args:
-            action (Union[int, Tuple[int]]): an action provided by the agent
+        Arguments:
+            action: An action provided by the agent to update the environment state.
+
         Returns:
-            observation (np.ndarray): this will be an element of the environment's
-                :attr:`observation_space`.
-            reward (float): The amount of reward returned as a result of taking the
+            observation: A ndarray containing the observation of the environment.
+            reward: A float representing the reward obtained as a result of taking the
                 action.
-            terminated (bool): whether a `terminal state` (as defined under the MDP of
-                the task) is reached. In this case further step() calls could return
-                undefined results.
-            info (Dict[Any, Any]): `info` contains auxiliary diagnostic information
-                (helpful for debugging, learning, and logging). This might, for instance,
-                contain: metrics that describe the agent's performance state, variables
-                that are hidden from observations, or individual reward terms that are
-                combined to produce the total reward. It also can contain information that
-                distinguishes truncation and termination, however this is deprecated in
-                favour of returning two booleans, and will be removed in a future version.
+            terminated: A boolean indicating whether the agent reaches the terminal state
+            (as defined under the MDP of the task) which can be positive or negative.
+            An example is reaching the goal state, or moving into the lava from the
+            Sutton and Barton, Gridworld. If true, the user needs to call `reset()`.
+            truncated: A boolean indicating whether the truncation condition outside
+                the scope of the MDP is satisfied. Typically, this is a timelimit, but
+                could also be used to indicate an agent physically going out of bounds.
+                Can be used to end the episode prematurely before a terminal state is
+                reached. If true, the user needs to call `reset()`.
+            info: A dictionary containing auxiliary diagnostic information (helpful for
+                debugging, learning, and logging). This might, for instance, contain:
+                    - metrics that describe the agent's performance state
+                    - variables that are hidden from observations, or
+                    - individual reward terms that are combined to produce the total
+                      reward.
         """
         pass
 
