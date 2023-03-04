@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
 from typing import Any, Dict, List, OrderedDict, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 from simfire.sim.simulation import Simulation
 
