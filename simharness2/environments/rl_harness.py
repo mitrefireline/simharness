@@ -346,29 +346,6 @@ class RLHarness(gym.Env, ABC):
         """Render a visualization of the environment."""
         pass
 
-    def mitigation_map_conv(self, mitigation_map: np.ndarray, conv_dict: Dict[int, int]):
-        """Convert a mitigation map based on the given conversion dictionary.
-
-        Args:
-            mitigation_map (np.ndarray): Mitigation feature map
-            conv_dict (Dict[int, int]): Dictionary for converting from Sim->Harness or
-            vice versa
-
-        Returns:
-            np.ndarray: Converted mitigation map
-        """
-        conv_mitigation_map = np.zeros(mitigation_map.shape)
-        for i in mitigation_map:
-            for j in mitigation_map[i]:
-                action = mitigation_map[i][j]
-                try:
-                    action = conv_dict[action]
-                except Exception:
-                    raise ValueError(f"Action {action} cannot be converted.")
-                conv_mitigation_map[i][j] = action
-
-        return conv_mitigation_map
-
     def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:
         """Get data that does not come from the simulation."""
         return ordered_dict()
