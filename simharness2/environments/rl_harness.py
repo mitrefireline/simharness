@@ -23,27 +23,36 @@ from simfire.sim.simulation import Simulation
 class RLHarness(gym.Env, ABC):
     """`Simulation` wrapper enabling RL agent's to interact with different simulators.
 
-    The main API methods that users of this class need to know are:
-    - :meth:`step` - Takes a step in the environment using an action returning the next
-        observation, reward, if the environment terminated and observation information.
-    - :meth:`reset` - Resets the environment to an initial state, returning the initial
-        observation and observation information.
-    - :meth:`render` - Renders the environment observation with modes depending on the
-        output
-    - :meth:`close` - Closes the environment, important for rendering where pygame is
-        imported
+    The most important API methods a RLHarness exposes are `step()`, `reset()`,
+    `render()`, and `close()`.
 
-    Args:
-        simulation (Simulation): Child class of the Simulation parent class.
-        movements (List[str]): List of possible movements for the agent to make.
-            i.e. up, down, left right
-        interactions (List[str]): List of possible interactions for the agent to take.
-            i.e. place object, perform action
-        attributes (List[str]): List of input features into the observations
-            NOTE: Each feature is a channel in the input observation
-        normalized_attributes (List[str]): List of attributes which need to be normalized
-            NOTE: Attributes in this list must be in the Attributes list as well
-        determinisitic (bool): Is the agent/environment deterministic or variable
+    Longer class information... FIXME.
+    Longer class information... FIXME.
+
+    Attributes:
+        simulation: A subclass of `Simulation` that defines a given simulator.
+        movements: A list containing the movements available to a given agent. For
+          example, possible movements could be: ["up", "down", "left", "right"].
+        interactions: A list containing the interactions available to a given agent.
+          For example, if the simulation IS-A `FireSimulation`, possible interactions
+          could be: ["fireline", "scratchline", "wetline"]. To learn more, see
+          https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/main/simfire/sim/simulation.py#L269-280
+        attributes: (FIXME) A list containing the input features into the observations.
+          Each feature is a channel in the input observation.
+        normalized_attributes: A list containing attributes that need to be normalized.
+          Any and all values within `normalized_attributes` must exist in `attributes`!
+        deterministic: A boolean indicating whether the initial state of the environment
+          is deterministic.
+        sim_agent_id: FIXME.
+        harness_to_sim: FIXME.
+        sim_to_harness: FIXME.
+        min_maxes: FIXME.
+        low: FIXME.
+        high: FIXME.
+        observation_space: FIXME.
+        action_space: FIXME.
+        sim_attributes: FIXME.
+        nonsim_attributes: FIXME.
     """
 
     def __init__(
