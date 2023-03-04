@@ -13,6 +13,7 @@ Typical usage example:
 import copy
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
+from enum import IntEnum
 from typing import Any, Dict, List, OrderedDict, Tuple, Union
 
 import gymnasium as gym
@@ -187,7 +188,7 @@ class RLHarness(gym.Env, ABC):
     # -----------------------------------------------------------------------------------
 
     def _sim_harness_conv(
-        self, sim_actions
+        self, sim_actions: Dict[str, IntEnum]
     ) -> Tuple[OrderedDict[int, int], OrderedDict[int, int]]:
         """Create conversion dictionaries for action (Sim) <-> interaction (Harness).
 
