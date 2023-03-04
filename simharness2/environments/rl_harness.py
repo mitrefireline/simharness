@@ -107,9 +107,13 @@ class RLHarness(gym.Env, ABC):
                 f"in the simulator's actions ({str(list(sim_actions.keys()))})!"
             )
 
-        # Add "don't move" and "do nothing" to the action space
-        self.interactions.insert(0, "none")
-        self.movements.insert(0, "none")
+        # NOTE: In the RLHARNESS section in the config file (s) it says "NONE movement
+        # and interaction is added by default at position 0 for both", which is referring
+        # to the insertion below (for `self.movements` and `self.interactions`).
+        # TODO(afennelly) add note in docs wrt the below insertion of "none".
+        # NOTE: The insertion of "none" MUST happen AFTER the above usage check!
+        self.movements.insert(0, "none")  # "don't move", "stay put", etc.
+        self.interactions.insert(0, "none")  # "don't interact", "do nothing", etc.
 
         self._separate_sim_nonsim(sim_attributes)
         self.harness_to_sim, self.sim_to_harness = self._sim_harness_conv(sim_actions)
