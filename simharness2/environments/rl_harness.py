@@ -93,10 +93,13 @@ class RLHarness(gym.Env, ABC):
         sim_attributes = self.simulation.get_attribute_data()
         sim_actions = self.simulation.get_actions()
 
-        disaster_cats = list(self.simulation.disaster_categories().keys())
-        disaster_cats = self._get_status_categories(disaster_cats)
-
-        self.sim_agent_id = len(disaster_cats) + len(self.interactions) + 1
+        # FIXME(afennelly) provide a better explanation (below) for sim_agent_id
+        # Make ID of agent +1 of the max value returned by the simulation for a location
+        # NOTE: Assume that every simulator will support 3 base scenarios:
+        #  1. Untouched
+        #  2. Currently Being Affected
+        #  3. Affected
+        self.sim_agent_id = 3 + len(self.interactions) + 1
 
         if not set(self.interactions).issubset(list(sim_actions.keys())):
             raise AssertionError(
