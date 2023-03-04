@@ -173,11 +173,8 @@ class RLHarness(gym.Env, ABC):
         """Separate attributes based on if they are supported by the Simulation or not.
 
         Arguments:
-            sim_attributes(OrderedDict[str, np.ndarray]): Dict linking all attributes of
+            sim_attributes: An ordered dictionary linking all attributes of
                 the Simulation to their respective data within the Sim.
-
-        Returns:
-            None
         """
         self.sim_attributes = []
         self.nonsim_attributes = []
@@ -195,10 +192,13 @@ class RLHarness(gym.Env, ABC):
         """Create conversion dictionaries for action (Sim) <-> interaction (Harness).
 
         Arguments:
+            sim_actions: A dictionary mapping the action/mitigation strategies available
+            to the corresponding `Enum` value within the simulation. FIXME update wording
 
         Returns:
-            Tuple[OrderedDict[int, int], OrderedDict[int, int]]: Conversion dictionary
-                for Sim->Harness and Harness->Sim
+            A tuple containing two ordered dictionaries for attribute conversion. The
+            first will map interaction to action. and the second will map action to
+            interaction.
         """
         hts_action_conv = ordered_dict()
         sth_action_conv = ordered_dict()
@@ -223,11 +223,11 @@ class RLHarness(gym.Env, ABC):
         """Create an ordered subset with only specific keys from the input `dictionary`.
 
         Arguments:
-            dictionary (OrderedDict[str, Any]): Dictionary to pull from.
-            selections (List[str]): Keys to keep from dictionary.
+            dictionary: A dictionary used to extract values from.
+            selections: A list containing the desired keys to keep from `dictionary`.
 
         Returns:
-            OrderedDict[str, Any]: Ordered subset from given dictionary
+            An ordered dictionary containing a subset of the input `dictionary`.
         """
         return_dict = OrderedDict()
 
@@ -239,12 +239,7 @@ class RLHarness(gym.Env, ABC):
     # -----------------------------------------------------------------------------------
 
     def _get_min_maxes(self) -> OrderedDict[str, Dict[str, Tuple[int, int]]]:
-        """Retrieves the minimum and maximum for all relevant attributes.
-
-        Returns:
-            OrderedDict[str, Dict[str, Tuple[int, int]]]: Min and max values for relevant
-                attributes
-        """
+        """Retrieves the minimum and maximum for all relevant attributes."""
         sim_min_maxes = ordered_dict()
         sim_bounds = self.simulation.get_attribute_bounds()
         for attribute in self.sim_attributes:
