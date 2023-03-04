@@ -17,6 +17,7 @@ from typing import Any, Dict, List, OrderedDict, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
+from gymnasium import spaces
 from simfire.sim.simulation import Simulation
 
 
@@ -138,7 +139,7 @@ class RLHarness(gym.Env, ABC):
             axis=2,
         )
 
-        self.observation_space = gym.spaces.Box(
+        self.observation_space = spaces.Box(
             np.float32(self.low),
             np.float32(self.high),
             shape=(
@@ -150,9 +151,8 @@ class RLHarness(gym.Env, ABC):
         )
 
         action_shape = [len(self.movements), len(self.interactions)]
-        self.action_space = gym.spaces.MultiDiscrete(action_shape)
+        self.action_space = spaces.MultiDiscrete(action_shape)
 
-    # -----------------------------------------------------------------------------------
     def _get_status_categories(self, disaster_categories: List[str]) -> List[str]:
         """Get disaster categories that aren't interactions.
 
