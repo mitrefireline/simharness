@@ -156,7 +156,7 @@ class RLHarness(gym.Env, ABC):
     def _get_status_categories(self, disaster_categories: List[str]) -> List[str]:
         """Get disaster categories that aren't interactions.
 
-        Args:
+        Arguments:
             disaster_categories (List[str]): List of potential Simulation space categories
 
         Returns:
@@ -172,7 +172,7 @@ class RLHarness(gym.Env, ABC):
     def _separate_sim_nonsim(self, sim_attributes: OrderedDict[str, np.ndarray]) -> None:
         """Separate attributes based on if they are supported by the Simulation or not.
 
-        Args:
+        Arguments:
             sim_attributes(OrderedDict[str, np.ndarray]): Dict linking all attributes of
                 the Simulation to their respective data within the Sim.
 
@@ -194,8 +194,7 @@ class RLHarness(gym.Env, ABC):
     ) -> Tuple[OrderedDict[int, int], OrderedDict[int, int]]:
         """Create conversion dictionaries for action (Sim) <-> interaction (Harness).
 
-        Args:
-            sim_actions (List[str]): List of supported actions within the Sim.
+        Arguments:
 
         Returns:
             Tuple[OrderedDict[int, int], OrderedDict[int, int]]: Conversion dictionary
@@ -223,7 +222,7 @@ class RLHarness(gym.Env, ABC):
     ) -> OrderedDict[str, Any]:
         """Create an ordered subset with only specific keys from the input `dictionary`.
 
-        Args:
+        Arguments:
             dictionary (OrderedDict[str, Any]): Dictionary to pull from.
             selections (List[str]): Keys to keep from dictionary.
 
