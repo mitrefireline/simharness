@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 import numpy as np
 from simfire.sim.simulation import Simulation
 
+# TODO(afennelly) fix import path (relative to root)
 from .rl_harness import RLHarness
 
 
@@ -233,6 +234,11 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
     ) -> Tuple[np.ndarray, Dict[Any, Any]]:  # noqa
+        # If the environment is stochastic, set the seeds for randomization parameters.
+        # An evaluation environment will generally be set as deterministic.
+        # NOTE: Other randomization parameters include "fuel", "wind_speed", and
+        # "wind_direction". For reference with `FireSimulation`, see
+        # https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/d70358ec960af5cfbf1855ef78218475cc569247/simfire/sim/simulation.py#L672-718
         # TODO(afennelly) Enable selecting attributes to randomize from config file.
         if not self.deterministic:
             # Set seeds for randomization
@@ -313,9 +319,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Place the agent on the fire map using the agent ID.
         nonsim_data["fire_map"][self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
         # FIXME the below line has no dependence on `nonsim_data`; needs to be moved.
-
-        # Why are we placing a fireline at the agents position here? Why do we need
-        # to update the s
+        # FIXME Why are we placing a fireline at the agents position here?
         self.simulation.update_mitigation([(self.agent_pos[1], self.agent_pos[0], 3)])
 
         return nonsim_data
