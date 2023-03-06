@@ -187,8 +187,8 @@ class RLHarness(gym.Env, ABC):
 
     @abstractmethod
     def step(
-        self, action: Tuple[int, int]
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[Any, Any]]:
+        self, action: np.ndarray
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """Run one timestep of the environment's dynamics.
 
         When end of episode is reached (`terminated or truncated` is True), you are

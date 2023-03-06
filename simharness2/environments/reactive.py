@@ -105,9 +105,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         )
 
     def step(
-        self, action: Tuple[int, int]
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[Any, Any]]:  # noqa
-        # TODO(afennelly): Add docstring (if needed).
+        self, action: np.ndarray
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
+        # TODO(afennelly) Add docstring?
         movement = action[0]
         interaction = action[1]
 
