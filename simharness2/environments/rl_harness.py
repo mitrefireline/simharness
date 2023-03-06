@@ -14,7 +14,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
 from enum import IntEnum
-from typing import Any, Dict, List, OrderedDict, Tuple, Union
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -98,9 +98,9 @@ class RLHarness(gym.Env, ABC):
         # FIXME(afennelly) provide a better explanation (below) for sim_agent_id
         # Make ID of agent +1 of the max value returned by the simulation for a location
         # NOTE: Assume that every simulator will support 3 base scenarios:
-        #  1. Untouched
-        #  2. Currently Being Affected
-        #  3. Affected
+        #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
+        #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
+        #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
         self.sim_agent_id = 3 + len(self.interactions) + 1
 
         if not set(self.interactions).issubset(list(sim_actions.keys())):
@@ -155,6 +155,86 @@ class RLHarness(gym.Env, ABC):
         action_shape = [len(self.movements), len(self.interactions)]
         self.action_space = spaces.MultiDiscrete(action_shape)
 
+    @abstractmethod
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[Dict[Any, Any]] = None,
+    ) -> Tuple[np.ndarray, Dict[Any, Any]]:
+        """Resets the environment to an initial state.
+
+        This method generates a new starting state often with some randomness to ensure
+        that the agent explores the state space and learns a generalized policy about the
+        environment. This randomness can be controlled with the `seed` parameter.
+
+        Subclasses, such as the ReactiveHarness, typically do the following within
+        the overriden reset() method:
+            1. set `self.num_burned = 0`.
+            2. handle `self.deterministic`
+            3. set `output = super().reset()`, which executes the below code and sets
+               `output` (in child class reset()) to the return value, `self.state`.
+
+        Arguments:
+            seed: The (optional) int seed that is used to initialize the environment's
+                PRNG (np_random). If the environment does not already have a PRNG and
+                `seed=None` (the default option) is passed,
+
+        Returns:
+            An ndarray containing the initial state of the environment.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def step(
+        self, action: Tuple[int, int]
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[Any, Any]]:
+        """Run one timestep of the environment's dynamics.
+
+        When end of episode is reached (`terminated or truncated` is True), you are
+        responsible for calling `reset()` to reset the environment's state for the next
+        episode.
+
+        Arguments:
+            action: An action provided by the agent to update the environment state.
+
+        Returns:
+            observation: A ndarray containing the observation of the environment.
+            reward: A float representing the reward obtained as a result of taking the
+                action.
+            terminated: A boolean indicating whether the agent reaches the terminal state
+            (as defined under the MDP of the task) which can be positive or negative.
+            An example is reaching the goal state, or moving into the lava from the
+            Sutton and Barton, Gridworld. If true, the user needs to call `reset()`.
+            truncated: A boolean indicating whether the truncation condition outside
+                the scope of the MDP is satisfied. Typically, this is a timelimit, but
+                could also be used to indicate an agent physically going out of bounds.
+                Can be used to end the episode prematurely before a terminal state is
+                reached. If true, the user needs to call `reset()`.
+            info: A dictionary containing auxiliary diagnostic information (helpful for
+                debugging, learning, and logging). This might, for instance, contain:
+                    - metrics that describe the agent's performance state
+                    - variables that are hidden from observations, or
+                    - individual reward terms that are combined to produce the total
+                      reward.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def render(self) -> None:
+        """Render a visualization of the environment."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:
+        """Get data that does not come from the simulation."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:
+        """Get bounds for data that does not come from the simulation."""
+        raise NotImplementedError
+
     def _get_status_categories(self, disaster_categories: List[str]) -> List[str]:
         """Get disaster categories that aren't interactions.
 
@@ -177,7 +257,6 @@ class RLHarness(gym.Env, ABC):
             sim_attributes: An ordered dictionary linking all attributes of
                 the Simulation to their respective data within the Sim.
         """
-        # TODO add comments and refactor as needed
         self.sim_attributes = []
         self.nonsim_attributes = []
         for attribute in self.attributes:
@@ -276,90 +355,3 @@ class RLHarness(gym.Env, ABC):
             )
 
         return observations
-
-    def reset(self) -> np.ndarray:
-        """Reset environment to initial state.
-
-        Longer method information... FIXME.
-
-        Subclasses, such as the ReactiveHarness, typically do the following within
-        the overriden reset() method:
-            1. set `self.num_burned = 0`.
-            2. handle `self.deterministic`
-            3. set `output = super().reset()`, which executes the below code and sets
-               `output` (in child class reset()) to the return value, `self.state`.
-
-        Returns:
-            An ndarray containing the initial state of the environment.
-        """
-        self.simulation.reset()
-        sim_observations = self._select_from_dict(
-            self.simulation.get_attribute_data(), self.sim_attributes
-        )
-        nonsim_observations = self._select_from_dict(
-            self.get_nonsim_attribute_data(), self.nonsim_attributes
-        )
-
-        if len(nonsim_observations) != len(self.nonsim_attributes):
-            raise AssertionError(
-                f"Data for {len(nonsim_observations)} nonsim attributes were given but "
-                f"there are {len(self.nonsim_attributes)} nonsim attributes."
-            )
-
-        observations = self._normalize_obs({**sim_observations, **nonsim_observations})
-
-        obs = []
-        for attribute in self.attributes:
-            obs.append(observations[attribute])
-
-        self.state = np.stack(obs, axis=0).astype(np.float64)
-
-        return self.state
-
-    @abstractmethod
-    def step(
-        self, action: Union[int, Tuple[int]]
-    ) -> Tuple[np.ndarray, float, bool, Dict[Any, Any]]:
-        """Run one timestep of the environment's dynamics.
-
-        When end of episode is reached (`terminated or truncated` is True), you are
-        responsible for calling `reset()` to reset the environment's state for the next
-        episode.
-
-        Arguments:
-            action: An action provided by the agent to update the environment state.
-
-        Returns:
-            observation: A ndarray containing the observation of the environment.
-            reward: A float representing the reward obtained as a result of taking the
-                action.
-            terminated: A boolean indicating whether the agent reaches the terminal state
-            (as defined under the MDP of the task) which can be positive or negative.
-            An example is reaching the goal state, or moving into the lava from the
-            Sutton and Barton, Gridworld. If true, the user needs to call `reset()`.
-            truncated: A boolean indicating whether the truncation condition outside
-                the scope of the MDP is satisfied. Typically, this is a timelimit, but
-                could also be used to indicate an agent physically going out of bounds.
-                Can be used to end the episode prematurely before a terminal state is
-                reached. If true, the user needs to call `reset()`.
-            info: A dictionary containing auxiliary diagnostic information (helpful for
-                debugging, learning, and logging). This might, for instance, contain:
-                    - metrics that describe the agent's performance state
-                    - variables that are hidden from observations, or
-                    - individual reward terms that are combined to produce the total
-                      reward.
-        """
-        pass
-
-    @abstractmethod
-    def render(self) -> None:
-        """Render a visualization of the environment."""
-        pass
-
-    def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:
-        """Get data that does not come from the simulation."""
-        return ordered_dict()
-
-    def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:
-        """Get bounds for data that does not come from the simulation."""
-        return ordered_dict()
