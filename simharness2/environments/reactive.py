@@ -23,33 +23,51 @@ from .rl_harness import RLHarness
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     """
     ### Description
-    This environment is used for the reactive case where an agent is interacting with the
-    environment as the disaster is currently happening and resources are being delegated.
+    Model's the `reactive` case, where an agent is interacting with the environment as
+    a disaster scenario is currently happening and resources are being deployed.
 
     ### Action Space
-    The action space is multi-discrete with the shape `(M+1,I+1)` and supports both
-    movements and interactions. Movements refer to actions where the agent traverses the
-    environment (ie up, down). Interactions refer to actions where the agent interacts
-    with the environment (ie place fireline, cut trees). The actions are determined based
-    on the training config file and their corresponding location within the arrays. The
-    option for no movement and no interaction is added in the __init__.
+    The action space type is `MultiDiscrete`, and `sample()` returns an `np.ndarray` of
+    shape `(M+1,I+1)`, where `M == movements` and `I == interactions`.
+    - Movements refer to actions where the agent **traverses** the environment.
+        - For example, possible movements could be: ["up", "down", "left", "right"].
+    - Interactions refer to actions where the agent **interacts** with the environment.
+        - For example, if the simulation IS-A `FireSimulation`, possible interactions
+            could be: ["fireline", "scratchline", "wetline"]. To learn more, see
+            [simulation.py](https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/main/simfire/sim/simulation.py#L269-280).
+    - Actions are determined based on the provided (harness) config file.
+    - When `super()._init__()` is called, the option "none" is inserted to element 0 of
+        both `movements` and `interactions`, representing "don't move" and
+        "don't interact", respectively (this is the intuition for the +1 in the shape).
 
     ### Observation Space
-    The observation is a `ndarray` with shape `(C,X,X)` where X is the size of the map and
-    C is the number of features. The size of the map is set within the Simulation's config
-    file. The number of features is a subset of features supported by the Simulation and
-    can be set in the training config. The locations within the observation are based on
-    their corresponding location within the array.
+    The observation space type is `Box`, and `sample()` returns an `np.ndarray` of shape
+    `(A,X,X)`, where `A == len(ReactiveHarness.attributes)` and
+    `X == ReactiveHarness.simulation.config.area.screen_size`.
+    - The value of `ReactiveHarness.simulation.config.area.screen_size` is determined
+      based on the value of the `screen_size` attribute (within the `area` section) of
+      the (simulation) config file. See `simharness2/sim_registry.py` to find more info
+      about the `register_simulation()` method, which is used to register the simulation
+      class and set the config file path associated with a given simulation.
+    - The number of `attributes` is determined by the `attributes` attribute (within the
+      `RLHARNESS` section) of the (harness) config file. Each attribute must be contained
+      in the observation space returned for the respective `Simulation` class. The
+      locations within the observation are based ontheir corresponding location within
+      the array.
 
     ### Rewards
     The agent is rewarded for saving the most land and reducing the amount of affected
     area.
+    - TODO(afennelly) add more details about the reward function.
+    - TODO(afennelly) implement modular reward function configuration.
 
     ### Starting State
     The initial map is set by data given from the Simulation.
+    - TODO(afennelly) add more details about the starting state.
 
-    ### Episode End
+    ### Episode Termination
     The episode ends once the disaster is finished and it cannot spread any more.
+    - TODO(afennelly) add more details about the episode termination.
     """
 
     def __init__(
