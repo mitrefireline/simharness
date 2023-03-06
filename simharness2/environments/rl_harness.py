@@ -204,15 +204,17 @@ class RLHarness(gym.Env, ABC):
         hts_action_conv = ordered_dict()
         sth_action_conv = ordered_dict()
 
+        # NOTE: We define self.interactions[0] as "none" ("don't interact", "do nothing")
         hts_action_conv[0] = 0
         sth_action_conv[0] = 0
 
         if len(self.interactions) == 0:
             pass
         else:
-            for e, action in enumerate(self.interactions[1:]):
-                hts_action_conv[e + 1] = sim_actions[action].value
-                sth_action_conv[sim_actions[action].value] = e + 1
+            # NOTE: omit first interaction since it is handled above
+            for idx, action in enumerate(self.interactions[1:], start=1):
+                hts_action_conv[idx] = sim_actions[action].value
+                sth_action_conv[sim_actions[action].value] = idx
 
         return hts_action_conv, sth_action_conv
 
