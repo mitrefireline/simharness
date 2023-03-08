@@ -94,6 +94,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.randomize_initial_agent_pos = randomize_initial_agent_pos
 
         # Set the agent's initial position on the map
+        # FIXME (afennelly) Should we set the environment seed here?
         self._set_agent_pos_for_episode_start()
 
         super().__init__(

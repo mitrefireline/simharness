@@ -314,6 +314,8 @@ class RLHarness(gym.Env, ABC):
 
     def _get_min_maxes(self) -> OrderedDict[str, Dict[str, Tuple[int, int]]]:
         """Retrieves the minimum and maximum for all relevant attributes."""
+        # FIXME (afennelly) I think the return type should be:
+        #   - OrderedDict[str, Dict[str, object]]
         # TODO update docstring to be more specific
         # TODO add comments and refactor as needed
         sim_min_maxes = ordered_dict()
