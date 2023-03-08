@@ -122,34 +122,30 @@ class RLHarness(gym.Env, ABC):
         self.harness_to_sim, self.sim_to_harness = self._sim_harness_conv(sim_actions)
         self.min_maxes = self._get_min_maxes()
 
+        # NOTE: calling `reshape()` to switch to channel-minor format.
         channel_lows = np.array(
             [[[self.min_maxes[channel]["min"]]] for channel in self.attributes]
-        )
+        ).reshape(1, 1, len(self.attributes))
         channel_highs = np.array(
             [[[self.min_maxes[channel]["max"]]] for channel in self.attributes]
-        )
+        ).reshape(1, 1, len(self.attributes))
 
         self.low = np.repeat(
             np.repeat(channel_lows, self.simulation.config.area.screen_size, axis=1),
             self.simulation.config.area.screen_size,
-            axis=2,
+            axis=0,
         )
-
         self.high = np.repeat(
             np.repeat(channel_highs, self.simulation.config.area.screen_size, axis=1),
             self.simulation.config.area.screen_size,
-            axis=2,
+            axis=0,
         )
 
+        # NOTE: Should we pass `seed` to seed the RNG used to sample from the space?
         self.observation_space = spaces.Box(
-            np.float32(self.low),
-            np.float32(self.high),
-            shape=(
-                len(self.attributes),
-                self.simulation.config.area.screen_size,
-                self.simulation.config.area.screen_size,
-            ),
-            dtype=np.float64,
+            self.low,
+            self.high,
+            dtype=np.float32,
         )
 
         action_shape = [len(self.movements), len(self.interactions)]

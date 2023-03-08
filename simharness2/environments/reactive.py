@@ -137,7 +137,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Check if there was an interaction already done on this space
         fire_map_idx = self.attributes.index("fire_map")
-        is_empty = self.state[fire_map_idx][self.agent_pos[0]][self.agent_pos[1]] == 0
+        is_empty = self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
 
         if is_empty and not interaction_str == "none":
             # Perform interaction on new space
@@ -163,7 +163,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
 
         # Update the state with the new fire map
-        self.state[fire_map_idx] = fire_map
+        self.state[..., fire_map_idx] = fire_map
 
         if not sim_active:
             reward += 10
@@ -278,7 +278,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             obs.append(observations[attribute])
 
         # NOTE: We may be able to use lower precision here, such as np.float32.
-        self.state = np.stack(obs, axis=0).astype(np.float64)
+        self.state = np.stack(obs, axis=-1).astype(np.float32)
 
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
