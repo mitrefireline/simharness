@@ -168,7 +168,10 @@ class Reward_Simharness():
         self.num_undamaged = self.sim_area - self.recent_damaged
 
 
-    def calculate_Reward_after_Timestep(self,timestep):
+
+    #calculate the base reward function
+    ## TODO: integrate this with the reward config so that this function can be defined there
+    def calculate_Reward_after_timestep(self,timestep):
 
         reward = (self.recent_damaged - self.damaged_per_timestep_benchmarkSim[timestep])/(self.sim_area)
 
