@@ -1,0 +1,80 @@
+Variables from Reward Class
+
+# VARIABLES TRACKED ACROSS THE ENTIRE EXPERIMENT - ALL THE SIMULATIONS
+# -------------------------------------------------------------------
+
+##  lowest number of undamaged squares achieved across all of the simulations in an experiment
+reward_class.lowest_exp_undamaged
+
+## lowest number of timesteps used to stop fire
+reward_class.lowest_timesteps
+
+
+# VARIABLES TRACKED ACROSS THE FULL RUN OF A SIMULATION
+# -------------------------------------------------------------------
+
+##  list that stores the number of damaged squares during each timestep of the same simulation with no agent mitigation
+reward_class.damaged_per_timestep_benchmarkSim
+
+##  the speed of the agent in the current simulation
+reward_class.agent_speed 
+
+## the simulation size in area (num squares)
+reward_class.sim_area 
+
+
+# VARIABLES TRACKED/UPDATED FOR EACH SIMULATION TIMESTEP WITH NO AGENT - BENCHMARK SIMULATION
+# -------------------------------------------------------------------
+
+##  number of timesteps that have occurred in the current benchmark simulation
+reward_class.num_timesteps_benchmarkSim
+
+##  number of new squares that are burning in current timestep of benchmark simulation
+reward_class.recent_damaged_benchmarkSim
+
+
+# VARIABLES TRACKED/UPDATED FOR EACH SIMULATION TIMESTEP WITH AGENT - AGENT SIMULATION
+# -------------------------------------------------------------------
+
+##  number of timesteps that have occurred in the current simulation
+reward_class.num_timesteps
+
+##  number of steps the agent has taken in the current simulation
+reward_class.num_agent_steps
+
+##  the total number of squares that have been burned in the simulation
+reward_class.num_burned 
+
+##  the number of squares that are currently burning in the simulation
+reward_class.burning 
+
+##  the number of squares that are burned in the most recent timestep of the simulation
+reward_class.recent_burned
+
+##  the number of squares that are burning in the most recent timestep of the simulation
+reward_class.recent_burning
+
+##  the total number of squares that have mitigations placed by the agent(s)
+reward_class.num_mitigations
+
+##  the number of mitigations placed in the most recent timestep
+reward_class.recent_mitigations
+
+##  the number of remaining squares in the simulation in this timestep that are undamaged
+###   the number of squares that neither have a mitigation or were burned/burning
+reward_class.num_undamaged
+
+##  number of new squares that are damaged in current timestep of Agent simulation
+reward_class.recent_damaged
+
+##  did the agent place a mitigation in this timestep
+reward_class.mitigation_placed
+
+##  is the agent in a burning square within this timestep
+reward_class.agent_burning
+
+##  is the agent in a square that has already been burned within this timestep
+reward_class.agent_in_burned_area
+
+##  is the agent close to a burning square within this timestep
+reward_class.agent_near_burning_area

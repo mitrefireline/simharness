@@ -119,7 +119,6 @@ class Reward_Simharness():
         self.mitigation_placed = mitigation_placed
 
         if self.mitigation_placed:
-            self.num_mitigations = self.num_mitigations + 1
             self.recent_mitigations = self.recent_mitigations + 1
 
         #make sure that this fire_map is has the agent's most recent mitigation recorded
@@ -136,9 +135,7 @@ class Reward_Simharness():
         self.agent_near_burning_area = False
         #track this to add negative reward for Agent being too close to fire
 
-
-
-    
+  
     # Update the Reward Class Variables after each timestep of the Agent-Simulation
     def timestep_AgentSim_Reward_Variables_Update(self,timestep, AgentSim_fire_map):
 
@@ -161,11 +158,13 @@ class Reward_Simharness():
 
         self.burning = np.count_nonzero(AgentSim_fire_map == BurnStatus.BURNING)
 
+        self.num_mitigations = self.num_mitigations + self.recent_mitigations
+
 
         #Calculate number of squares damaged in this timestep and the total undamaged squares left
         self.recent_damaged = self.recent_burning + self.recent_burned + self.recent_mitigations
 
-        self.num_undamaged = self.sim_area - self.recent_damaged
+        self.num_undamaged = self.sim_area - self.burning - self.burned - self.num_mitigations
 
 
 
