@@ -7,6 +7,8 @@ from simfire.sim.simulation import Simulation
 from simfire.enums import BurnStatus
 
 
+#define and update this class object within the environment file code
+
 class Reward_Simharness():
     def __init__(self, agent_speed, sim_size):
         # VARIABLES TRACKED ACROSS THE ENTIRE EXPERIMENT - ALL THE SIMULATIONS
