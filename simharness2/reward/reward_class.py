@@ -182,3 +182,7 @@ class Reward_Simharness():
         #Add estimated postive rewards if agent's mitigations make the sim last longer than the benchmark sim
 
         return reward
+    
+
+    #TODO
+    #create method to inheret the "VARIABLES TRACKED ACROSS THE ENTIRE EXPERIMENT" when a new reward_class object is defined for each new simulation within an experiment
