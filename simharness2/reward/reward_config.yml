@@ -2,7 +2,6 @@ TODO---
 
 #"Variables from Reward Class to inform Config Setup"
 Reward_Class:
-
   # VARIABLES TRACKED ACROSS THE ENTIRE EXPERIMENT - ALL THE SIMULATIONS
   # -------------------------------------------------------------------
   ##  lowest number of undamaged squares achieved across all of the simulations in an experiment

@@ -1,3 +1,4 @@
+# - D.Gandikota
 from collections import OrderedDict as ordered_dict
 from typing import Dict, List, OrderedDict, Tuple
 from copy import deepcopy
@@ -9,8 +10,9 @@ from simfire.enums import BurnStatus
 
 #define and update this class object within the environment file code
 
-class Reward_Simharness():
+class Rl_AnalysisData():
     def __init__(self, agent_speed, sim_size):
+
         # VARIABLES TRACKED ACROSS THE ENTIRE EXPERIMENT - ALL THE SIMULATIONS
         # -------------------------------------------------------------------
         
@@ -174,7 +176,7 @@ class Reward_Simharness():
     ## TODO: integrate this with the reward config so that this function can be defined there
     def calculate_Reward_after_timestep(self,timestep):
 
-        reward = (self.recent_damaged - self.damaged_per_timestep_benchmarkSim[timestep])/(self.sim_area)
+        reward = (self.damaged_per_timestep_benchmarkSim[timestep] - self.recent_damaged)/(self.sim_area)
 
         #TODO
         #Add positive reward if agent saves more squares than self.lowest_exp_undamaged and then update self.lowest_exp_undamaged
