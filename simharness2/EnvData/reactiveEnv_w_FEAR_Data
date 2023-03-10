@@ -13,12 +13,12 @@ import numpy as np
 from simfire.sim.simulation import Simulation
 
 # TODO(afennelly) fix import path (relative to root)
-from .rl_harness import RLHarness
+from simharness2.environments.rl_harness import RLHarness
 
 #--------------------------------------------------------------------------------------------
 #NEW: import FEAR data class 
 ##(dgandikota)
-from simharness2.reward.Env_Analysis_Data_Class import FEAR_Data
+from simharness2.EnvData.Env_Analysis_Data_Class import FEAR_Data
 #--------------------------------------------------------------------------------------------
 
 
