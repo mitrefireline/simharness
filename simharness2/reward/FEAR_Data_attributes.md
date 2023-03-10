@@ -1,7 +1,7 @@
-TODO---
+Tracker of the variables and stored data in the FEAR Data Class to be used in reward creation and further experimental analysis.
 
 #"Variables from Reward Class to inform Config Setup"
-Reward_Class:
+# FEAR_Data Class:
   # VARIABLES TRACKED ACROSS THE ENTIRE EXPERIMENT - ALL THE SIMULATIONS
   # -------------------------------------------------------------------
   ##  lowest number of undamaged squares achieved across all of the simulations in an experiment

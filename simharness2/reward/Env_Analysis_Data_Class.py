@@ -1,4 +1,10 @@
-# - D.Gandikota
+
+# FiReLine Environment Analysis & Reward (FEAR) Data Class to dynamically extract, store and transform key variable data from RL Agent Training Experiments
+#                                                                to create Config reward capabilites and offer additional experimental analysis
+#                                                                                                                                   - (dgandikota)
+
+#other possible names - FEAR_D : FiReLine Environment Analysis & Reward Data
+#                     - FETA : FiReLine Environment Training Analysis
 from collections import OrderedDict as ordered_dict
 from typing import Dict, List, OrderedDict, Tuple
 from copy import deepcopy
@@ -10,7 +16,7 @@ from simfire.enums import BurnStatus
 
 #define and update this class object within the environment file code
 
-class Rl_AnalysisData():
+class FEAR_Data():
     def __init__(self, agent_speed, sim_size):
 
         # VARIABLES TRACKED ACROSS THE ENTIRE EXPERIMENT - ALL THE SIMULATIONS
@@ -98,8 +104,8 @@ class Rl_AnalysisData():
         self.agent_near_burning_area = False
 
 
-    # Update the Reward Class Variables after each timestep of the Benchmark Simulation
-    def timestep_BenchSim_Reward_Variables_Update(self,timestep, Benchmark_fire_map):
+    # Update the FEAR Data Class Variables after each timestep of the Benchmark Simulation
+    def timestep_BenchSim_FEAR_Update(self,timestep, Benchmark_fire_map):
         
         self.num_timesteps_benchmarkSim = timestep
 
@@ -113,8 +119,8 @@ class Rl_AnalysisData():
         self.recent_damaged_benchmarkSim = self.damaged_per_timestep_benchmarkSim[self.num_timesteps_benchmarkSim]
 
 
-    # Update the Reward Class Variables after each Agent action/movement of the Agent Simulation - Useful when Agent Speed is greater than 1
-    def AgentStep_AgentSim_Reward_Variables_Update(self,timestep, AgentSim_fire_map, mitigation_placed = False, nearby_fire = False):
+    # Update the FEAR Data Class Variables after each Agent action/movement of the Agent Simulation - Useful when Agent Speed is greater than 1
+    def AgentStep_FEAR_Update(self,timestep, simulation, mitigation_placed = False, nearby_fire = False):
 
         self.num_timesteps =  timestep
 
@@ -140,8 +146,8 @@ class Rl_AnalysisData():
         #track this to add negative reward for Agent being too close to fire
 
   
-    # Update the Reward Class Variables after each timestep of the Agent-Simulation
-    def timestep_AgentSim_Reward_Variables_Update(self,timestep, AgentSim_fire_map):
+    # Update the FEAR Data Class Variables after each timestep of the Agent-Simulation
+    def timestep_AgentSim_FEAR_Update(self,timestep, AgentSim_fire_map):
 
         self.num_timesteps =  timestep   
         
