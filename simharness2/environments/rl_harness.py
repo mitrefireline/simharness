@@ -14,7 +14,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, OrderedDict, Tuple
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple, no_type_check
 
 import gymnasium as gym
 import numpy as np
@@ -151,6 +151,7 @@ class RLHarness(gym.Env, ABC):
         action_shape = [len(self.movements), len(self.interactions)]
         self.action_space = spaces.MultiDiscrete(action_shape)
 
+    @no_type_check
     @abstractmethod
     def reset(
         self,
@@ -179,7 +180,7 @@ class RLHarness(gym.Env, ABC):
         Returns:
             An ndarray containing the initial state of the environment.
         """
-        raise NotImplementedError
+        super().reset(seed=seed)
 
     @abstractmethod
     def step(
