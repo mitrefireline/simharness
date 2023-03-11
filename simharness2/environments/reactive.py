@@ -94,7 +94,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.randomize_initial_agent_pos = randomize_initial_agent_pos
 
         # Set the agent's initial position on the map
-        # FIXME (afennelly) Should we set the environment seed here?
         self._set_agent_pos_for_episode_start()
 
         super().__init__(
@@ -235,6 +234,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
     ) -> Tuple[np.ndarray, Dict[Any, Any]]:  # noqa
+        # We need the following line to seed self.np_random
+        super().reset(seed=seed)
         # If the environment is stochastic, set the seeds for randomization parameters.
         # An evaluation environment will generally be set as deterministic.
         # NOTE: Other randomization parameters include "fuel", "wind_speed", and
@@ -331,10 +332,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
         if self.randomize_initial_agent_pos:
-            self.agent_pos = [
-                np.random.randint(0, self.simulation.config.area.screen_size),
-                np.random.randint(0, self.simulation.config.area.screen_size),
-            ]
+            self.agent_pos = self.np_random.integers(
+                0, self.simulation.config.area.screen_size, size=2, dtype=int
+            )
         else:
             # TODO(afennelly): Verify initial_agent_pos is within the bounds of the map
             self.agent_pos = self.initial_agent_pos
