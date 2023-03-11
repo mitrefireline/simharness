@@ -13,8 +13,8 @@ Typical usage example:
 from collections import OrderedDict as ordered_dict
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
-# import gymnasium as gym
 import numpy as np
+from gymnasium import spaces
 from simfire.sim.simulation import Simulation
 
 # TODO(afennelly) fix import path (relative to root)
@@ -443,3 +443,123 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
         self.simulation.set_fire_initial_position((new_x, new_y))
 
         return output, {}
+
+
+class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
+    """
+    ### Description
+    This environment is the same as the above ReactiveHarness, except it uses a discrete
+    action space instead of a multi-discrete (used for algorithms that cannot support
+    multi-discrete)
+
+    ### Action Space
+    The action space is discrete with the shape `((M*I)+3)`. Movements refer to actions
+    where the agent traverses the environment (ie up, down). Interactions refer to actions
+    where the agent interacts with the environment (ie place fireline, cut trees). The
+    environment combines both movements and actions into a discrete space and adds the
+    option for no movement and no interaction.
+    """
+
+    def __init__(
+        self,
+        simulation: Simulation,
+        movements: List[str],
+        interactions: List[str],
+        attributes: List[str],
+        normalized_attributes: List[str],
+        agent_speed: int,
+        deterministic: bool = False,
+        agent_pos: List[int] = [15, 15],
+        randomize_agent_pos: bool = False,
+    ) -> None:
+        """See ReactiveHarness (parent/base class)."""
+        super().__init__(
+            simulation,
+            movements,
+            interactions,
+            attributes,
+            normalized_attributes,
+            agent_speed,
+            deterministic,
+            agent_pos,
+            randomize_agent_pos,
+        )
+
+        action_shape = len(self.movements) * len(self.interactions)
+        # Overwrite the action space to be Discrete.
+        self.action_space = spaces.Discrete(action_shape)
+
+    def step(
+        self, action: np.ndarray
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
+        # TODO(afennelly) Add docstring?
+        # Separate out the movement and the interaction from the action
+        movement = action % len(self.movements)
+        interaction = int(action / len(self.movements))
+
+        # FIXME (afennelly) Everything below is identical to parent class. We should
+        # refactor this to avoid code duplication, but it's okay to keep for now.
+        movement_str = self.movements[movement]
+        interaction_str = self.interactions[interaction]
+        reward = 0.0
+
+        pos_placeholder = self.agent_pos.copy()
+        screen_size = self.simulation.config.area.screen_size
+
+        # Update agent location on map
+        if movement_str == "none":
+            pass
+        elif movement_str == "up" and not self.agent_pos[0] == 0:
+            pos_placeholder[0] -= 1
+        elif movement_str == "down" and not self.agent_pos[0] == screen_size - 1:
+            pos_placeholder[0] += 1
+        elif movement_str == "left" and not self.agent_pos[1] == 0:
+            pos_placeholder[1] -= 1
+        elif movement_str == "right" and not self.agent_pos[1] == screen_size - 1:
+            pos_placeholder[1] += 1
+        else:
+            pass
+
+        self.agent_pos = pos_placeholder
+
+        # Check if there was an interaction already done on this space
+        fire_map_idx = self.attributes.index("fire_map")
+        is_empty = self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
+
+        if is_empty and not interaction_str == "none":
+            # Perform interaction on new space
+            sim_interaction = self.harness_to_sim[interaction]
+            mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
+            self.simulation.update_mitigation([mitigation_update])
+
+        # Update the Simulation with new agent position (s).
+        # NOTE: We assume the single-agent case here, so agent ID == 0.
+        point = [self.agent_pos[1], self.agent_pos[0], 0]
+        self.simulation.update_agent_positions([point])
+
+        # Don't run the Simulation every step depending on speed
+        if self.num_agent_steps % self.agent_speed == 0:
+            sim_fire_map, sim_active = self.simulation.run(1)
+            fire_map = np.copy(sim_fire_map)
+            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+            reward += self._calculate_reward(fire_map)
+        else:
+            sim_active = True
+            sim_fire_map = self.simulation.fire_map
+            fire_map = np.copy(sim_fire_map)
+            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+
+        # Update the state with the new fire map
+        self.state[..., fire_map_idx] = fire_map
+
+        if not sim_active:
+            reward += 10
+
+        # if self._nearby_fire():
+        #     reward -= 2.0
+
+        self.num_agent_steps += 1
+        # TODO(afennelly): Need to handle truncation properly. For now, we assume that
+        # the episode will never be truncated, but this isn't necessarily true.
+        truncated = False
+        return self.state, reward, not sim_active, truncated, {}
