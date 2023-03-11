@@ -338,3 +338,108 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         else:
             # TODO(afennelly): Verify initial_agent_pos is within the bounds of the map
             self.agent_pos = self.initial_agent_pos
+
+
+class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
+    """
+    ### Description
+    Progressive Growth Reactive Harness for use with slowly growing the "static" fire
+    start location. The fire start location will expand every `sims_per_growth`
+    simulations. The fire start location will expand up to `growth_per_step` pixels for
+    every start location growth. `growth_seed` will control the randomization of start
+    locations for reproducability.
+    """
+
+    def __init__(
+        self,
+        simulation: Simulation,
+        movements: List[str],
+        interactions: List[str],
+        attributes: List[str],
+        normalized_attributes: List[str],
+        agent_speed: int,
+        deterministic: bool = False,
+        initial_agent_pos: List[int] = [15, 15],
+        randomize_initial_agent_pos: bool = False,
+        sims_per_growth: int = 1,
+        growth_per_step: int = 1,
+    ) -> None:
+        """Initialize the harness.
+
+        This checks that the fire initial position is static
+        and creates a counter for the total number of simulations run.
+
+        Progressive Growth Reactive Harness for use with slowly growing the "static" fire
+        start location. The fire start location will expand every `sims_per_growth`
+        simulations. The fire start location will expand up to `growth_per_step` pixels
+        for every start location growth.
+
+        TODO (afennelly) Update docstring.
+
+        """
+        super().__init__(
+            simulation,
+            movements,
+            interactions,
+            attributes,
+            normalized_attributes,
+            agent_speed,
+            deterministic,
+            initial_agent_pos,
+            randomize_initial_agent_pos,
+        )
+        # Verify that a static initial position is used
+        fire_init_pos_type = self.simulation.config.yaml_data["fire"][
+            "fire_initial_position"
+        ]["type"]
+        if fire_init_pos_type != "static":
+            raise ValueError(
+                "The PG Harness requires a static `fire_initial_position`, "
+                f"but the supplied value is {fire_init_pos_type}"
+            )
+        # Number of sims to run before each growth step
+        self.sims_per_growth = sims_per_growth
+        # Number of pixels to allow starting region to grow per growths step
+        self.growth_per_step = growth_per_step
+        # Number of times the simulation has run (or been reset)
+        self.num_sims = 0
+
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[Dict[Any, Any]] = None,
+    ) -> Tuple[np.ndarray, Dict[Any, Any]]:  # noqa
+        output, _ = super().reset()
+        # FIXME Currently, `ReactiveHarness.reset()` will update the seed used for
+        # "fire_initial_position", which is not what we want in the PG case.
+
+        # Update the number of times the simulation has run (or been reset).
+        self.num_sims += 1
+
+        # Retreive the "static" fire start position, as specified in the config.
+        fire_pos = self.simulation.config.yaml_data["fire"]["fire_initial_position"][
+            "static"
+        ]["position"]
+        fire_pos = fire_pos[1:-1].split(",")
+        x, y = (int(fire_pos[0]), int(fire_pos[1]))
+
+        # Randomly select a new fire start position within the growth range.
+        additional_pts = (self.num_sims // self.sims_per_growth) * self.growth_per_step
+        new_x = x + self.np_random.integers(
+            -additional_pts, additional_pts + 1, dtype=int
+        )
+        new_y = y + self.np_random.integers(
+            -additional_pts, additional_pts + 1, dtype=int
+        )
+
+        # Clamp the new values to the screen size.
+        new_x = max(
+            0, min(new_x, self.simulation.config.yaml_data["area"]["screen_size"] - 1)
+        )
+        new_y = max(
+            0, min(new_y, self.simulation.config.yaml_data["area"]["screen_size"] - 1)
+        )
+        self.simulation.set_fire_initial_position((new_x, new_y))
+
+        return output, {}
