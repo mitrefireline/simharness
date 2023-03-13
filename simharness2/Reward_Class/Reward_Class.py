@@ -57,7 +57,7 @@ class Reward_Calc(FEAR_Data):
 
             if not self.sim_active:
                     reward += 10
-            # if self._nearby_fire():
+            # if self.agent_near_burning_area:
             #     reward -= 2.0
 
             #TODO

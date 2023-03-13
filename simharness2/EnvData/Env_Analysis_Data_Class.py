@@ -150,7 +150,7 @@ class FEAR_Data():
         #subtract from recent_mitigations if the mitigation was placed in a burned area
 
         #TODO
-        self.agent_near_burning_area = False
+        self.agent_near_burning_area = nearby_fire
         #track this to add negative reward for Agent being too close to fire
 
   
