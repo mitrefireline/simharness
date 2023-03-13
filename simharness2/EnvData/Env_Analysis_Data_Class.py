@@ -105,7 +105,9 @@ class FEAR_Data():
 
 
     # Update the FEAR Data Class Variables after each timestep of the Benchmark Simulation
-    def timestep_BenchSim_FEAR_Update(self,timestep, Benchmark_fire_map):
+    def timestep_BenchSim_FEAR_Update(self,timestep, Benchmark_fire_map, Benchmark_sim_active):
+
+        #TODO integrate functionality for when the bench sim is not active
         
         self.num_timesteps_benchmarkSim = timestep
 

@@ -3,6 +3,11 @@ Sample reactive.py env for simharness 2.0 with integrated Reward Class that inhe
     - Built from afennelly current version of simharness 2.0 environment
 
 * New additions are commented with #NEW:
+#--------------------------------------------------------------------------------------------
+#NEW:
+##(dgandikota)
+
+#--------------------------------------------------------------------------------------------
 
 """
 from collections import OrderedDict as ordered_dict
@@ -71,6 +76,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def __init__(
         self,
         simulation: Simulation,
+        bench_simulation: Simulation, #TODO make sure the bench_simulation works within the reactive_Env
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -85,8 +91,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.num_agent_steps = 0
         self.agent_speed = agent_speed
 
+        #--------------------------------------------------------------------------------------------
         #NEW: TODO create variable that tracks the number of timesteps that have occurred within an episode
+        ##(dgandikota)
         self.timestep = 1
+        #--------------------------------------------------------------------------------------------
+
 
         #--------------------------------------------------------------------------------------------
         # NEW: Reward Data Object init
@@ -168,13 +178,30 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Don't run the Simulation every step depending on speed
         if self.num_agent_steps % self.agent_speed == 0:
+
+            #update agent Sim based off the agents actions
             sim_fire_map, sim_active = self.simulation.run(1)
             fire_map = np.copy(sim_fire_map)
             fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+
+            #--------------------------------------------------------------------------------------------
+            #NEW: Update the benchmark sim that has no agent actions within
+            ##(dgandikota)
+            bench_sim_fire_map, bench_sim_active = self.bench_simulation.run(1)
+            bench_fire_map = np.copy(bench_sim_fire_map)
+            #bench_fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+
+            #--------------------------------------------------------------------------------------------
+
+            #--------------------------------------------------------------------------------------------
+            #NEW: Update the Reward Class - FEAR Data for each new simulation timestep of the benchmark simulation with no mitigations
+            ##(dgandikota)
+            self.env_Reward.timestep_BenchSim_FEAR_Update(self.timestep, bench_fire_map, bench_sim_active)
+            #--------------------------------------------------------------------------------------------
             
             
             #--------------------------------------------------------------------------------------------
-            #NEW: Update the FEAR Data for each new simulation timestep
+            #NEW: Update the Reward Class - FEAR Data for each new simulation timestep of the simulation with the Agent
             ##(dgandikota)
             self.env_Reward.timestep_AgentSim_FEAR_Update(self.timestep, fire_map)
             #--------------------------------------------------------------------------------------------
