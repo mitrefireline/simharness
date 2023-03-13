@@ -1,7 +1,7 @@
 # Parent Reward_Calc Class that inherits FEAR Data Class to compute the reward function 
 #                          Allows users to define and choose between rewared functions for Config reward capabilites - (dgandikota)
                                                                                                                     
-from simharness2.EnvData.Env_Analysis_Data_Class import FEAR_Data
+from simharness2.Env_Data_Analysis.FEAR_Data import FEAR_Data
 
 from collections import OrderedDict as ordered_dict
 from typing import Dict, List, OrderedDict, Tuple
