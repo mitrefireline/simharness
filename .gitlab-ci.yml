@@ -7,6 +7,7 @@ stages:
   - Static Analysis
   - Security
   - Documentation
+  - Build
 
 ###################
 # Static Analysis #
@@ -39,7 +40,7 @@ mypy:
     - lslab2
   script:
     - pip install mypy types-PyYAML
-    - mypy --config-file .mypy.ini .
+    - mypy .
   needs: []
   only:
     - merge_requests
@@ -100,5 +101,25 @@ pages:
   artifacts:
     paths:
       - public
+  only:
+    - main
+
+#########
+# Build #
+#########
+docker-build:
+  stage: Build
+  tags:
+    - lslab2
+  image: docker:20.10.16-dind
+  services:
+    - docker:20.10.16-dind
+  before_script:
+    - docker --version
+  script:
+    - cd $CI_PROJECT_DIR
+    - docker login butler.mitre.org --username $CI_HARBOR_USERNAME --password $CI_HARBOR_TOKEN
+    - docker build -t butler.mitre.org/simfire/simharness2:latest .
+    - docker push butler.mitre.org/simfire/simharness2:latest
   only:
     - main

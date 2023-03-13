@@ -16,8 +16,7 @@ repository = "https://gitlab.mitre.org/fireline/reinforcementlearning/simharness
 [tool.poetry.dependencies]
 python = "~3.9"
 numpy = "^1.22"
-ray = {extras = ["default", "rllib"], version = "^2.2.0"}
-gymnasium = "^0.26.3"
+ray = {extras = ["rllib"], version = "^2.3.0"}
 PyYAML = "^6.0"
 tensorboard = "^2.9.1"
 nni = "^2.8"
@@ -66,8 +65,8 @@ exclude = [
 [tool.pydocstyle]
 # Possible conventions: pep257, numpy, google (see http://www.pydocstyle.org/en/stable/error_codes.html#default-conventions).
 convention = "google"
-# match '*.py' files that don't start with 'test_' (this is the default)
-match = '(?!test_).*\.py'
+# match '*.py' files that don't start with 'test_' or '__init'
+match = '(?![test_|__init]).*\.py'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
