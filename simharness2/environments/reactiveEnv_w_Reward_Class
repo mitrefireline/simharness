@@ -6,7 +6,6 @@ Sample reactive.py env for simharness 2.0 with integrated Reward Class that inhe
 #--------------------------------------------------------------------------------------------
 #NEW:
 ##(dgandikota)
-
 #--------------------------------------------------------------------------------------------
 
 """
@@ -16,8 +15,6 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 # import gymnasium as gym
 import numpy as np
 from simfire.sim.simulation import Simulation
-
-# TODO(afennelly) fix import path (relative to root)
 from simharness2.environments.rl_harness import RLHarness
 
 #--------------------------------------------------------------------------------------------
@@ -112,7 +109,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.randomize_initial_agent_pos = randomize_initial_agent_pos
 
         # Set the agent's initial position on the map
-        # FIXME (afennelly) Should we set the environment seed here?
         self._set_agent_pos_for_episode_start()
 
         super().__init__(
@@ -170,7 +166,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.simulation.update_agent_positions([point])
 
         #--------------------------------------------------------------------------------------------
-        #NEW: Update the FEAR Data after each agents step
+        #NEW: Update the FEAR Data after each agents step/action
         ##(dgandikota)
         self.env_Reward.AgentStep_FEAR_Update(self.timestep, self.simulation, not interaction_str == "none", self._nearby_fire())
         #--------------------------------------------------------------------------------------------
@@ -228,7 +224,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.state[..., fire_map_idx] = fire_map
 
 
-
+        #TODO move this into Reward Class
         if not sim_active:
             reward += 10
 
@@ -278,6 +274,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
     ) -> Tuple[np.ndarray, Dict[Any, Any]]:  # noqa
+        # We need the following line to seed self.np_random
+        super().reset(seed=seed)
         # If the environment is stochastic, set the seeds for randomization parameters.
         # An evaluation environment will generally be set as deterministic.
         # NOTE: Other randomization parameters include "fuel", "wind_speed", and
@@ -293,10 +291,22 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 "elevation": elevation_seed + 1,
             }
             self.simulation.set_seeds(seed_dict)
+            #--------------------------------------------------------------------------------------------
+            #NEW: set seeds of benchmark simulation
+            ##(dgandikota)
+            self.bench_simulation.set_seeds(seed_dict)
+            #--------------------------------------------------------------------------------------------
+
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         self.simulation.reset()
+
+        #--------------------------------------------------------------------------------------------
+        #NEW: reset benchmark simulation
+        ##(dgandikota)
+        self.bench_simulation.reset()
+        #--------------------------------------------------------------------------------------------
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -323,11 +333,19 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # NOTE: We may be able to use lower precision here, such as np.float32.
         self.state = np.stack(obs, axis=-1).astype(np.float32)
+        #TODO in future find way to add benchmark sim to agents state
 
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
         point = [self.agent_pos[1], self.agent_pos[0], 0]
         self.simulation.update_agent_positions([point])
+
+        #--------------------------------------------------------------------------------------------
+        #NEW: update the benchmark simulation - Not sure if actually needed but can't hurt
+        ##(dgandikota)
+        self.bench_simulation.update_agent_positions([point])
+        #--------------------------------------------------------------------------------------------
+
 
         # NOTE: `self.num_burned` is not currently used in the reward calculation.
         # self.num_burned = 0 FIXME include once we modularize the reward function
@@ -370,6 +388,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def render(self):  # noqa
         self.simulation.rendering = True
+        #TODO if wanted - add rendering capabilities to the Benchmark Simulation
 
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
