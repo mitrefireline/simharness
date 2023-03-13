@@ -176,20 +176,6 @@ class FEAR_Data():
 
         self.num_undamaged = self.sim_area - self.burning - self.burned - self.num_mitigations
 
-
-
-    #calculate the base reward function
-    ## TODO: integrate this with the reward config so that this function can be defined there
-    def calculate_Reward_after_timestep(self,timestep):
-
-        reward = (self.damaged_per_timestep_benchmarkSim[timestep] - self.recent_damaged)/(self.sim_area)
-
-        #TODO
-        #Add positive reward if agent saves more squares than self.lowest_exp_undamaged and then update self.lowest_exp_undamaged
-        #Add postive reward if agent ends fire in less timesteps than self.lowest_timesteps with a >= num of undamaged squares to self.lowest_exp_undamaged
-        #Add estimated postive rewards if agent's mitigations make the sim last longer than the benchmark sim
-
-        return reward
     
 
     #TODO

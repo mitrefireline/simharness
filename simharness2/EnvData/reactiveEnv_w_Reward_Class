@@ -1,5 +1,5 @@
 """
-Sample reactive.py env for simharness 2.0 with integrated FEAR data extraction and dual (Benchmark + Agent) simulation capabilites
+Sample reactive.py env for simharness 2.0 with integrated Reward Class that inherits FEAR data extraction and dual (Benchmark + Agent) simulation capabilites
     - Built from afennelly current version of simharness 2.0 environment
 
 * New additions are commented with #NEW:
@@ -16,9 +16,10 @@ from simfire.sim.simulation import Simulation
 from simharness2.environments.rl_harness import RLHarness
 
 #--------------------------------------------------------------------------------------------
-#NEW: import FEAR data class 
+#NEW: import Reward data class that inherits FEAR_Data
 ##(dgandikota)
-from simharness2.EnvData.Env_Analysis_Data_Class import FEAR_Data
+from simharness2.EnvData.Reward_Class import Reward_Calc
+
 #--------------------------------------------------------------------------------------------
 
 
@@ -88,9 +89,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.timestep = 1
 
         #--------------------------------------------------------------------------------------------
-        # NEW: FEAR Data Object init
+        # NEW: Reward Data Object init
         ##(dgandikota)
-        self.env_expData = FEAR_Data(agent_speed, self.simulation.config.area.screen_size)
+        self.env_Reward = Reward_Calc(agent_speed, self.simulation.config.area.screen_size, reward_option = 'num_burning')
         #--------------------------------------------------------------------------------------------
 
 
@@ -161,7 +162,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #--------------------------------------------------------------------------------------------
         #NEW: Update the FEAR Data after each agents step
         ##(dgandikota)
-        self.env_expData.AgentStep_FEAR_Update(self.timestep, self.simulation, not interaction_str == "none", self._nearby_fire())
+        self.env_Reward.AgentStep_FEAR_Update(self.timestep, self.simulation, not interaction_str == "none", self._nearby_fire())
         #--------------------------------------------------------------------------------------------
 
 
@@ -175,13 +176,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             #--------------------------------------------------------------------------------------------
             #NEW: Update the FEAR Data for each new simulation timestep
             ##(dgandikota)
-            self.env_expData.timestep_AgentSim_FEAR_Update(self.timestep, fire_map)
+            self.env_Reward.timestep_AgentSim_FEAR_Update(self.timestep, fire_map)
             #--------------------------------------------------------------------------------------------
             
             #--------------------------------------------------------------------------------------------
             #NEW: Calculate the reward using the FEAR Data class TODO-Make parent class that inherits and defines reward
             ##(dgandikota)
-            reward += self.env_expData.calculate_Reward_after_timestep(self.timestep)
+            reward += self.env_Reward.calculate_Reward_after_timestep(self.timestep)
             #--------------------------------------------------------------------------------------------
             
             
