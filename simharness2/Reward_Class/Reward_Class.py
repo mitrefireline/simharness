@@ -25,30 +25,46 @@ class Reward_Calc(FEAR_Data):
 
         #Enter the User Made Reward Functions here
 
+        reward = 0
+
 
         if self.reward_option == "num_burning":
 
             #number of squares burning at this timstep
-            return (self.burning)
+            reward += (self.burning)
+
+            if not self.sim_active:
+                reward += 10
+
+            
         
         elif self.reward_option == "num_undamaged":
 
             #number of squares remaining at this timestep that are undamaged
-            return (self.num_undamaged)
+            reward += (self.num_undamaged)
+
+            if not self.sim_active:
+                reward += 10
+        
         
         else:
+            #when self.reward_option == "base"
 
             #based off the benchmark simulation
             # the reward is the difference between the unmitigated # of squares that would be damaged in this timestep and the current # of squares that are damaged in this timestep
             # such that if the mitigations result in more squares saved in a timestep, then we will see a positive reward
-            return (self.damaged_per_timestep_benchmarkSim[timestep] - self.recent_damaged)/(self.sim_area)
+            reward += (self.damaged_per_timestep_benchmarkSim[timestep] - self.recent_damaged)/(self.sim_area)
+
+            if not self.sim_active:
+                    reward += 10
+            # if self._nearby_fire():
+            #     reward -= 2.0
 
             #TODO
             #Add positive reward if agent saves more squares than self.lowest_exp_undamaged and then update self.lowest_exp_undamaged
             #Add postive reward if agent ends fire in less timesteps than self.lowest_timesteps with a >= num of undamaged squares to self.lowest_exp_undamaged
             #Add estimated postive rewards if agent's mitigations make the sim last longer than the benchmark sim
 
-
-
+        return reward
 
 

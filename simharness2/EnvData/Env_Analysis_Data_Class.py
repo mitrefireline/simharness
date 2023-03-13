@@ -51,6 +51,9 @@ class FEAR_Data():
         ##  number of new squares that are burning in current timestep of benchmark simulation
         self.recent_damaged_benchmarkSim = 1
 
+        ## track whether bench_sim is active
+        self.bench_sim_active = True
+
 
 
 
@@ -63,7 +66,8 @@ class FEAR_Data():
         ##  number of steps the agent has taken in the current simulation
         self.num_agent_steps = 0
 
-        
+        ## track whether simulation with agent is active
+        self.sim_active = True
 
         ##  the total number of squares that have been burned in the simulation
         self.num_burned = 0
@@ -108,6 +112,8 @@ class FEAR_Data():
     def timestep_BenchSim_FEAR_Update(self,timestep, Benchmark_fire_map, Benchmark_sim_active):
 
         #TODO integrate functionality for when the bench sim is not active
+
+        self.bench_sim_active = Benchmark_sim_active
         
         self.num_timesteps_benchmarkSim = timestep
 
@@ -149,9 +155,11 @@ class FEAR_Data():
 
   
     # Update the FEAR Data Class Variables after each timestep of the Agent-Simulation
-    def timestep_AgentSim_FEAR_Update(self,timestep, AgentSim_fire_map):
+    def timestep_AgentSim_FEAR_Update(self,timestep, AgentSim_fire_map, AgentSim_sim_active):
 
         self.num_timesteps =  timestep   
+
+        self.sim_active = AgentSim_sim_active
         
         #make sure that this fire_map is has all the agent's most recent mitigation recorded and has run through the simulation to see the effects
         #get the burned and burning squares from this fire_map

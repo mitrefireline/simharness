@@ -199,7 +199,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             #--------------------------------------------------------------------------------------------
             #NEW: Update the Reward Class - FEAR Data for each new simulation timestep of the simulation with the Agent
             ##(dgandikota)
-            self.env_Reward.timestep_AgentSim_FEAR_Update(self.timestep, fire_map)
+            self.env_Reward.timestep_AgentSim_FEAR_Update(self.timestep, fire_map, sim_active)
             #--------------------------------------------------------------------------------------------
             
             #--------------------------------------------------------------------------------------------
@@ -224,12 +224,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.state[..., fire_map_idx] = fire_map
 
 
-        #TODO move this into Reward Class
-        if not sim_active:
-            reward += 10
-
-        # if self._nearby_fire():
-        #     reward -= 2.0
 
         self.num_agent_steps += 1
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
