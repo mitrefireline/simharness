@@ -20,7 +20,7 @@ from simharness2.environments.rl_harness import RLHarness
 #--------------------------------------------------------------------------------------------
 #NEW: import Reward data class that inherits FEAR_Data
 ##(dgandikota)
-from simharness2.Reward_Class.Reward_Class import Reward_Calc
+from simharness2.Reward_Class.Reward_Class import Reward_Class
 
 #--------------------------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #--------------------------------------------------------------------------------------------
         # NEW: Reward Data Object init
         ##(dgandikota)
-        self.env_Reward = Reward_Calc(agent_speed, self.simulation.config.area.screen_size, reward_option = 'num_burning')
+        self.env_Reward = Reward_Class(agent_speed, self.simulation.config.area.screen_size, reward_option = 'num_burning')
         #--------------------------------------------------------------------------------------------
 
 

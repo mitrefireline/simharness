@@ -12,7 +12,7 @@ from simfire.sim.simulation import Simulation
 from simfire.enums import BurnStatus
 
 
-class Reward_Calc(FEAR_Data):
+class Reward_Class(FEAR_Data):
 
     def __init__(self, agent_speed, sim_size, reward_option = "base"):
         
