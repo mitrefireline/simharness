@@ -23,7 +23,7 @@ from simharness2.environments.rl_harness import RLHarness
 #--------------------------------------------------------------------------------------------
 #NEW: import Reward data class that inherits FEAR_Data
 ##(dgandikota)
-from simharness2.EnvData.Reward_Class import Reward_Calc
+from simharness2.Reward_Class.Reward_Class import Reward_Calc
 
 #--------------------------------------------------------------------------------------------
 
