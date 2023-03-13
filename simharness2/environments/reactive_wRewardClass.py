@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 # import gymnasium as gym
 import numpy as np
 from simfire.sim.simulation import Simulation
-from simharness2.environments.rl_harness import RLHarness
+from simharness2.environments.rl_harness_wRewardClass import RLHarness
 
 #--------------------------------------------------------------------------------------------
 #NEW: import Reward data class that inherits FEAR_Data
