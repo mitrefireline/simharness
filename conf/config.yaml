@@ -1,0 +1,5 @@
+defaults:
+  - environment: reactive
+  - training: simfire
+algo:
+  name: PPO
