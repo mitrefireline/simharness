@@ -15,10 +15,14 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
 import numpy as np
 from gymnasium import spaces
+from gymnasium.envs.registration import EnvSpec
 from simfire.sim.simulation import Simulation
+from simfire.utils.log import create_logger
 
 # TODO(afennelly) fix import path (relative to root)
 from .rl_harness import RLHarness
+
+log = create_logger(__name__)
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -84,6 +88,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         randomize_initial_agent_pos: bool = False,
     ) -> None:
         """See RLHarness (parent/base class)."""
+        # Set the max number of steps that the environment can take before truncation
+        # self.spec.max_episode_steps = 1000
+        self.spec = EnvSpec(
+            id="ReactiveHarness-v0",
+            entry_point="simharness2.environments.reactive:ReactiveHarness",
+            max_episode_steps=2000,
+        )
         # Set the number of steps an agent has taken in the current simulation.
         self.num_agent_steps = 0
         self.agent_speed = agent_speed
@@ -234,6 +245,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
     ) -> Tuple[np.ndarray, Dict[Any, Any]]:  # noqa
+        # log.info("Resetting environment")
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
         # If the environment is stochastic, set the seeds for randomization parameters.
@@ -242,6 +254,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # "wind_direction". For reference with `FireSimulation`, see
         # https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/d70358ec960af5cfbf1855ef78218475cc569247/simfire/sim/simulation.py#L672-718
         # TODO(afennelly) Enable selecting attributes to randomize from config file.
+        # FIXME this needs to not be hard-coded and moved outside of method logic.
         if not self.deterministic:
             # Set seeds for randomization
             fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
@@ -484,7 +497,11 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
             agent_pos,
             randomize_agent_pos,
         )
-
+        self.spec = EnvSpec(
+            id="ReactiveHarness-v1",
+            entry_point="simharness2.environments.reactive:ReactiveDiscreteHarness",
+            max_episode_steps=2000,
+        )
         action_shape = len(self.movements) * len(self.interactions)
         # Overwrite the action space to be Discrete.
         self.action_space = spaces.Discrete(action_shape)

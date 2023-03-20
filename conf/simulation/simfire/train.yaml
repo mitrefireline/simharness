@@ -1,6 +1,6 @@
 area:
-  screen_size: 16
-  pixel_scale: 50
+  screen_size: 100
+  pixel_scale: 12
 
 display:
   fire_size: 1
@@ -18,21 +18,21 @@ simulation:
   save_path: "./outputs/gifs/"
 
 mitigation:
-  ros_attenuation: true
+  ros_attenuation: False
 
 operational:
-  seed:
+  seed: 1234
   latitude: 39.67
   longitude: 119.8
-  height: 4000
-  width: 4000
+  height: 1920
+  width: 1920
   resolution: 30
 
 terrain:
   topography:
     type: functional
     functional:
-      function: flat
+      function: perlin
       perlin:
         octaves: 3
         persistence: 0.7
@@ -53,14 +53,16 @@ terrain:
       chaparral:
         seed: 1113
 
+
 fire:
   fire_initial_position:
-    type: static
+    type: random
     static:
-      position: (0, 0)
+      position: (10, 10)
     random:
       seed: 1234
   max_fire_duration: 4
+
 
 environment:
   moisture: 0.03

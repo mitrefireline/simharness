@@ -1,0 +1,24 @@
+model:
+    # Initial input size (by assumption): [128, 128, 6]
+    conv_filters: [
+    [16, [2, 2], 2],
+    # new in_size: [128, 128, 16]
+    [32, [2, 2], 2],
+    # new in_size: [64, 64, 32]
+    [64, [4, 4], 4],
+    # new in_size: [16, 16, 64]
+    [256, [8, 8], 1]
+    ]
+    # use_lstm: true
+num_atoms: 51
+noisy: True
+gamma: 0.99
+lr: 0.0001
+# rollout_fragment_length: 4
+train_batch_size: 32
+# target_network_update_freq: 500
+# replay_buffer_config:
+#   type: MultiAgentPrioritizedReplayBuffer
+#   prioritized_replay_alpha: 0.5
+#   capacity: 50000
+# num_steps_sampled_before_learning_starts: 10000
