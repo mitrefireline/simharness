@@ -214,7 +214,16 @@ def main(cfg):
             model={"conv_filters": conv_filters, "post_fcnet_hiddens": post_fcnet_hiddens}
         )
     )
-    
+
+    # use fixed learning rate instead of grid search (needs tune)
+    config.lr = 1e-3
+    algo = config.build()
+    # run manual training loop and print results after each iteration
+    for _ in range(10):
+        result = algo.train()
+        print(pretty_print(result))
+    algo.stop()
+
     ray.shutdown()
     return
 
