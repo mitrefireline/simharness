@@ -17,10 +17,11 @@ import simharness2.environments.env_registry
 
 from omegaconf import DictConfig, OmegaConf
 import hydra
-from hydra.core.config_store import ConfigStore
 
-cs = ConfigStore.instance()
-cs.store(name="reactive", node=ReactiveConfig)
+# from hydra.core.config_store import ConfigStore
+
+# cs = ConfigStore.instance()
+# cs.store(name="reactive", node=ReactiveConfig)
 
 # def setup_args():
 #     """Parse command line options (mode and config)."""
