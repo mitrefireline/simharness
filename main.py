@@ -18,6 +18,8 @@ import simharness2.environments.env_registry
 from omegaconf import DictConfig, OmegaConf
 import hydra
 
+os.environ["HYDRA_FULL_ERROR"] = "1"
+
 # from hydra.core.config_store import ConfigStore
 
 # cs = ConfigStore.instance()
@@ -193,21 +195,14 @@ def run():
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     print(cfg)
-    ray.init(local_mode=True, num_gpus=0, num_cpus=1)
-
-    sim, train_config, eval_config = get_simulation_from_name(cfg.environment.simulation)
+    ray.init()
+    
+    sim, train_config, eval_config = get_simulation_from_name(cfg.sim_harness.simulation)
     train_sim = sim(train_config)
     # convert the config to a dictionary
-    env_cfg = OmegaConf.to_container(cfg.environment.config)
+    env_cfg = OmegaConf.to_container(cfg.sim_harness.config)
     # add the (train) simulation object that will be used on environment creation
     env_cfg.update({"simulation": train_sim})
-
-    conv_filters = [
-        [16, [8, 8], 2],  # Output: 41x41x16
-        [32, [4, 4], 2],  # Output: 19x19x32
-        [256, [16, 16], 1],  # Output: 9x9x256
-    ]
-    post_fcnet_hiddens = []  # [256]
 
     config = (
         get_trainable_cls(cfg.algo.name)
@@ -216,9 +211,12 @@ def main(cfg: DictConfig):
         .framework("torch")
         .rollouts(num_rollout_workers=1)
         # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
-        .resources(num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "0")))
+        .resources()
         .training(
-            model={"conv_filters": conv_filters, "post_fcnet_hiddens": post_fcnet_hiddens}
+            model={
+                "conv_filters": cfg.training.model.conv_filters, 
+                "post_fcnet_hiddens": cfg.training.model.post_fcnet_hiddens
+                }
         )
     )
 

@@ -1,5 +1,8 @@
 defaults:
-  - environment: reactive
-  - training: simfire
+  - environment: environment
+  - training: training
+  - resources: resources
+  - sim_harness: reactive
+  - _self_
 algo:
   name: PPO
