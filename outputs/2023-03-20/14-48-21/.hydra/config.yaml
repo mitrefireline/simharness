@@ -1,3 +1,0 @@
-params:
-  env: CartPole-v0
-  algo: PPO
