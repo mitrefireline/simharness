@@ -15,6 +15,7 @@ from simharness2.sim_registry import get_simulation_from_name
 
 import simharness2.environments.env_registry
 
+from omegaconf import DictConfig, OmegaConf
 import hydra
 from hydra.core.config_store import ConfigStore
 
@@ -183,25 +184,30 @@ cs.store(name="reactive", node=ReactiveConfig)
 
 #     ray.shutdown()
 
+
 def run():
     return
 
+
 @hydra.main(version_base=None, config_path="conf", config_name="config")
-def main(cfg):
+def main(cfg: DictConfig):
     print(cfg)
     ray.init(local_mode=True, num_gpus=0, num_cpus=1)
-    
-    sim, train_config, eval_config = get_simulation_from_name(cfg.environment.sim_name)
-    
-    env_cfg = {}
-    
+
+    sim, train_config, eval_config = get_simulation_from_name(cfg.environment.simulation)
+    train_sim = sim(train_config)
+    # convert the config to a dictionary
+    env_cfg = OmegaConf.to_container(cfg.environment.config)
+    # add the (train) simulation object that will be used on environment creation
+    env_cfg.update({"simulation": train_sim})
+
     conv_filters = [
         [16, [8, 8], 2],  # Output: 41x41x16
         [32, [4, 4], 2],  # Output: 19x19x32
         [256, [16, 16], 1],  # Output: 9x9x256
     ]
     post_fcnet_hiddens = []  # [256]
-    
+
     config = (
         get_trainable_cls(cfg.algo.name)
         .get_default_config()
