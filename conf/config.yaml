@@ -1,6 +1,6 @@
 defaults:
   - environment: environment
-  - training: training
+  - training: simfire
   - resources: resources
   - sim_harness: reactive
   - _self_

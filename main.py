@@ -207,11 +207,9 @@ def main(cfg: DictConfig):
     config = (
         get_trainable_cls(cfg.algo.name)
         .get_default_config()
-        .environment(cfg.environment.name, env_config=env_cfg)
+        .environment(cfg.sim_harness.name, env_config=env_cfg)
         .framework("torch")
         .rollouts(num_rollout_workers=1)
-        # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
-        .resources()
         .training(
             model={
                 "conv_filters": cfg.training.model.conv_filters, 
@@ -222,9 +220,12 @@ def main(cfg: DictConfig):
 
     # use fixed learning rate instead of grid search (needs tune)
     config.lr = 1e-3
+    print("building")
     algo = config.build()
+    print("built")
     # run manual training loop and print results after each iteration
-    for _ in range(10):
+    for i in range(1):
+        print("Training i")
         result = algo.train()
         print(pretty_print(result))
     algo.stop()

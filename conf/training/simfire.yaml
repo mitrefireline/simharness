@@ -1,6 +1,10 @@
-conv_filters: [
-  [16, [8, 8], 2],  # Output: 41x41x16
-  [32, [4, 4], 2],  # Output: 19x19x32
-  [256, [16, 16], 1] # Output: 9x9x256
-  ]
-post_fcnet_hiddens: []  # [256]
+model:
+  conv_filters: [
+    [16, [8, 8], 2],  # Output: 41x41x16
+    [32, [4, 4], 2],  # Output: 19x19x32
+    [256, [16, 16], 1] # Output: 9x9x256
+    ]
+  post_fcnet_hiddens: []  # [256]
+
+gamma: 0.99
+lr: 0.001
