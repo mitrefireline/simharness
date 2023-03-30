@@ -1,10 +1,12 @@
-model:
-  conv_filters: [
-    [16, [8, 8], 2],  # Output: 41x41x16
-    [32, [4, 4], 2],  # Output: 19x19x32
-    [256, [16, 16], 1] # Output: 9x9x256
-    ]
-  post_fcnet_hiddens: []  # [256]
+#model:
+  # conv_filters: [   # input: B x NumFeatures x Size x Size (32, 6, 64, 64)
+  #   [64, 5, 2],     # 32 x 64 x 32 x 32
+  #   [128, 3, 2],    # 32 x 128 x 16 x16
+  #   [128, 3, 2],    # 32 x 128 x 16 x16
+  #   [256, 3, 2]     # 32 x 256 x 3 x 3
+  # ]
+  #post_fcnet_hiddens: [256]
 
 gamma: 0.99
 lr: 0.001
+train_batch_size: 32

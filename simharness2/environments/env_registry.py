@@ -1,3 +1,5 @@
+from typing import Dict
+
 from ray.tune.registry import register_env
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.environments.reactive import (
@@ -5,7 +7,7 @@ from simharness2.environments.reactive import (
     ReactiveHarness,
 )
 
-def reactive_multidiscrete_env_creator(env_config: str) -> RLHarness:
+def reactive_multidiscrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
     """Environment creator for RLlib.
 
     Arguments:
@@ -17,7 +19,7 @@ def reactive_multidiscrete_env_creator(env_config: str) -> RLHarness:
     return ReactiveHarness(**env_config)
 
 
-def reactive_discrete_env_creator(env_config: str) -> RLHarness:
+def reactive_discrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
     """Environment creator for RLlib.
 
     Arguments:

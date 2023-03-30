@@ -76,20 +76,7 @@ def get_simulation_from_name(name: str) -> Tuple[Type[Simulation], Config, Confi
 register_simulation(
     "Fire-v0",
     FireSimulation,
-    "./configs/sim/simple_small/train.yml",
-    "./configs/sim/simple_small/eval.yml",
+    "./conf/simulation/simfire/train.yml",
+    "./conf/simulation/simfire/eval.yml",
 )
 
-register_simulation(
-    "Fire-v1",
-    FireSimulation,
-    "./configs/sim/simple_large/train.yml",
-    "./configs/sim/simple_large/eval.yml",
-)
-
-register_simulation(
-    "Fire-v2",
-    FireSimulation,
-    "./configs/sim/hard_large/train.yml",
-    "./configs/sim/hard_large/eval.yml",
-)

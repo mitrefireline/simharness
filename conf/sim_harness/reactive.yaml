@@ -1,6 +1,5 @@
-name: "ReactiveHarness-v0"
-# Use Fire-v2 otherwise errors wil 
-simulation: "Fire-v2"
+name: "ReactiveHarness-v1"
+simulation: "Fire-v0"
 config: 
   movements: ['up', 'down', 'left', 'right']
   interactions: ['fireline']

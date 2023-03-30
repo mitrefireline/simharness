@@ -1,8 +1,19 @@
 defaults:
   - environment: environment
+  - rollouts: rollouts
   - training: simfire
+  - exploration: exploration
   - resources: resources
   - sim_harness: reactive
   - _self_
 algo:
-  name: PPO
+  name: DQN
+stop_conditions:
+  iterations: 1
+  timesteps: 500000
+  ep_mean_rew: 100
+model_save:
+  save_dir: /home/atapley/fireline/simharness2/ckpts/
+  checkpoint_freq: 3
+model_load:
+  load_path: /home/atapley/fireline/simharness2/ckpts/checkpoint_000005
