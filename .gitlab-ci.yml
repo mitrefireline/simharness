@@ -132,7 +132,7 @@ simple-2.3.0:
     RAY_VERSION: 2.3.0
   extends: .build
   only:
-    - merge_requests
+    - main
 
 simple-2.3.1:
   stage: Docker
@@ -147,4 +147,4 @@ simple-2.3.1:
     RAY_VERSION: 2.3.1
   extends: .build
   only:
-    - merge_requests
+    - main
