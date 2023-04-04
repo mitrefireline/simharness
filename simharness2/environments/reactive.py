@@ -77,8 +77,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def __init__(
         self,
-        simulation: Simulation,
-        bench_simulation: Simulation,  # TODO make sure the bench_simulation works within the reactive_Env
+        sim: Simulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -99,7 +98,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Reward Data Object init
         self.env_Reward = BaseReward(
             agent_speed,
-            self.simulation.config.area.screen_size,
+            self.sim.config.area.screen_size,
             reward_option="num_burning",
         )
 
@@ -112,7 +111,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._set_agent_pos_for_episode_start()
 
         super().__init__(
-            simulation,
+            sim,
             bench_simulation,
             movements,
             interactions,
@@ -133,7 +132,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         reward = 0.0
 
         pos_placeholder = self.agent_pos.copy()
-        screen_size = self.simulation.config.area.screen_size
+        screen_size = self.sim.config.area.screen_size
 
         # Update agent location on map
         if movement_str == "none":
@@ -159,24 +158,24 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # Perform interaction on new space
             sim_interaction = self.harness_to_sim[interaction]
             mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
-            self.simulation.update_mitigation([mitigation_update])
+            self.sim.update_mitigation([mitigation_update])
 
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
         point = [self.agent_pos[1], self.agent_pos[0], 0]
-        self.simulation.update_agent_positions([point])
+        self.sim.update_agent_positions([point])
 
         # Update the FEAR Data after each agents step/action
         self.env_Reward.AgentStep_FEAR_Update(
             self.timestep,
-            self.simulation,
+            self.sim,
             not interaction_str == "none",
             self._nearby_fire(),
         )
 
         # Don't run the Simulation every step depending on speed
         if self.num_agent_steps % self.agent_speed == 0:
-            sim_fire_map, sim_active = self.simulation.run(1)
+            sim_fire_map, sim_active = self.sim.run(1)
             fire_map = np.copy(sim_fire_map)
             fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
 
@@ -204,7 +203,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self.timestep = self.timestep + 1
         else:
             sim_active = True
-            sim_fire_map = self.simulation.fire_map
+            sim_fire_map = self.sim.fire_map
             fire_map = np.copy(sim_fire_map)
             fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
 
@@ -231,7 +230,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
               agent.
         """
         nearby_locs = []
-        screen_size = self.simulation.config.area.screen_size
+        screen_size = self.sim.config.area.screen_size
         # Get all spaces surrounding agent
         for i in range(self.agent_pos[0] - 1, self.agent_pos[0] + 2):
             for j in range(self.agent_pos[1] - 1, self.agent_pos[1] + 2):
@@ -269,7 +268,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # firelines = np.count_nonzero(fire_map == 3)
 
-        total = self.simulation.config.area.screen_size**2
+        total = self.sim.config.area.screen_size**2
         reward = -(burning / total) * 10
 
         return reward
@@ -290,19 +289,19 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO(afennelly) Enable selecting attributes to randomize from config file.
         if not self.deterministic:
             # Set seeds for randomization
-            fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
-            elevation_seed = self.simulation.get_seeds()["elevation"]
+            fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
+            elevation_seed = self.sim.get_seeds()["elevation"]
             seed_dict = {
                 "fire_initial_position": fire_init_seed + 1,
                 "elevation": elevation_seed + 1,
             }
-            self.simulation.set_seeds(seed_dict)
+            self.sim.set_seeds(seed_dict)
             # set seeds of benchmark simulation
             self.bench_simulation.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
-        self.simulation.reset()
+        self.sim.reset()
         # reset benchmark simulation
         self.bench_simulation.reset()
 
@@ -311,7 +310,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Get the starting state of the `Simulation` after it has been reset (above).
         sim_observations = super()._select_from_dict(
-            self.simulation.get_attribute_data(), self.sim_attributes
+            self.sim.get_attribute_data(), self.sim_attributes
         )
         nonsim_observations = super()._select_from_dict(
             self.get_nonsim_attribute_data(), self.nonsim_attributes
@@ -335,7 +334,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
         point = [self.agent_pos[1], self.agent_pos[0], 0]
-        self.simulation.update_agent_positions([point])
+        self.sim.update_agent_positions([point])
         # update the benchmark simulation - Not sure if actually needed but can't hurt
         self.bench_simulation.update_agent_positions([point])
 
@@ -365,8 +364,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         nonsim_data["fire_map"] = np.zeros(
             (
-                self.simulation.config.area.screen_size,
-                self.simulation.config.area.screen_size,
+                self.sim.config.area.screen_size,
+                self.sim.config.area.screen_size,
             )
         )
 
@@ -374,18 +373,18 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         nonsim_data["fire_map"][self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
         # FIXME the below line has no dependence on `nonsim_data`; needs to be moved.
         # FIXME Why are we placing a fireline at the agents position here?
-        self.simulation.update_mitigation([(self.agent_pos[1], self.agent_pos[0], 3)])
+        self.sim.update_mitigation([(self.agent_pos[1], self.agent_pos[0], 3)])
 
         return nonsim_data
 
     def render(self):  # noqa
-        self.simulation.rendering = True
+        self.sim.rendering = True
 
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
         if self.randomize_initial_agent_pos:
             self.agent_pos = self.np_random.integers(
-                0, self.simulation.config.area.screen_size, size=2, dtype=int
+                0, self.sim.config.area.screen_size, size=2, dtype=int
             )
         else:
             # TODO(afennelly): Verify initial_agent_pos is within the bounds of the map
@@ -404,7 +403,7 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
 
     def __init__(
         self,
-        simulation: Simulation,
+        sim: Simulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -430,7 +429,7 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
 
         """
         super().__init__(
-            simulation,
+            sim,
             movements,
             interactions,
             attributes,
@@ -441,7 +440,7 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
             randomize_initial_agent_pos,
         )
         # Verify that a static initial position is used
-        fire_init_pos_type = self.simulation.config.yaml_data["fire"][
+        fire_init_pos_type = self.sim.config.yaml_data["fire"][
             "fire_initial_position"
         ]["type"]
         if fire_init_pos_type != "static":
@@ -470,7 +469,7 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
         self.num_sims += 1
 
         # Retreive the "static" fire start position, as specified in the config.
-        fire_pos = self.simulation.config.yaml_data["fire"]["fire_initial_position"][
+        fire_pos = self.sim.config.yaml_data["fire"]["fire_initial_position"][
             "static"
         ]["position"]
         fire_pos = fire_pos[1:-1].split(",")
@@ -487,12 +486,12 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
 
         # Clamp the new values to the screen size.
         new_x = max(
-            0, min(new_x, self.simulation.config.yaml_data["area"]["screen_size"] - 1)
+            0, min(new_x, self.sim.config.yaml_data["area"]["screen_size"] - 1)
         )
         new_y = max(
-            0, min(new_y, self.simulation.config.yaml_data["area"]["screen_size"] - 1)
+            0, min(new_y, self.sim.config.yaml_data["area"]["screen_size"] - 1)
         )
-        self.simulation.set_fire_initial_position((new_x, new_y))
+        self.sim.set_fire_initial_position((new_x, new_y))
 
         return output, {}
 
@@ -514,7 +513,7 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
 
     def __init__(
         self,
-        simulation: Simulation,
+        sim: Simulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -526,7 +525,7 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
     ) -> None:
         """See ReactiveHarness (parent/base class)."""
         super().__init__(
-            simulation,
+            sim,
             movements,
             interactions,
             attributes,
@@ -556,7 +555,7 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
         reward = 0.0
 
         pos_placeholder = self.agent_pos.copy()
-        screen_size = self.simulation.config.area.screen_size
+        screen_size = self.sim.config.area.screen_size
 
         # Update agent location on map
         if movement_str == "none":
@@ -582,22 +581,22 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
             # Perform interaction on new space
             sim_interaction = self.harness_to_sim[interaction]
             mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
-            self.simulation.update_mitigation([mitigation_update])
+            self.sim.update_mitigation([mitigation_update])
 
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
         point = [self.agent_pos[1], self.agent_pos[0], 0]
-        self.simulation.update_agent_positions([point])
+        self.sim.update_agent_positions([point])
 
         # Don't run the Simulation every step depending on speed
         if self.num_agent_steps % self.agent_speed == 0:
-            sim_fire_map, sim_active = self.simulation.run(1)
+            sim_fire_map, sim_active = self.sim.run(1)
             fire_map = np.copy(sim_fire_map)
             fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
             reward += self._calculate_reward(fire_map)
         else:
             sim_active = True
-            sim_fire_map = self.simulation.fire_map
+            sim_fire_map = self.sim.fire_map
             fire_map = np.copy(sim_fire_map)
             fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
 

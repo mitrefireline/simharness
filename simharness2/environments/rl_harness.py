@@ -32,11 +32,11 @@ class RLHarness(gym.Env, ABC):
     Longer class information... FIXME.
 
     Attributes:
-        simulation: A subclass of `Simulation` that defines a given simulator.
+        sim: A subclass of `Simulation` that defines a given simulator.
         movements: A list containing the movements available to a given agent. For
           example, possible movements could be: ["up", "down", "left", "right"].
         interactions: A list containing the interactions available to a given agent.
-          For example, if the simulation IS-A `FireSimulation`, possible interactions
+          For example, if the sim IS-A `FireSimulation`, possible interactions
           could be: ["fireline", "scratchline", "wetline"]. To learn more, see
           https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/main/simfire/sim/simulation.py#L269-280
         attributes: (FIXME) A list containing the input features into the observations.
@@ -59,7 +59,7 @@ class RLHarness(gym.Env, ABC):
 
     def __init__(
         self,
-        simulation: Simulation,
+        sim: Simulation,
         bench_simulation: Simulation, #TODO make sure the bench_simulation works within the reactive_Env
         #TODO integrate reward_option for Reward Class into RLHARNESS and the config 
         movements: List[str],
@@ -80,9 +80,9 @@ class RLHarness(gym.Env, ABC):
         intuition behind design choices. This is relatively important since RLHarness
         serves as a base class that each environment will inherit from.
         """
-        self.simulation = simulation
+        self.sim = sim
         # run parallel benchmark simulation that recieves no mitigations
-        self.bench_simulation = simulation
+        self.bench_simulation = sim
         self.movements = copy.deepcopy(movements)
         self.interactions = copy.deepcopy(interactions)
         self.attributes = attributes
@@ -96,8 +96,8 @@ class RLHarness(gym.Env, ABC):
             )
 
         # Retrieve the observation space and action space for the simulation.
-        sim_attributes = self.simulation.get_attribute_data()
-        sim_actions = self.simulation.get_actions()
+        sim_attributes = self.sim.get_attribute_data()
+        sim_actions = self.sim.get_actions()
 
         # FIXME(afennelly) provide a better explanation (below) for sim_agent_id
         # Make ID of agent +1 of the max value returned by the simulation for a location
@@ -135,13 +135,13 @@ class RLHarness(gym.Env, ABC):
         ).reshape(1, 1, len(self.attributes))
 
         self.low = np.repeat(
-            np.repeat(channel_lows, self.simulation.config.area.screen_size, axis=1),
-            self.simulation.config.area.screen_size,
+            np.repeat(channel_lows, self.sim.config.area.screen_size, axis=1),
+            self.sim.config.area.screen_size,
             axis=0,
         )
         self.high = np.repeat(
-            np.repeat(channel_highs, self.simulation.config.area.screen_size, axis=1),
-            self.simulation.config.area.screen_size,
+            np.repeat(channel_highs, self.sim.config.area.screen_size, axis=1),
+            self.sim.config.area.screen_size,
             axis=0,
         )
 
@@ -325,7 +325,7 @@ class RLHarness(gym.Env, ABC):
         # TODO add comments and refactor as needed
         sim_min_maxes = ordered_dict()
         # fetch the observation space bounds for the simulation.
-        sim_bounds = self.simulation.get_attribute_bounds()
+        sim_bounds = self.sim.get_attribute_bounds()
         for attribute in self.sim_attributes:
             sim_min_maxes[attribute] = sim_bounds[attribute]
 
