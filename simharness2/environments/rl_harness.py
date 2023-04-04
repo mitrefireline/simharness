@@ -60,13 +60,12 @@ class RLHarness(gym.Env, ABC):
     def __init__(
         self,
         sim: Simulation,
-        bench_simulation: Simulation, #TODO make sure the bench_simulation works within the reactive_Env
-        #TODO integrate reward_option for Reward Class into RLHARNESS and the config 
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
         normalized_attributes: List[str],
         deterministic: bool = False,
+        bench_sim: Simulation = None,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -82,7 +81,10 @@ class RLHarness(gym.Env, ABC):
         """
         self.sim = sim
         # run parallel benchmark simulation that recieves no mitigations
-        self.bench_simulation = sim
+        self.bench_sim = bench_sim
+        # Indicates (internally) whether a benchmark simulation should be used
+        self._use_bench_sim = True if bench_sim else False
+
         self.movements = copy.deepcopy(movements)
         self.interactions = copy.deepcopy(interactions)
         self.attributes = attributes

@@ -20,9 +20,10 @@ import numpy as np
 from gymnasium import spaces
 from simfire.sim.simulation import Simulation
 
+from simharness2.rewards.base_reward import BaseReward
+
 # TODO(afennelly) fix import path (relative to root)
 from .rl_harness import RLHarness
-from simharness2.rewards.base_reward import BaseReward
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -37,7 +38,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     - Movements refer to actions where the agent **traverses** the environment.
         - For example, possible movements could be: ["up", "down", "left", "right"].
     - Interactions refer to actions where the agent **interacts** with the environment.
-        - For example, if the simulation IS-A `FireSimulation`, possible interactions
+        - For example, if the sim IS-A `FireSimulation`, possible interactions
             could be: ["fireline", "scratchline", "wetline"]. To learn more, see
             [simulation.py](https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/main/simfire/sim/simulation.py#L269-280).
     - Actions are determined based on the provided (harness) config file.
@@ -48,8 +49,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     ### Observation Space
     The observation space type is `Box`, and `sample()` returns an `np.ndarray` of shape
     `(A,X,X)`, where `A == len(ReactiveHarness.attributes)` and
-    `X == ReactiveHarness.simulation.config.area.screen_size`.
-    - The value of `ReactiveHarness.simulation.config.area.screen_size` is determined
+    `X == ReactiveHarness.sim.config.area.screen_size`.
+    - The value of `ReactiveHarness.sim.config.area.screen_size` is determined
       based on the value of the `screen_size` attribute (within the `area` section) of
       the (simulation) config file. See `simharness2/sim_registry.py` to find more info
       about the `register_simulation()` method, which is used to register the simulation
@@ -86,6 +87,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         deterministic: bool = False,
         initial_agent_pos: List[int] = [15, 15],
         randomize_initial_agent_pos: bool = False,
+        bench_sim: Simulation = None,
     ) -> None:
         """See RLHarness (parent/base class)."""
         # Set the number of steps an agent has taken in the current simulation.
@@ -112,7 +114,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         super().__init__(
             sim,
-            bench_simulation,
+            bench_sim,
             movements,
             interactions,
             attributes,
@@ -180,7 +182,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
 
             # Update the benchmark sim that has no agent actions within
-            bench_sim_fire_map, bench_sim_active = self.bench_simulation.run(1)
+            bench_sim_fire_map, bench_sim_active = self.bench_sim.run(1)
             bench_fire_map = np.copy(bench_sim_fire_map)
             # Update the Reward Class - FEAR Data for each new simulation timestep of the benchmark simulation with no mitigations
             self.env_Reward.timestep_BenchSim_FEAR_Update(
@@ -297,13 +299,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             }
             self.sim.set_seeds(seed_dict)
             # set seeds of benchmark simulation
-            self.bench_simulation.set_seeds(seed_dict)
+            self.bench_sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         self.sim.reset()
         # reset benchmark simulation
-        self.bench_simulation.reset()
+        self.bench_sim.reset()
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -336,7 +338,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         point = [self.agent_pos[1], self.agent_pos[0], 0]
         self.sim.update_agent_positions([point])
         # update the benchmark simulation - Not sure if actually needed but can't hurt
-        self.bench_simulation.update_agent_positions([point])
+        self.bench_sim.update_agent_positions([point])
 
         # NOTE: `self.num_burned` is not currently used in the reward calculation.
         # self.num_burned = 0 FIXME include once we modularize the reward function
@@ -440,9 +442,9 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
             randomize_initial_agent_pos,
         )
         # Verify that a static initial position is used
-        fire_init_pos_type = self.sim.config.yaml_data["fire"][
-            "fire_initial_position"
-        ]["type"]
+        fire_init_pos_type = self.sim.config.yaml_data["fire"]["fire_initial_position"][
+            "type"
+        ]
         if fire_init_pos_type != "static":
             raise ValueError(
                 "The PG Harness requires a static `fire_initial_position`, "
@@ -469,9 +471,9 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
         self.num_sims += 1
 
         # Retreive the "static" fire start position, as specified in the config.
-        fire_pos = self.sim.config.yaml_data["fire"]["fire_initial_position"][
-            "static"
-        ]["position"]
+        fire_pos = self.sim.config.yaml_data["fire"]["fire_initial_position"]["static"][
+            "position"
+        ]
         fire_pos = fire_pos[1:-1].split(",")
         x, y = (int(fire_pos[0]), int(fire_pos[1]))
 
@@ -485,12 +487,8 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
         )
 
         # Clamp the new values to the screen size.
-        new_x = max(
-            0, min(new_x, self.sim.config.yaml_data["area"]["screen_size"] - 1)
-        )
-        new_y = max(
-            0, min(new_y, self.sim.config.yaml_data["area"]["screen_size"] - 1)
-        )
+        new_x = max(0, min(new_x, self.sim.config.yaml_data["area"]["screen_size"] - 1))
+        new_y = max(0, min(new_y, self.sim.config.yaml_data["area"]["screen_size"] - 1))
         self.sim.set_fire_initial_position((new_x, new_y))
 
         return output, {}
