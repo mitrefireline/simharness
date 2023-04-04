@@ -12,7 +12,7 @@ stages:
   - Static Analysis
   - Security
   - Documentation
-  - Build
+  - Docker
 
 ###################
 # Static Analysis #
@@ -112,8 +112,14 @@ pages:
 #########
 # Build #
 #########
-docker-build:
-  stage: Build
+.build:
+  script:
+    - docker login butler.mitre.org --username ${HARBOR_SIMHARNESS_USER} --password ${HARBOR_SIMHARNESS_PASS}
+    - docker build --build-arg RAY_VERSION=${RAY_VERSION} -f docker/simple.dockerfile -t butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION} .
+    - docker push butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION}
+
+simple-2.3.0:
+  stage: Docker
   tags:
     - lslab2
   image: docker:20.10.16-dind
@@ -121,10 +127,23 @@ docker-build:
     - docker:20.10.16-dind
   before_script:
     - docker --version
-  script:
-    - cd $CI_PROJECT_DIR
-    - docker login butler.mitre.org --username $CI_HARBOR_USERNAME --password $CI_HARBOR_TOKEN
-    - docker build -t butler.mitre.org/simfire/simharness2:latest .
-    - docker push butler.mitre.org/simfire/simharness2:latest
+  environment:
+    - RAY_VERSION=2.3.0
+  extends: .build
+  only:
+    - main
+
+simple-2.3.0:
+  stage: Docker
+  tags:
+    - lslab2
+  image: docker:20.10.16-dind
+  services:
+    - docker:20.10.16-dind
+  before_script:
+    - docker --version
+  environment:
+    - RAY_VERSION=2.3.1
+  extends: .build
   only:
     - main

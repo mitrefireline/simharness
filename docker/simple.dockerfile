@@ -1,5 +1,7 @@
+ARG RAY_VERSION=2.3.0
+
 # Deployment Stage
-FROM rayproject/ray:2.3.0-py39-gpu as deploy
+FROM rayproject/ray:${RAY_VERSION}-py39-gpu as deploy
 
 # Set the correct environment variables
 ENV CUDA_VISIBLE_DEVICES=0 \
