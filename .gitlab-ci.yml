@@ -133,7 +133,7 @@ simple-2.3.0:
   only:
     - main
 
-simple-2.3.0:
+simple-2.3.1:
   stage: Docker
   tags:
     - lslab2
