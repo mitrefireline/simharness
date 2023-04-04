@@ -10,12 +10,12 @@ display:
 simulation:
   update_rate: 1
   runtime: 24hr
-  headless: True
+  headless: False
   record: false
   save_data: false
   draw_spread_graph: false
   data_type: "npy"
-  save_path: "./outputs/gifs/"
+  save_path: "./gifs/"
 
 mitigation:
   ros_attenuation: False

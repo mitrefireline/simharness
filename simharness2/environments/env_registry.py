@@ -1,4 +1,5 @@
 from typing import Dict
+import gymnasium as gym
 
 from ray.tune.registry import register_env
 from simharness2.environments.rl_harness import RLHarness
@@ -16,6 +17,10 @@ def reactive_multidiscrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
     Returns:
         An instance of the ReactiveHarness (environment) class.
     """
+    gym.envs.register(
+        id="ReactiveHarness-v0", 
+        entry_point="simharness2.environments.reactive:ReactiveHarness"
+    )
     return ReactiveHarness(**env_config)
 
 
@@ -28,6 +33,10 @@ def reactive_discrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
     Returns:
         An instance of the ReactiveDiscreteHarness (environment) class.
     """
+    gym.envs.register(
+        id="ReactiveHarness-v1", 
+        entry_point="simharness2.environments.reactive:ReactiveDiscreteHarness"
+    )
     return ReactiveDiscreteHarness(**env_config)
 
 

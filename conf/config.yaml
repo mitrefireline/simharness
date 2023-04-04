@@ -5,15 +5,20 @@ defaults:
   - exploration: exploration
   - resources: resources
   - sim_harness: reactive
+  - evaluation: evaluation
   - _self_
+cli:
+  train: False
+  view: False
 algo:
   name: DQN
 stop_conditions:
-  iterations: 1
+  iterations: 5
   timesteps: 500000
   ep_mean_rew: 100
 model_save:
+  trial_name: testing
   save_dir: /home/atapley/fireline/simharness2/ckpts/
   checkpoint_freq: 3
 model_load:
-  load_path: /home/atapley/fireline/simharness2/ckpts/checkpoint_000005
+  load_path: NULL #/home/atapley/fireline/simharness2/ckpts/checkpoint_000005
