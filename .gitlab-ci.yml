@@ -2,12 +2,17 @@ image: "python:3.9"
 
 before_script:
   - python --version
+  # Adding this because furo gets a wheel validation error for the 1.4.1 install
+  - export POETRY_VERSION=1.4.0
+  - curl -sSkL https://install.python-poetry.org | python -
+  - export PATH=$PATH:$HOME/.local/bin
+  - poetry --version
 
 stages:
   - Static Analysis
   - Security
   - Documentation
-  - Build
+  - Docker
 
 ###################
 # Static Analysis #
@@ -17,8 +22,8 @@ flake8:
   tags:
     - lslab2
   script:
-    - pip install flake8
-    - flake8 .
+    - poetry install --only dev
+    - poetry run flake8 .
   needs: []
   only:
     - merge_requests
@@ -28,8 +33,8 @@ black:
   tags:
     - lslab2
   script:
-    - pip install black
-    - black --check ./
+    - poetry install --only dev
+    - poetry run black --check ./
   needs: []
   only:
     - merge_requests
@@ -39,8 +44,8 @@ mypy:
   tags:
     - lslab2
   script:
-    - pip install mypy types-PyYAML
-    - mypy .
+    - poetry install --only dev
+    - poetry run mypy .
   needs: []
   only:
     - merge_requests
@@ -50,8 +55,8 @@ isort:
   tags:
     - lslab2
   script:
-    - pip install isort
-    - isort --check --trailing-comma -m=3 .
+    - poetry install --only dev
+    - poetry run isort --check --trailing-comma -m=3 .
   needs: []
   only:
     - merge_requests
@@ -107,8 +112,14 @@ pages:
 #########
 # Build #
 #########
-docker-build:
-  stage: Build
+.build:
+  script:
+    - docker login butler.mitre.org --username ${HARBOR_SIMHARNESS_USER} --password ${HARBOR_SIMHARNESS_PASS}
+    - docker build --build-arg RAY_VERSION=${RAY_VERSION} -f docker/simple.dockerfile -t butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION} .
+    - docker push butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION}
+
+simple-2.3.0:
+  stage: Docker
   tags:
     - lslab2
   image: docker:20.10.16-dind
@@ -116,10 +127,23 @@ docker-build:
     - docker:20.10.16-dind
   before_script:
     - docker --version
-  script:
-    - cd $CI_PROJECT_DIR
-    - docker login butler.mitre.org --username $CI_HARBOR_USERNAME --password $CI_HARBOR_TOKEN
-    - docker build -t butler.mitre.org/simfire/simharness2:latest .
-    - docker push butler.mitre.org/simfire/simharness2:latest
+  variables:
+    RAY_VERSION: 2.3.0
+  extends: .build
+  only:
+    - main
+
+simple-2.3.1:
+  stage: Docker
+  tags:
+    - lslab2
+  image: docker:20.10.16-dind
+  services:
+    - docker:20.10.16-dind
+  before_script:
+    - docker --version
+  variables:
+    RAY_VERSION: 2.3.1
+  extends: .build
   only:
     - main

@@ -15,15 +15,20 @@ repository = "https://gitlab.mitre.org/fireline/reinforcementlearning/simharness
 
 [tool.poetry.dependencies]
 python = "~3.9"
+gymnasium = "^0.26.0"
 numpy = "^1.22"
-ray = {extras = ["rllib"], version = "^2.3.0"}
-PyYAML = "^6.0"
-tensorboard = "^2.9.1"
+simfire = "^1.4.30"
+
+[tool.poetry.group.training.dependencies]
 nni = "^2.8"
-simfire = "^1.4.29"
-torch = "^1.12.0"
-torchaudio = "^0.12.0"
-torchvision = "^0.13.0"
+ray = "^2.3.0"
+tensorboard = "^2.9.1"
+
+[tool.poetry.group.runtime.dependencies]
+gymnasium = "^0.26.0"
+numpy = "^1.22"
+simfire = "^1.4.30"
+torch = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.3.0"
@@ -43,11 +48,6 @@ Sphinx = "^5.0.2"
 sphinx-autoapi = "^1.8.4"
 sphinx-rtd-theme = "^1.0.0"
 myst-parser = "^0.18.0"
-furo = "^2022.6.4.1"
-
-[[tool.poetry.source]]
-name = "simfire"
-url = "https://artifacts.mitre.org/artifactory/api/pypi/python/simple"
 
 [tool.black]
 line-length = 90
@@ -58,7 +58,6 @@ ignore_missing_imports = true
 allow_redefinition = true
 exclude = [
     '/_tests/',
-    '^generate_cfd_wind_layer\.py$',
     'tests/'
 ]
 
