@@ -114,6 +114,7 @@ pages:
 #########
 .build:
   script:
+    - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS}
     - docker login butler.mitre.org --username ${HARBOR_SIMHARNESS_USER} --password ${HARBOR_SIMHARNESS_PASS}
     - docker build --build-arg RAY_VERSION=${RAY_VERSION} -f docker/simple.dockerfile -t butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION} .
     - docker push butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION}
