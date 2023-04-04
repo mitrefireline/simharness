@@ -127,8 +127,8 @@ simple-2.3.0:
     - docker:20.10.16-dind
   before_script:
     - docker --version
-  environment:
-    - RAY_VERSION=2.3.0
+  variables:
+    RAY_VERSION: 2.3.0
   extends: .build
   only:
     - main
@@ -142,8 +142,8 @@ simple-2.3.1:
     - docker:20.10.16-dind
   before_script:
     - docker --version
-  environment:
-    - RAY_VERSION=2.3.1
+  variables:
+    RAY_VERSION: 2.3.1
   extends: .build
   only:
     - main
