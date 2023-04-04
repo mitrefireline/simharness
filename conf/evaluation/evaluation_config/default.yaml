@@ -1,11 +1,15 @@
 defaults:
-  # Arguments dict passed to the env creator as an `EnvContext` object
-  - env_config: reactive
   - _self_
+  # Override value (s) to use eval simulation instead of train simulation, etc.
+  - env_config: reactive
 
-# The environment specifier. This can either be a tune-registered env, via 
+# The environment specifier. This can either be a tune-registered env, via
 # `tune.register_env([name], lambda env_ctx: [env object])`, or a string specifier of an
 # RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
 # either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
 # qualified classpath to an Env class, ie. "ray.rllib.examples.env.random_env.RandomEnv".
 env: ${environment.env}
+
+# Arguments dict passed to the env creator as an `EnvContext` object
+# NOTE: Any arguments that are also specified in `reactive.yaml` will be overridden.
+env_config: ${environment.env_config}

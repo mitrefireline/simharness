@@ -10,7 +10,8 @@ evaluation_interval: 50
 
 # Duration for which to run evaluation each `evaluation_interval`. The unit for the 
 # duration can be set via evaluation_duration_unit to either “episodes” (default) or “timesteps”.
-evaluation_duration: 10
+# FIXME set equal to number of operational lat, lon pairs used for evaluation
+evaluation_duration: 1 
 
 # The unit, with which to count the `evaluation_duration`. Options are:
 # - “episodes”, or
