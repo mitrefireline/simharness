@@ -8,9 +8,9 @@ ENV CUDA_VISIBLE_DEVICES=0 \
     HF_CACHE_DIR=None
 # Copy the needed code
 WORKDIR /code/
-COPY requirements.txt README.md LICENSE test.py .
+COPY requirements.txt README.md LICENSE main.py .
 COPY simharness2/ simharness2/
 
 RUN pip install -r requirements.txt
 
-CMD ["python", "test.py"]
+CMD ["python", "main.py"]
