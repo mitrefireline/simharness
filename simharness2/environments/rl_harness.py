@@ -60,6 +60,8 @@ class RLHarness(gym.Env, ABC):
     def __init__(
         self,
         simulation: Simulation,
+        bench_simulation: Simulation, #TODO make sure the bench_simulation works within the reactive_Env
+        #TODO integrate reward_option for Reward Class into RLHARNESS and the config 
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -79,6 +81,8 @@ class RLHarness(gym.Env, ABC):
         serves as a base class that each environment will inherit from.
         """
         self.simulation = simulation
+        # run parallel benchmark simulation that recieves no mitigations
+        self.bench_simulation = simulation
         self.movements = copy.deepcopy(movements)
         self.interactions = copy.deepcopy(interactions)
         self.attributes = attributes
