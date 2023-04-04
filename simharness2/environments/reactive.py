@@ -22,7 +22,7 @@ from simfire.sim.simulation import Simulation
 
 # TODO(afennelly) fix import path (relative to root)
 from .rl_harness import RLHarness
-from simharness2.Reward_Class.Reward_Class import Reward_Class
+from simharness2.rewards.base_reward import BaseReward
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -78,7 +78,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def __init__(
         self,
         simulation: Simulation,
-        bench_simulation: Simulation, #TODO make sure the bench_simulation works within the reactive_Env
+        bench_simulation: Simulation,  # TODO make sure the bench_simulation works within the reactive_Env
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -93,12 +93,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.num_agent_steps = 0
         self.agent_speed = agent_speed
 
-        # TODO create variable that tracks the number of timesteps that have occurred 
+        # TODO create variable that tracks the number of timesteps that have occurred
         # within an episode
         self.timestep = 1
         # Reward Data Object init
-        self.env_Reward = Reward_Class(agent_speed, self.simulation.config.area.screen_size, reward_option = 'num_burning')
-        
+        self.env_Reward = BaseReward(
+            agent_speed,
+            self.simulation.config.area.screen_size,
+            reward_option="num_burning",
+        )
+
         # Store agent position parameters for use in `step()`, `reset()`, etc.
         self.agent_pos: List[int]
         self.initial_agent_pos = initial_agent_pos
@@ -163,7 +167,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.simulation.update_agent_positions([point])
 
         # Update the FEAR Data after each agents step/action
-        self.env_Reward.AgentStep_FEAR_Update(self.timestep, self.simulation, not interaction_str == "none", self._nearby_fire())
+        self.env_Reward.AgentStep_FEAR_Update(
+            self.timestep,
+            self.simulation,
+            not interaction_str == "none",
+            self._nearby_fire(),
+        )
 
         # Don't run the Simulation every step depending on speed
         if self.num_agent_steps % self.agent_speed == 0:
@@ -175,17 +184,21 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             bench_sim_fire_map, bench_sim_active = self.bench_simulation.run(1)
             bench_fire_map = np.copy(bench_sim_fire_map)
             # Update the Reward Class - FEAR Data for each new simulation timestep of the benchmark simulation with no mitigations
-            self.env_Reward.timestep_BenchSim_FEAR_Update(self.timestep, bench_fire_map, bench_sim_active)
-            
-            # Update the Reward Class - FEAR Data for each new simulation timestep of the simulation with the Agent
-            self.env_Reward.timestep_AgentSim_FEAR_Update(self.timestep, fire_map, sim_active)
+            self.env_Reward.timestep_BenchSim_FEAR_Update(
+                self.timestep, bench_fire_map, bench_sim_active
+            )
 
-            # Calculate the reward using the FEAR Data class 
+            # Update the Reward Class - FEAR Data for each new simulation timestep of the simulation with the Agent
+            self.env_Reward.timestep_AgentSim_FEAR_Update(
+                self.timestep, fire_map, sim_active
+            )
+
+            # Calculate the reward using the FEAR Data class
             # TODO Make parent class that inherits and defines reward
             reward += self.env_Reward.calculate_Reward_after_timestep(self.timestep)
-                        
-            #old method of calculating reward
-            #reward += self._calculate_reward_old(fire_map)
+
+            # old method of calculating reward
+            # reward += self._calculate_reward_old(fire_map)
 
             # FIXME increment the timestep of the episode
             self.timestep = self.timestep + 1
