@@ -21,4 +21,4 @@ model_save:
   save_dir: /home/atapley/fireline/simharness2/ckpts/
   checkpoint_freq: 3
 model_load:
-  load_path: NULL #/home/atapley/fireline/simharness2/ckpts/checkpoint_000005
+  load_path: /home/atapley/fireline/simharness2/ckpts/testing/checkpoint_000005

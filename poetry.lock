@@ -2256,7 +2256,7 @@ reference = "simfire"
 
 [[package]]
 name = "simfire"
-version = "1.4.31"
+version = "1.4.32"
 description = "Fire simulator built in Python"
 category = "main"
 optional = false
@@ -4916,8 +4916,8 @@ shapely = [
     {file = "Shapely-1.8.5.post1.tar.gz", hash = "sha256:ef3be705c3eac282a28058e6c6e5503419b250f482320df2172abcbea642c831"},
 ]
 simfire = [
-    {file = "simfire-1.4.31-py3-none-any.whl", hash = "sha256:d34694a491bb50ca8618b48eec6a7c0d3d052f9ed357839fb83fbd6dfa38a3e4"},
-    {file = "simfire-1.4.31.tar.gz", hash = "sha256:7da102f68a27b50e58282a89239445933eecbdeb775fff458f2091da61bd9a68"},
+    {file = "simfire-1.4.32-py3-none-any.whl", hash = "sha256:36ad05daa5ff572b1249fb4c548f4b591d560d75560b3cc1d54e5141ed6bdeca"},
+    {file = "simfire-1.4.32.tar.gz", hash = "sha256:cdd69ee541080a6f71d42ad1aa53e8171082df577bb8442d6b180f59f592c376"},
 ]
 simplejson = [
     {file = "simplejson-3.18.3-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:50f4b6d52f3a2d1cffd11834a1fe7f9516f0e3f20cbe78027aa88ff990fad7d6"},

@@ -55,14 +55,13 @@ def view(algo: Algorithm, cfg: DictConfig, eval_sim: Simulation):
     
     env = gym.make(env_name, **env_cfg)
     
-    for i in range(5):
+    for _ in range(2):
         env.simulation.rendering = True
         obs, _ = env.reset()
         done = False
 
         fire_loc = env.simulation.fire_manager.init_pos
-        info = f"Agent Start Location: {env.agent_pos}, "+\
-            f"Fire Start Location: {fire_loc}"
+        info = f"Agent Start Location: {env.agent_pos}, Fire Start Location: {fire_loc}"
 
         total_reward = 0.0
         while not done:
@@ -72,8 +71,9 @@ def view(algo: Algorithm, cfg: DictConfig, eval_sim: Simulation):
             total_reward += reward
         info = info + f", Final Reward: {total_reward}"
         logging.info(info)
-        #save_path = os.path.join(cfg.model_save.trial_name, "run_" + str(i))
-        env.simulation.save_gif("run_" + str(i))
+        
+        save_dir = os.path.join(os.getcwd(), "gifs", cfg.model_save.trial_name)
+        env.simulation.save_gif(save_dir)
         env.simulation.rendering = False
 
 
