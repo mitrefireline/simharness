@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple, no_type_check
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-from simfire.sim.simulation import Simulation
+from simfire.sim.simulation import FireSimulation
 
 
 class RLHarness(gym.Env, ABC):
@@ -59,11 +59,13 @@ class RLHarness(gym.Env, ABC):
 
     def __init__(
         self,
+        sim: FireSimulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
         normalized_attributes: List[str],
         deterministic: bool = False,
+        bench_sim: FireSimulation = None,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -77,6 +79,16 @@ class RLHarness(gym.Env, ABC):
         intuition behind design choices. This is relatively important since RLHarness
         serves as a base class that each environment will inherit from.
         """
+        # NOTE: The caller is responsible for creating the `FireSimulation` object (s),
+        # and if a `bench_sim` is provided, it should be a separate object, identical to
+        # `sim` (after initialization), but will not receive any mitigations.
+        self.sim = sim
+        self.bench_sim = bench_sim
+        # Indicates (internally) whether a benchmark simulation should be used
+        self._use_bench_sim = True if bench_sim else False
+        # TODO Create self._time_arg_passed_to_sim_run and set default value to 1. This
+        # would allow the simulation to be run for an arbitrary number of timesteps.
+
         self.movements = copy.deepcopy(movements)
         self.interactions = copy.deepcopy(interactions)
         self.attributes = attributes
