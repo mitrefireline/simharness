@@ -20,6 +20,7 @@ from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
 
+from simharness2.rewards.base_reward import BaseReward
 from simfire.enums import BurnStatus
 from simharness2.environments.rl_harness import RLHarness
 
@@ -161,6 +162,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
+
+        # If provided, construct the class used to perform reward calculation.
+        self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
         # After every agent action, store the movement and interaction that were taken.
         # FIXME: any ideas on "better" names? we can prepend `prev_`, or `curr_`?
@@ -490,53 +494,33 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Increment the number of episodes that have been debugged.
         self._episodes_debugged += 1
 
-    def _nearby_fire(self) -> bool:
-        """Check if the agent is adjacent to a space that is currently burning.
+    def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
+        """Instantiates the reward class used to perform reward calculation each episode.
 
-        Returns:
-            nearby_fire: A boolean indicating if there is a burning space adjacent to the
-              agent.
-        """
-        nearby_locs = []
-        screen_size = self.sim.config.area.screen_size
-        # Get all spaces surrounding agent
-        for i in range(self.agent_pos[0] - 1, self.agent_pos[0] + 2):
-            for j in range(self.agent_pos[1] - 1, self.agent_pos[1] + 2):
-                if (
-                    i < 0
-                    or i >= screen_size
-                    or j < 0
-                    or j >= screen_size
-                    or [i, j] == self.agent_pos
-                ):
-                    pass
-                else:
-                    nearby_locs.append((i, j))
-
-        for i, j in nearby_locs:
-            if self.state[self.attributes.index("fire_map")][i][j] == 1:
-                return True
-
-        return False
-
-    def _calculate_reward(self, fire_map: np.ndarray) -> float:
-        """Calculate the reward given the current fire_map.
+        This method must be called AFTER `self._setup_harness_analytics()`, as the reward class
+        requires `self.harness_analytics` to be passed as an argument to its constructor.
 
         Arguments:
-            fire_map: An ndarray containing the current state of the `Simulation`.
+            reward_cls_partial: A `functools.partial` object that indicates the reward
+                class that will be used to perform reward calculation after each timestep
+                in an episode.
 
-        Returns:
-            reward: A float representing the reward for given state.
+        Raises:
+            TypeError: If `harness_analytics_partial.keywords` does not contain a
+                `sim_data_partial` key with value of type `functools.partial`.
+            AttributeError: If `self` does not have a `harness_analytics` attribute. See the above
+                message for more details.
+
         """
-        burning = np.count_nonzero(fire_map == 1)
-        # burnt = np.count_nonzero(fire_map == 2)
-
-        # diff = burnt - self.num_burned
-        # self.num_burned = burnt
-
-        # firelines = np.count_nonzero(fire_map == 3)
-
-        total = self.sim.config.area.screen_size**2
-        reward = -(burning / total) * 10
-
-        return reward
+        self.reward_cls: BaseReward
+        if reward_cls_partial:
+            try:
+                self.reward_cls = reward_cls_partial(
+                    harness_analytics=self.harness_analytics
+                )
+            except TypeError as e:
+                raise e
+            except AttributeError as e:
+                raise e
+        else:
+            self.reward_cls = None
