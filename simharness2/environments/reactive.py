@@ -84,6 +84,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         attributes: List[str],
         normalized_attributes: List[str],
         agent_speed: int,
+        reward_cls: BaseReward,
         deterministic: bool = False,
         initial_agent_pos: List[int] = [15, 15],
         randomize_initial_agent_pos: bool = False,
@@ -94,16 +95,11 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.num_agent_steps = 0
         self.agent_speed = agent_speed
 
-        # TODO create variable that tracks the number of timesteps that have occurred
-        # within an episode
-        self.timestep = 1
-        # Reward Data Object init
-        self.env_Reward = BaseReward(
-            agent_speed,
-            self.sim.config.area.screen_size,
-            reward_option="num_burning",
-        )
+        # Track the number of timesteps that have occurred within an episode.
+        self.timesteps = 0
 
+        # Object that performs reward calculation, using the `BaseReward.tracker` object
+        self.reward_cls = reward_cls
         # Store agent position parameters for use in `step()`, `reset()`, etc.
         self.agent_pos: List[int]
         self.initial_agent_pos = initial_agent_pos
