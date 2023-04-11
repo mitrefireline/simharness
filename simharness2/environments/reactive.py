@@ -106,7 +106,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Object that performs reward calculation, using the `BaseReward.tracker` object
         self.reward_cls = reward_cls
-        # Store agent position parameters for use in `step()`, `reset()`, etc.
+
+        # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
+        self.agent_speed = agent_speed
         self.agent_pos: List[int]
         self.initial_agent_pos = initial_agent_pos
         self.randomize_initial_agent_pos = randomize_initial_agent_pos
