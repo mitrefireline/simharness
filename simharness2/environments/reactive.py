@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
 import numpy as np
 from gymnasium import spaces
-from simfire.sim.simulation import Simulation
+from simfire.sim.simulation import FireSimulation
 
 from simharness2.rewards.base_reward import BaseReward
 
@@ -78,7 +78,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def __init__(
         self,
-        sim: Simulation,
+        sim: FireSimulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -87,7 +87,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         deterministic: bool = False,
         initial_agent_pos: List[int] = [15, 15],
         randomize_initial_agent_pos: bool = False,
-        bench_sim: Simulation = None,
+        bench_sim: FireSimulation = None,
     ) -> None:
         """See RLHarness (parent/base class)."""
         # Set the number of steps an agent has taken in the current simulation.
