@@ -130,12 +130,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # NOTE: We can also return (agent_moved, agent_interacted) as (bool, bool),
         # and then call the `tracker.update_after_one_agent_step()` method (for clarity?)
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
-        # Update the FEAR Data after each agents step/action
-        self.env_Reward.AgentStep_FEAR_Update(
-            self.timestep,
-            self.sim,
-            not interaction_str == "none",
-            self._nearby_fire(),
+        # Update reward tracker after agent has taken one step
+        self.reward_cls.tracker.update_after_one_agent_step(
+            # FIXME what args are needed as input??
+            self.agent_pos,
+            self.sim.fire_map,
+            # self.interactions[interaction] != "none",
         )
 
         # Don't run the Simulation every step depending on speed
