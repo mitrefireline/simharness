@@ -127,48 +127,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
-        # TODO(afennelly) Add docstring?
-        movement = action[0]
-        interaction = action[1]
-
-        movement_str = self.movements[movement]
-        interaction_str = self.interactions[interaction]
-        reward = 0.0
-
-        pos_placeholder = self.agent_pos.copy()
-        screen_size = self.sim.config.area.screen_size
-
-        # Update agent location on map
-        if movement_str == "none":
-            pass
-        elif movement_str == "up" and not self.agent_pos[0] == 0:
-            pos_placeholder[0] -= 1
-        elif movement_str == "down" and not self.agent_pos[0] == screen_size - 1:
-            pos_placeholder[0] += 1
-        elif movement_str == "left" and not self.agent_pos[1] == 0:
-            pos_placeholder[1] -= 1
-        elif movement_str == "right" and not self.agent_pos[1] == screen_size - 1:
-            pos_placeholder[1] += 1
-        else:
-            pass
-
-        self.agent_pos = pos_placeholder
-
-        # Check if there was an interaction already done on this space
-        fire_map_idx = self.attributes.index("fire_map")
-        is_empty = self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
-
-        if is_empty and not interaction_str == "none":
-            # Perform interaction on new space
-            sim_interaction = self.harness_to_sim[interaction]
-            mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
-            self.sim.update_mitigation([mitigation_update])
-
-        # Update the Simulation with new agent position (s).
-        # NOTE: We assume the single-agent case here, so agent ID == 0.
-        point = [self.agent_pos[1], self.agent_pos[0], 0]
-        self.sim.update_agent_positions([point])
-
+        # NOTE: We can also return (agent_moved, agent_interacted) as (bool, bool),
+        # and then call the `tracker.update_after_one_agent_step()` method (for clarity?)
+        self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
         # Update the FEAR Data after each agents step/action
         self.env_Reward.AgentStep_FEAR_Update(
             self.timestep,
@@ -225,6 +186,84 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # the episode will never be truncated, but this isn't necessarily true.
         truncated = False
         return self.state, reward, not sim_active, truncated, {}
+
+    def _do_one_agent_step(self, action: np.ndarray) -> None:
+        """Move the agent and interact with the environment."""
+        # Parse the movement and interaction from the action
+        movement, interaction = self._parse_action(action)
+
+        # Update agent location on map
+        movement_str = self.movements[movement]
+        if movement_str != "none":
+            self._update_agent_position(movement_str)
+
+        # Check if there was an interaction already done on this space
+        is_empty = self._is_empty_space()
+
+        # TODO Penalize agent when `is_empty == False` (chose "invalid" interaction)?
+        # Interact with the environment
+        if is_empty and self.interactions[interaction] != "none":
+            self._update_mitigation(interaction)
+
+        # Update reward tracker after agent has taken one step (callback inside method)
+        self.reward_cls.tracker.update_after_one_agent_step(
+            self.agent_pos,
+            self.sim.fire_map,
+            self.interactions[interaction] != "none",
+        )
+
+    def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
+        """Parse the action into movement and interaction."""
+        # Handle the MultiDiscrete case (currently used in `ReactiveHarness`)
+        if isinstance(self.action_space, spaces.MultiDiscrete):
+            return action[0], action[1]
+        # Handle the Discrete case (currently used in `ReactiveDiscreteHarness`)
+        elif isinstance(self.action_space, spaces.Discrete):
+            return action % len(self.movements), int(action / len(self.movements))
+        else:
+            # TODO provide a descriptive error message.
+            raise NotImplementedError
+
+    def _update_agent_position(self, movement_str: str) -> None:
+        """Update the agent's position on the map by performing the provided movement."""
+        # Store agent's current position in a temporary variable to avoid overwriting it.
+        temp_agent_pos = self.agent_pos.copy()
+        map_boundary = self.sim.config.area.screen_size - 1
+
+        # Update the agent's position based on the provided movement.
+        if movement_str == "up" and not self.agent_pos[0] == 0:
+            temp_agent_pos[0] -= 1
+        elif movement_str == "down" and not self.agent_pos[0] == map_boundary:
+            temp_agent_pos[0] += 1
+        elif movement_str == "left" and not self.agent_pos[1] == 0:
+            temp_agent_pos[1] -= 1
+        elif movement_str == "right" and not self.agent_pos[1] == map_boundary:
+            temp_agent_pos[1] += 1
+        else:
+            # TODO should we provide a more descriptive error message here?
+            raise ValueError(f"Invalid movement string provided: {movement_str}.")
+
+        # Store the updated agent position.
+        self.agent_pos = temp_agent_pos
+
+        # Update the Simulation with new agent position (s).
+        # NOTE: We assume the single-agent case here, so agent ID == 0.
+        point = [self.agent_pos[1], self.agent_pos[0], 0]
+        self.sim.update_agent_positions([point])
+
+    def _is_empty_space(self) -> bool:
+        """Check if the space is empty."""
+        # FIXME Store the value that indicates whether space is empty or not
+        #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
+        fire_map_idx = self.attributes.index("fire_map")
+        return self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
+
+    def _update_mitigation(self, interaction: int) -> None:
+        """Interact with the environment by performing the provided interaction."""
+        # Perform interaction on new space
+        sim_interaction = self.harness_to_sim[interaction]
+        mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
+        self.sim.update_mitigation([mitigation_update])
 
     def _nearby_fire(self) -> bool:
         """Check if the agent is adjacent to a space that is currently burning.
