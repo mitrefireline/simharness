@@ -91,9 +91,15 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         bench_sim: FireSimulation = None,
     ) -> None:
         """See RLHarness (parent/base class)."""
-        # Set the number of steps an agent has taken in the current simulation.
-        self.num_agent_steps = 0
-        self.agent_speed = agent_speed
+        # NOTE: The caller is responsible for creating the `FireSimulation` object (s),
+        # and if a `bench_sim` is provided, it should be a separate object, identical to
+        # `sim` (after initialization), but will not receive any mitigations.
+        self.sim = sim
+        self.bench_sim = bench_sim
+        # Indicates (internally) whether a benchmark simulation should be used
+        self._use_bench_sim = True if bench_sim else False
+        # TODO Create self._time_arg_passed_to_sim_run and set default value to 1. This
+        # would allow the simulation to be run for an arbitrary number of timesteps.
 
         # Track the number of timesteps that have occurred within an episode.
         self.timesteps = 0
@@ -109,8 +115,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._set_agent_pos_for_episode_start()
 
         super().__init__(
-            sim,
-            bench_sim,
             movements,
             interactions,
             attributes,

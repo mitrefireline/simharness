@@ -59,13 +59,11 @@ class RLHarness(gym.Env, ABC):
 
     def __init__(
         self,
-        sim: Simulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
         normalized_attributes: List[str],
         deterministic: bool = False,
-        bench_sim: Simulation = None,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -79,12 +77,6 @@ class RLHarness(gym.Env, ABC):
         intuition behind design choices. This is relatively important since RLHarness
         serves as a base class that each environment will inherit from.
         """
-        self.sim = sim
-        # run parallel benchmark simulation that recieves no mitigations
-        self.bench_sim = bench_sim
-        # Indicates (internally) whether a benchmark simulation should be used
-        self._use_bench_sim = True if bench_sim else False
-
         self.movements = copy.deepcopy(movements)
         self.interactions = copy.deepcopy(interactions)
         self.attributes = attributes
