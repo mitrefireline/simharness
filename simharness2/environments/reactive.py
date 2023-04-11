@@ -147,24 +147,22 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 self.sim.active,
             )
 
-
         # Calculate the reward using the FEAR Data class
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. If it wasn't,
         # then an intermediate reward will (optionally) be calculated.
         reward = self.reward_cls.calculate_reward(self.timesteps, sim_run)
         # FIXME account for below updates in the reward_cls.calculate_reward() method
-        
-        if not sim_active:
-            reward += 10
-
+        # if not sim_active:
+        #     reward += 10
         # if self._nearby_fire():
         #     reward -= 2.0
 
-        self.num_agent_steps += 1
+        # Convention: increment the timestep AFTER all method logic is performed.
+        self.timesteps += 1
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
         truncated = False
-        return self.state, reward, not sim_active, truncated, {}
+        return self.state, reward, not self.sim.active, truncated, {}
 
     def _do_one_agent_step(self, action: np.ndarray) -> None:
         """Move the agent and interact with the environment."""
