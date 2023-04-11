@@ -138,43 +138,22 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # self.interactions[interaction] != "none",
         )
 
-        # Don't run the Simulation every step depending on speed
-        if self.num_agent_steps % self.agent_speed == 0:
-            sim_fire_map, sim_active = self.sim.run(1)
-            fire_map = np.copy(sim_fire_map)
-            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
-
-            # Update the benchmark sim that has no agent actions within
-            bench_sim_fire_map, bench_sim_active = self.bench_sim.run(1)
-            bench_fire_map = np.copy(bench_sim_fire_map)
-            # Update the Reward Class - FEAR Data for each new simulation timestep of the benchmark simulation with no mitigations
-            self.env_Reward.timestep_BenchSim_FEAR_Update(
-                self.timestep, bench_fire_map, bench_sim_active
+        sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
+        # Update reward tracker after simulation has (potentially) taken one step
+        if sim_run:
+            self.reward_cls.tracker.update_after_one_simulation_step(
+                # FIXME what args are needed as input??
+                self.sim.fire_map,
+                self.sim.active,
             )
 
-            # Update the Reward Class - FEAR Data for each new simulation timestep of the simulation with the Agent
-            self.env_Reward.timestep_AgentSim_FEAR_Update(
-                self.timestep, fire_map, sim_active
-            )
 
-            # Calculate the reward using the FEAR Data class
-            # TODO Make parent class that inherits and defines reward
-            reward += self.env_Reward.calculate_Reward_after_timestep(self.timestep)
-
-            # old method of calculating reward
-            # reward += self._calculate_reward_old(fire_map)
-
-            # FIXME increment the timestep of the episode
-            self.timestep = self.timestep + 1
-        else:
-            sim_active = True
-            sim_fire_map = self.sim.fire_map
-            fire_map = np.copy(sim_fire_map)
-            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
-
-        # Update the state with the new fire map
-        self.state[..., fire_map_idx] = fire_map
-
+        # Calculate the reward using the FEAR Data class
+        # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. If it wasn't,
+        # then an intermediate reward will (optionally) be calculated.
+        reward = self.reward_cls.calculate_reward(self.timesteps, sim_run)
+        # FIXME account for below updates in the reward_cls.calculate_reward() method
+        
         if not sim_active:
             reward += 10
 
@@ -264,6 +243,35 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         sim_interaction = self.harness_to_sim[interaction]
         mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
         self.sim.update_mitigation([mitigation_update])
+
+    def _do_one_simulation_step(self) -> bool:
+        """Step the simulation forward one timestep, depending on the "agent's speed"."""
+        run_sim = self.timesteps % self.agent_speed == 0
+        # The simulation WILL NOT be run every step, unless `self.agent_speed` == 1.
+        if run_sim:
+            self._run_simulation()
+        # Prepare the observation that is returned in the `self.step()` method.
+        self._update_state()
+        return run_sim
+
+    def _run_simulation(self):
+        """Run the simulation (s) for one timestep."""
+        if self._use_bench_sim:
+            # bench_sim_fire_map, bench_sim_active = self.bench_sim.run(1)
+            self.bench_sim.run(1)
+
+        # sim_fire_map, sim_active = self.sim.run(1)
+        self.sim.run(1)
+
+    def _update_state(self):
+        """Modify environment's state to contain updates from the current timestep."""
+        # Copy the fire map from the simulation so we don't overwrite it.
+        fire_map = np.copy(self.sim.fire_map)
+        # Update the fire map with the numeric identifier for the agent.
+        fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+        # Modify the state to contain the updated fire map
+        fire_map_idx = self.attributes.index("fire_map")
+        self.state[..., fire_map_idx] = fire_map
 
     def _nearby_fire(self) -> bool:
         """Check if the agent is adjacent to a space that is currently burning.
