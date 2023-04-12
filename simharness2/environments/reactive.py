@@ -300,15 +300,19 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         return False
 
-    def _calculate_reward(self, fire_map: np.ndarray) -> float:
+    def _calculate_reward(self, fire_map: np.ndarray, sim_run: bool) -> float:
         """Calculate the reward given the current fire_map.
 
         Arguments:
             fire_map: An ndarray containing the current state of the `Simulation`.
+            sim_run: A boolean indicating whether the simulation was run this timestep.
 
         Returns:
             reward: A float representing the reward for given state.
         """
+        if sim_run:
+            return 0.0
+
         burning = np.count_nonzero(fire_map == 1)
         # burnt = np.count_nonzero(fire_map == 2)
 
