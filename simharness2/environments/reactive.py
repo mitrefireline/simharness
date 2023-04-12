@@ -88,7 +88,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         deterministic: bool = False,
         initial_agent_pos: List[int] = [15, 15],
         randomize_initial_agent_pos: bool = False,
-        bench_sim: FireSimulation = None,
+        benchmark_sim: FireSimulation = None,
     ) -> None:
         """See RLHarness (parent/base class)."""
         # Track the number of timesteps that have occurred within an episode.
@@ -113,7 +113,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             attributes,
             normalized_attributes,
             deterministic,
-            bench_sim=bench_sim,
+            benchmark_sim=benchmark_sim,
         )
 
     def step(
@@ -138,8 +138,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self.reward_cls.tracker.update_after_one_simulation_step(
                 self.sim.fire_map,
                 self.sim.active,
-                self.bench_sim.fire_map if self.bench_sim else None,
-                self.bench_sim.active if self.bench_sim else None,
+                self.benchmark_sim.fire_map if self.benchmark_sim else None,
+                self.benchmark_sim.active if self.benchmark_sim else None,
                 # FIXME what args are needed as input??
             )
 
@@ -254,9 +254,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _run_simulation(self):
         """Run the simulation (s) for one timestep."""
-        if self._use_bench_sim:
-            # bench_sim_fire_map, bench_sim_active = self.bench_sim.run(1)
-            self.bench_sim.run(1)
+        if self._use_benchmark_sim:
+            # benchmark_sim_fire_map, benchmark_sim_active = self.benchmark_sim.run(1)
+            self.benchmark_sim.run(1)
 
         # sim_fire_map, sim_active = self.sim.run(1)
         self.sim.run(1)
@@ -350,13 +350,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             }
             self.sim.set_seeds(seed_dict)
             # set seeds of benchmark simulation
-            self.bench_sim.set_seeds(seed_dict)
+            self.benchmark_sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         self.sim.reset()
         # reset benchmark simulation
-        self.bench_sim.reset()
+        self.benchmark_sim.reset()
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -389,7 +389,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         point = [self.agent_pos[1], self.agent_pos[0], 0]
         self.sim.update_agent_positions([point])
         # update the benchmark simulation - Not sure if actually needed but can't hurt
-        self.bench_sim.update_agent_positions([point])
+        self.benchmark_sim.update_agent_positions([point])
 
         # NOTE: `self.num_burned` is not currently used in the reward calculation.
         # self.num_burned = 0 FIXME include once we modularize the reward function

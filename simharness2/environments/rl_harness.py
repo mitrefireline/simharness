@@ -65,7 +65,7 @@ class RLHarness(gym.Env, ABC):
         attributes: List[str],
         normalized_attributes: List[str],
         deterministic: bool = False,
-        bench_sim: FireSimulation = None,
+        benchmark_sim: FireSimulation = None,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -80,12 +80,12 @@ class RLHarness(gym.Env, ABC):
         serves as a base class that each environment will inherit from.
         """
         # NOTE: The caller is responsible for creating the `FireSimulation` object (s),
-        # and if a `bench_sim` is provided, it should be a separate object, identical to
+        # and if a `benchmark_sim` is provided, it should be a separate object, identical to
         # `sim` (after initialization), but will not receive any mitigations.
         self.sim = sim
-        self.bench_sim = bench_sim
+        self.benchmark_sim = benchmark_sim
         # Indicates (internally) whether a benchmark simulation should be used
-        self._use_bench_sim = True if bench_sim else False
+        self._use_benchmark_sim = True if benchmark_sim else False
         # TODO Create self._time_arg_passed_to_sim_run and set default value to 1. This
         # would allow the simulation to be run for an arbitrary number of timesteps.
 

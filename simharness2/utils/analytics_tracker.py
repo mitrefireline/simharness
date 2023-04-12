@@ -37,7 +37,7 @@ class AnalyticsTracker(ABC):
         sim_screen_size: int,
         run_data=None,
         agent_data=None,
-        bench_sim_data=None,
+        benchmark_sim_data=None,
     ):
         """TODO (afennelly): Add docstring.
 
@@ -50,7 +50,7 @@ class AnalyticsTracker(ABC):
               The screen_size sets both the height and the width of the screen.
             run_data: TODO
             agent_data: TODO
-            bench_sim_data: TODO
+            benchmark_sim_data: TODO
         """
         # Required attributes that track simulation data across each episode in a run.
         self.sim_data = sim_data
@@ -58,15 +58,15 @@ class AnalyticsTracker(ABC):
         # Optional attributes that track additional data for the RLHarness.
         self.run_data = run_data
         self.agent_data = agent_data
-        self.bench_sim_data = bench_sim_data
+        self.benchmark_sim_data = benchmark_sim_data
 
     @abstractmethod
     def update_after_one_simulation_step(
         self,
         sim_map: np.ndarray,
         sim_active: bool,
-        bench_sim_map: np.ndarray,
-        bench_sim_active: bool,
+        benchmark_sim_map: np.ndarray,
+        benchmark_sim_active: bool,
         **kwargs,
     ):
         """TODO Add docstring."""

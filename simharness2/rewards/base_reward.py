@@ -78,7 +78,10 @@ class BenchmarkReward(BaseReward):
     def calculate_reward(self, timestep: int, simulation_step: bool) -> float:
         """TODO Add function docstring."""
         # based off the benchmark simulation
-        bench_sim_data, sim_data = self.tracker.bench_sim_data, self.tracker.sim_data
+        benchmark_sim_data, sim_data = (
+            self.tracker.benchmark_sim_data,
+            self.tracker.sim_data,
+        )
         # the reward is the difference between the unmitigated # of squares that would be damaged in this timestep and the current # of squares that are damaged in this timestep
         # such that if the mitigations result in more squares saved in a timestep, then we will see a positive reward
         damage_diff = (
