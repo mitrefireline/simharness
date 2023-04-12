@@ -456,7 +456,7 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
 
     def __init__(
         self,
-        sim: Simulation,
+        sim: FireSimulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
@@ -562,7 +562,7 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
 
     def __init__(
         self,
-        sim: Simulation,
+        sim: FireSimulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
