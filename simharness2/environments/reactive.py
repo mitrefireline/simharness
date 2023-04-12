@@ -84,7 +84,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         attributes: List[str],
         normalized_attributes: List[str],
         agent_speed: int,
-        reward_cls: BaseReward,
+        reward_cls: BaseReward = None,
         deterministic: bool = False,
         initial_agent_pos: List[int] = [15, 15],
         randomize_initial_agent_pos: bool = False,
@@ -94,7 +94,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Track the number of timesteps that have occurred within an episode.
         self.timesteps = 0
 
-        # Object that performs reward calculation, using the `BaseReward.tracker` object
+        # If provided, the object is used to perform reward calculation.
         self.reward_cls = reward_cls
 
         # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
@@ -122,30 +122,38 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # NOTE: We can also return (agent_moved, agent_interacted) as (bool, bool),
         # and then call the `tracker.update_after_one_agent_step()` method (for clarity?)
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
-        # Update reward tracker after agent has taken one step
-        self.reward_cls.tracker.update_after_one_agent_step(
-            # FIXME what args are needed as input??
-            self.agent_pos,
-            self.sim.fire_map,
-            # self.interactions[interaction] != "none",
-        )
-
+        if self.reward_cls:
+            # Update reward tracker after agent has taken one step
+            self.reward_cls.tracker.update_after_one_agent_step(
+                self.agent_pos,
+                self.sim.fire_map,
+                # FIXME what other args are needed as input??
+                # self.interactions[interaction] != "none",
+            )
+        # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
+        # indicate how to calculate the reward for the current timestep.
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
-        # Update reward tracker after simulation has (potentially) taken one step
-        if sim_run:
+        if sim_run and self.reward_cls:
+            # Update reward tracker after simulation has taken one step
             self.reward_cls.tracker.update_after_one_simulation_step(
-                # FIXME what args are needed as input??
                 self.sim.fire_map,
                 self.sim.active,
+                self.bench_sim.fire_map if self.bench_sim else None,
+                self.bench_sim.active if self.bench_sim else None,
+                # FIXME what args are needed as input??
             )
 
-        # Calculate the reward using the FEAR Data class
-        # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. If it wasn't,
-        # then an intermediate reward will (optionally) be calculated.
-        reward = self.reward_cls.calculate_reward(self.timesteps, sim_run)
-        # FIXME account for below updates in the reward_cls.calculate_reward() method
-        # if not sim_active:
-        #     reward += 10
+        # Calculate the reward for the current timestep
+        if self.reward_cls:
+            reward = self.reward_cls.get_reward(self.timesteps, sim_run)
+        else:
+            fire_map_idx = self.attributes.index("fire_map")
+            reward = self._calculate_reward(self.state[..., fire_map_idx], sim_run)
+
+        # TODO account for below updates in the reward_cls.calculate_reward() method
+        # "End of episode" reward
+        if not self.sim.active:
+            reward += 10
         # if self._nearby_fire():
         #     reward -= 2.0
 
