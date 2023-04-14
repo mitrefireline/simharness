@@ -1,6 +1,6 @@
 name: "ReactiveHarness-v1"
 simulation: "Fire-v0"
-config: 
+config:
   movements: ['up', 'down', 'left', 'right']
   interactions: ['fireline']
   attributes: ['fire_map', 'elevation', 'w_0', 'sigma', 'delta', 'M_x']

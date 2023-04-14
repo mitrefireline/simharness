@@ -1,14 +1,16 @@
-from typing import Dict
-import gymnasium as gym
+from typing import Any, Dict
 
+import gymnasium as gym
 from ray.tune.registry import register_env
-from simharness2.environments.rl_harness import RLHarness
+
 from simharness2.environments.reactive import (
     ReactiveDiscreteHarness,
     ReactiveHarness,
 )
+from simharness2.environments.rl_harness import RLHarness
 
-def reactive_multidiscrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
+
+def reactive_multidiscrete_env_creator(env_config: Dict[str, Any]) -> RLHarness:
     """Environment creator for RLlib.
 
     Arguments:
@@ -18,13 +20,13 @@ def reactive_multidiscrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
         An instance of the ReactiveHarness (environment) class.
     """
     gym.envs.register(
-        id="ReactiveHarness-v0", 
-        entry_point="simharness2.environments.reactive:ReactiveHarness"
+        id="ReactiveHarness-v0",
+        entry_point="simharness2.environments.reactive:ReactiveHarness",
     )
     return ReactiveHarness(**env_config)
 
 
-def reactive_discrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
+def reactive_discrete_env_creator(env_config: Dict[str, Any]) -> RLHarness:
     """Environment creator for RLlib.
 
     Arguments:
@@ -34,16 +36,12 @@ def reactive_discrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
         An instance of the ReactiveDiscreteHarness (environment) class.
     """
     gym.envs.register(
-        id="ReactiveHarness-v1", 
-        entry_point="simharness2.environments.reactive:ReactiveDiscreteHarness"
+        id="ReactiveHarness-v1",
+        entry_point="simharness2.environments.reactive:ReactiveDiscreteHarness",
     )
     return ReactiveDiscreteHarness(**env_config)
 
 
-register_env(
-        name="ReactiveHarness-v0", env_creator=reactive_multidiscrete_env_creator
-    )
+register_env(name="ReactiveHarness-v0", env_creator=reactive_multidiscrete_env_creator)
 
-register_env(
-        name="ReactiveHarness-v1", env_creator=reactive_discrete_env_creator
-    )
+register_env(name="ReactiveHarness-v1", env_creator=reactive_discrete_env_creator)

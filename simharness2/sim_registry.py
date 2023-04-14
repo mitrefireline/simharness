@@ -79,4 +79,3 @@ register_simulation(
     "./conf/simulation/simfire/train.yml",
     "./conf/simulation/simfire/eval.yml",
 )
-
