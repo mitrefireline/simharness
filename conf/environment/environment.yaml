@@ -1,5 +1,0 @@
-render_env: False
-clip_rewards: None
-normalize_actions: True
-disable_env_checking: False
-is_atari: False

@@ -1,12 +1,18 @@
-#model:
-  # conv_filters: [   # input: B x NumFeatures x Size x Size (32, 6, 64, 64)
-  #   [64, 5, 2],     # 32 x 64 x 32 x 32
-  #   [128, 3, 2],    # 32 x 128 x 16 x16
-  #   [128, 3, 2],    # 32 x 128 x 16 x16
-  #   [256, 3, 2]     # 32 x 256 x 3 x 3
-  # ]
-  #post_fcnet_hiddens: [256]
-
+model:
+    conv_filters: [
+        [16, [8, 8], 4],
+        [32, [4, 4], 2],
+        [256, [12, 12], 2],
+    ]
+num_atoms: 51
+noisy: True
 gamma: 0.99
-lr: 0.001
+lr: 0.0001
+# rollout_fragment_length: 4
 train_batch_size: 32
+# target_network_update_freq: 500
+# replay_buffer_config:
+#   type: MultiAgentPrioritizedReplayBuffer
+#   prioritized_replay_alpha: 0.5
+#   capacity: 50000
+# num_steps_sampled_before_learning_starts: 10000

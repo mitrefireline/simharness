@@ -1,3 +1,0 @@
-evaluation_interval: 50
-evaluation_duration: 10
-evaluation_duration_unit: "episodes"
