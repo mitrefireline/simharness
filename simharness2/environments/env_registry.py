@@ -1,18 +1,18 @@
-from typing import Dict
+from typing import Any, Dict
 import gymnasium as gym
 from gymnasium.envs.registration import register
 
-# from gymnasium.wrappers import TimeLimit
-
+import gymnasium as gym
 from ray.tune.registry import register_env
-from simharness2.environments.rl_harness import RLHarness
+
 from simharness2.environments.reactive import (
     ReactiveDiscreteHarness,
     ReactiveHarness,
 )
+from simharness2.environments.rl_harness import RLHarness
 
 
-def reactive_multidiscrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
+def reactive_multidiscrete_env_creator(env_config: Dict[str, Any]) -> RLHarness:
     """Environment creator for RLlib.
 
     Arguments:
@@ -29,7 +29,7 @@ def reactive_multidiscrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
     return ReactiveHarness(**env_config)
 
 
-def reactive_discrete_env_creator(env_config: Dict[str, str]) -> RLHarness:
+def reactive_discrete_env_creator(env_config: Dict[str, Any]) -> RLHarness:
     """Environment creator for RLlib.
 
     Arguments:

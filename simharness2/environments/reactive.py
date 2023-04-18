@@ -342,6 +342,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def render(self):  # noqa
         self.simulation.rendering = True
 
+    # TODO(atapley): Move this to RLHarness
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
         if self.randomize_initial_agent_pos:

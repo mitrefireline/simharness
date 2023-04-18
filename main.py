@@ -63,6 +63,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     return results
 
 
+
 def train(algo: Algorithm, cfg: DictConfig):
     """FIXME: Docstring for train."""
     stop_cond = cfg.stop_conditions
@@ -107,7 +108,8 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
         done = False
 
         fire_loc = env.simulation.fire_manager.init_pos
-        info = f"Agent Start Location: {env.agent_pos}, Fire Start Location: {fire_loc}"
+        agent_pos = env.agent_pos  # type: ignore
+        info = f"Agent Start Location: {agent_pos}, Fire Start Location: {fire_loc}"
 
         total_reward = 0.0
         while not done:
