@@ -24,7 +24,7 @@ def main(cfg: DictConfig):
 
 
 ## Customizing an RLlib `Algorithm`
-As mentioned above, configuration files for `simharness` are stored in the [conf](simharness2/conf) directory. To customize the configuration of an RLlib `Algorithm`, an `AlgorithmConfig` object will be built using the settings provided in the specified hierarchical configuration. 
+As mentioned above, configuration files for `simharness` are stored in the [conf](simharness2/conf) directory. To customize the configuration of an RLlib `Algorithm`, an `AlgorithmConfig` object will be built using the settings provided in the specified hierarchical configuration.
 
 The current structure of `conf` is as follows:
 ```shell
@@ -53,7 +53,7 @@ See below for more information on each of level of the configuration hierarchy:
 
   - `cli`
     - `mode`: The run mode to use. I recommend using `tune` to train an `Algorithm`, as it is (currently) the only
-    way to track experiments with `Aim`. The `view` mode is intended to be used to do inference with a trained 
+    way to track experiments with `Aim`. The `view` mode is intended to be used to do inference with a trained
     `Algorithm` on a fixed evaluation simulation and save a `.gif` of the agent acting in the simulation.
         - Options: `train`, `tune`, `view`
         - Default: `???`
@@ -71,7 +71,7 @@ See below for more information on each of level of the configuration hierarchy:
     - `num_to_keep`: The number of checkpoints to keep on disk for this run. If a checkpoint is persisted to disk after there are already this many checkpoints, then an existing checkpoint will be deleted. If this is `None`, checkpoints will not be deleted. Must be >= 1.
         - Default: `null`
   - `stop_conditions`: The stop conditions to consider. This will be used to set the `stop` argument when initializing the `ray.air.RunConfig` object. **Note**: The specified values **must** match keys contained in the `ray.rllib.utils.typing.ResultDict` (which represents the result dict returned by `Algorithm.train()`; see below for the default keys).
-    - `training_iteration`: 
+    - `training_iteration`:
         - Default: `1000000` (1 million)
     - `timesteps_total`:
         - Default: `2000000000` (2 billion)
@@ -85,56 +85,56 @@ See below for more information on each of level of the configuration hierarchy:
         - Default: `True`
     - `seed`: This argument, in conjunction with worker_index, sets the random seed of each worker, so that **identically configured trials will have identical results. This makes experiments reproducible.**
         - Default: `2000`
-    
-        
+
+
 
 </details>
 
 <details>
   <summary>AlgorithmConfig.environment() settings</summary>
-  
+
   ### TODO
-  
+
 </details>
 
 <details>
   <summary>AlgorithmConfig.evaluation() settings</summary>
-  
+
   ### TODO
-  
+
 </details>
 
 <details>
   <summary>AlgorithmConfig.exploration() settings</summary>
-  
+
   ### TODO
-  
+
 </details>
 
 <details>
   <summary>AlgorithmConfig.framework() settings</summary>
-  
+
   ### TODO
-  
+
 </details>
 
 <details>
   <summary>AlgorithmConfig.resources() settings</summary>
-  
+
   ### TODO
-  
+
 </details>
 
 <details>
   <summary>AlgorithmConfig.rollouts() settings</summary>
-  
+
   ### TODO
-  
+
 </details>
 
 <details>
   <summary>Simulation configs</summary>
-  
+
   ### TODO
   `simfire.sim.simulation.Simulation` configs
 
@@ -143,9 +143,9 @@ See below for more information on each of level of the configuration hierarchy:
 
 <details>
   <summary>Hydra-specific configs</summary>
-  
+
   ### TODO
-  
+
 </details>
 
 <details>

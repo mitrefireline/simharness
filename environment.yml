@@ -1,0 +1,27 @@
+name: sh2-test
+channels:
+  - pytorch
+  - conda-forge
+  - nvidia
+  # We want to have a reproducible setup, so we don't want default channels,
+  # which may be different for different users. All required channels should
+  # be listed explicitly here.
+dependencies:
+  - python=3.9.*
+  # - mamba
+  - pip # pip must be mentioned explicitly, or conda-lock will fail
+  - poetry
+  # - tensorflow=2.11.0
+  # - tensorflow-probability=0.19.0
+  - pytorch::pytorch=1.13.0
+  - pytorch::torchvision=0.14.0
+  - pytorch::pytorch-cuda=11.6
+
+  # - ray-rllib=2.3.0
+  # - cudatoolkit=11.3
+  # - cudatoolkit=11.2
+  # - grpcio=1.43.0
+
+# Non-standard section listing target platforms for conda-lock:
+# platforms:
+#   - linux-64
