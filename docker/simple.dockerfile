@@ -5,7 +5,7 @@ FROM rayproject/ray:${RAY_VERSION}-py39-cu116 as deploy
 
 # Copy the needed code
 WORKDIR /code/
-COPY requirements.txt README.md LICENSE main.py .
+COPY requirements.txt README.md LICENSE main.py ./
 COPY conf/ conf/
 COPY simharness2/ simharness2/
 
