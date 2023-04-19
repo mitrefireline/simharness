@@ -12,11 +12,11 @@ COPY simharness2/ simharness2/
 RUN sudo apt-get update \
     && sudo apt-get install -y gcc \
         cmake \
-        libgtk2.0-dev \
+        # libgtk2.0-dev \
         zlib1g-dev \
-        libgl1-mesa-dev \
+        # libgl1-mesa-dev \
         unzip \
-        unrar \
+        # unrar \
     && $HOME/anaconda3/bin/pip --no-cache-dir install -U pip \
     # First, install requirements
     && $HOME/anaconda3/bin/pip --no-cache-dir install -U \
