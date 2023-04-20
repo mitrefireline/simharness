@@ -14,18 +14,19 @@ SimHarness is a modular reinforcement learning harness based on the RLlib framew
 SimHarness's easy-to-use interface allows for the quick and simple training of intelligent agents within any simulation that implements the required API interface, such as [SimFire](https://gitlab.mitre.org/fireline/simfire).
 
 # Installation
-Clone the repository
-
+Clone the repository:
 ```shell
 git clone https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2.git
-cd simharness2/
 ```
 
-Create a conda environment
-
+Then, install the requirements:
 ```shell
-conda env create --file conda-env.yaml
+cd simharness2/
+sudo apt-get update && sudo apt-get install build-essential
+# Create a conda environment using `conda-linux-64.lock`
+conda create --name sh2 --file conda-linux-64.lock
 conda activate sh2
+poetry install
 ```
 
 Install poetry
