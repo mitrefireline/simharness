@@ -22,7 +22,7 @@ git clone https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2.gi
 Then, install the requirements:
 ```shell
 cd simharness2/
-sudo apt-get update && sudo apt-get install build-essential
+sudo apt-get update && sudo apt-get install build-essential -y
 # Create a conda environment using `conda-linux-64.lock`
 conda create --name sh2 --file conda-linux-64.lock
 conda activate sh2
