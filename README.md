@@ -29,21 +29,6 @@ conda activate sh2
 poetry install
 ```
 
-Install poetry
-
-```shell
-curl -sSL https://install.python-poetry.org | python -
-echo "export PATH=$PATH:$HOME/.local/bin" >> $HOME/.bashrc
-source $HOME/.bashrc
-conda activate sh2
-```
-
-Install remaining requirements
-
-```shell
-poetry install
-```
-
 # Building Docker Image(s)
 
 There are different flavors of docker images and only one of them ([simple](#simple)) currently works. The order of this section is by order of how close I think each dockerfile is to producing a working image once built.
