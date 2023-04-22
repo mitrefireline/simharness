@@ -24,6 +24,7 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls
 from simfire.sim.simulation import Simulation
 from simfire.utils.log import create_logger
+from psutil import cpu_count
 
 import simharness2.environments.env_registry  # noqa
 from simharness2.sim_registry import get_simulation_from_name
@@ -129,9 +130,7 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     """FIXME: Docstring for main."""
-    # FIXME decide if/what should be passed to `ray.init()`
-    # ray.init(num_gpus=cfg.resources.num_gpus)
-    ray.init()
+    ray.init(num_gpus=cfg.resources.num_gpus, num_cpus=cpu_count())
 
     log.info(f"Loading simulation {cfg.environment.env_config.simulation}...")
     sim, train_cfg, eval_cfg, view_cfg = get_simulation_from_name(
