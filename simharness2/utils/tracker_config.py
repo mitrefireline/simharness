@@ -30,8 +30,8 @@ class SimpleSimulationMetricsTracker(SimulationMetricsTracker):
 
 @dataclass
 class SimulationMetricsTracker:
-    active: bool = True
-    num_steps: int = 0
+    active: bool # = True
+    num_steps: int # = 0
     # Number of spaces in sim_map that are not equal to BurnStatus.UNBURNED
     num_damaged_per_step: ndarray
     # num new squares damaged (since last timestep)
@@ -52,7 +52,7 @@ class SimulationMetricsTracker:
 
 @dataclass
 class AgentMetricsTracker:
-    num_steps: int = 0
+    num_steps: int # = 0
     # TODO decide how to initialize array
     # - Maybe an empty array with size == to max steps for a given episode?
     # - Otherwise, we will have to append to the array on each timestep. Costly??
