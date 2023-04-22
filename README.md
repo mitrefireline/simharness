@@ -14,7 +14,7 @@ SimHarness is a modular reinforcement learning harness based on the RLlib framew
 SimHarness's easy-to-use interface allows for the quick and simple training of intelligent agents within any simulation that implements the required API interface, such as [SimFire](https://gitlab.mitre.org/fireline/simfire).
 
 # Installation
-- For the time being, a `requirements.txt` file will be used to install the project dependencies. 
+- For the time being, a `requirements.txt` file will be used to install the project dependencies.
 
 Clone the repository:
 ```shell
@@ -30,6 +30,14 @@ conda create --yes --name sh2 python=3.9.*
 conda activate sh2
 pip install -r requirements.txt
 pip install ray[rllib]==2.3.0
+```
+
+## Troubleshooting
+- If you experience any `SSL` errors/warnings, try running the lines below, or append them to `$HOME/.bashrc` (preferred method). Then, rerun the installation commands above.
+```shell
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 ```
 
 # Building Docker Image(s)
