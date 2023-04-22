@@ -25,7 +25,7 @@ class SimpleSimulationMetricsTracker(SimulationMetricsTracker):
     # num_burning_per_step: ndarray
 
     def update(self, sim_map: ndarray):
-        
+        pass
 
 
 @dataclass
