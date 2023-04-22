@@ -1,0 +1,11 @@
+defaults:
+  # Arguments dict passed to the env creator as an `EnvContext` object
+  - env_config: reactive
+  - _self_
+
+# The environment specifier. This can either be a tune-registered env, via 
+# `tune.register_env([name], lambda env_ctx: [env object])`, or a string specifier of an
+# RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
+# either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
+# qualified classpath to an Env class, ie. "ray.rllib.examples.env.random_env.RandomEnv".
+env: ReactiveHarness-v1

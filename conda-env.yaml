@@ -1,9 +1,0 @@
-name: sh2
-channels:
-  - pytorch
-  - conda-forge
-dependencies:
-  - python=3.9.*
-  - cudatoolkit=11.2
-  - grpcio=1.43.0
-  - ray-rllib=2.3.1

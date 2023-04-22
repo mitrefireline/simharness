@@ -1,6 +1,6 @@
 area:
-  screen_size: 64
-  pixel_scale: 16
+  screen_size: 100
+  pixel_scale: 12
 
 display:
   fire_size: 1
@@ -10,18 +10,18 @@ display:
 simulation:
   update_rate: 1
   runtime: 24hr
-  headless: True
+  headless: False
   record: false
   save_data: false
   draw_spread_graph: false
   data_type: "npy"
-  save_path: "./outputs/gifs/"
+  save_path: "./gifs/"
 
 mitigation:
   ros_attenuation: False
 
 operational:
-  seed: 1234
+  seed: 3456
   latitude: 39.67
   longitude: 119.8
   height: 1920
@@ -37,7 +37,7 @@ terrain:
         octaves: 3
         persistence: 0.7
         lacunarity: 2.0
-        seed: 827
+        seed: 444
         range_min: 100.0
         range_max: 300.0
       gaussian:
@@ -58,11 +58,10 @@ fire:
   fire_initial_position:
     type: random
     static:
-      position: (10, 10)
+      position: (50,50)
     random:
-      seed: 1234
+      seed: 3456
   max_fire_duration: 4
-
 
 environment:
   moisture: 0.03

@@ -14,33 +14,30 @@ SimHarness is a modular reinforcement learning harness based on the RLlib framew
 SimHarness's easy-to-use interface allows for the quick and simple training of intelligent agents within any simulation that implements the required API interface, such as [SimFire](https://gitlab.mitre.org/fireline/simfire).
 
 # Installation
-Clone the repository
+- For the time being, a `requirements.txt` file will be used to install the project dependencies.
 
+Clone the repository:
 ```shell
 git clone https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2.git
+```
+
+Then, create and populate the `sh2` conda environment with project dependencies:
+```shell
 cd simharness2/
-```
-
-Create a conda environment
-
-```shell
-conda env create --file conda-env.yaml
+sudo apt-get update && sudo apt-get install build-essential -y
+# Create a conda environment with the correct python version
+conda create --yes --name sh2 python=3.9.*
 conda activate sh2
+pip install -r requirements.txt
+pip install ray[rllib]==2.3.0
 ```
 
-Install poetry
-
+## Troubleshooting
+- If you experience any `SSL` errors/warnings, try running the lines below, or append them to `$HOME/.bashrc` (preferred method). Then, rerun the installation commands above.
 ```shell
-curl -sSL https://install.python-poetry.org | python -
-echo "export PATH=$PATH:$HOME/.local/bin" >> $HOME/.bashrc
-source $HOME/.bashrc
-conda activate sh2
-```
-
-Install remaining requirements
-
-```shell
-poetry install
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 ```
 
 # Building Docker Image(s)
