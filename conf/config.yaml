@@ -1,0 +1,40 @@
+defaults:
+  - training: simfire
+  - environment: default
+  - framework: default
+  - rollouts: default
+  - evaluation: default
+  - exploration: default
+  # - debugging: default
+  - resources: default
+  - hydra: group_by_day-time
+  - _self_
+
+cli:
+  # Specify the run mode. Supported options: train, tune, view
+  mode: ??? # Force command-line override
+algo:
+  name: DQN
+  # The path (str) to the checkpoint directory to use.
+  checkpoint_path: null
+# Specify configuration used to create the ray.air.RunConfig object
+runtime:
+  # Name of the training run (directory name)
+  name: null
+  # Directory to store results in (will be local_dir/name)
+  local_dir: ${hydra:run.dir}
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: 20
+  # Number of checkpoints to keep
+  num_to_keep: null
+stop_conditions:
+  training_iteration: 1000000
+  timesteps_total: 2000000000
+  # episodes_total: 1000000
+  episode_reward_mean: 100
+debugging:
+  log_level: WARN
+  log_sys_usage: True
+  seed: 2000

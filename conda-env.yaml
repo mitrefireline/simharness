@@ -1,7 +1,0 @@
-name: sh2
-channels:
-  - pytorch
-  - conda-forge
-dependencies:
-  - python=3.9.*
-  - cudatoolkit=11.2

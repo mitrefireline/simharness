@@ -1,0 +1,30 @@
+defaults:
+  # Typical usage: pass extra args to evaluation env creator and to disable exploration
+  # by computing deterministic actions, etc. Note that policy gradient algorithms are 
+  # able to find the optimal policy, even if this is a stochastic one.  
+  - evaluation_config: default
+  - _self_
+
+# Evaluate with every `evaluation_interval` training iterations.
+evaluation_interval: 50
+
+# Duration for which to run evaluation each `evaluation_interval`. The unit for the 
+# duration can be set via evaluation_duration_unit to either “episodes” (default) or “timesteps”.
+evaluation_duration: 10
+
+# The unit, with which to count the `evaluation_duration`. Options are:
+# - “episodes”, or
+# - “timesteps”
+evaluation_duration_unit: episodes
+
+# Number of parallel workers to use for evaluation. Note that the default value is 0,
+# which means evaluation will be run in the algorithm process (only if 
+# `evaluation_interval` is not None). If you increase this, it will increase the Ray 
+# resource usage of the algorithm since evaluation workers are created separately from
+# rollout workers (used to sample data for training).
+evaluation_num_workers: 0
+
+# If True, use an `AsyncRequestsManager` for the evaluation workers and use this manager
+# to send `sample()` requests to the evaluation workers. This way, the Algorithm becomes
+# more robust against long running episodes and/or failing (and restarting) workers.
+enable_async_evaluation: False

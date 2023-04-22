@@ -1,0 +1,7 @@
+defaults:
+  - exploration_config: epsilon_greedy
+  - _self_
+  
+# Default exploration behavior, iff `explore=None` is passed into
+# `compute_action(s)`. Set to False for no exploration behavior (e.g., for evaluation).
+explore: True

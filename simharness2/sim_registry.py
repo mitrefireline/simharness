@@ -7,7 +7,11 @@ _simulation_registry: Dict = {}
 
 
 def register_simulation(
-    name: str, simulation: Type[Simulation], train_config_path: str, eval_config_path: str
+    name: str,
+    simulation: Type[Simulation],
+    train_config_path: str,
+    eval_config_path: str,
+    view_config_path: str,
 ) -> None:
     """
     Register a new simulation class and associated config files into the simulation
@@ -20,6 +24,10 @@ def register_simulation(
         train_config_path (str): Path to the training configuration file for the
         simulation
         eval_config_path (str): Path to the evaluation configuration for the simulation
+        view_config_path (str): Path to the view configuration for the simulation, which
+            is identical to the evaluation configuration but has the
+            `simulation.headless` attribute set to False (enabling PyGame).
+
 
     Raises:
         ValueError: Assert that the simulation is an implementation of the
@@ -46,7 +54,8 @@ def register_simulation(
 
     train_config = Config(train_config_path)
     eval_config = Config(eval_config_path)
-    _simulation_registry[name] = (simulation, train_config, eval_config)
+    view_config = Config(view_config_path)
+    _simulation_registry[name] = (simulation, train_config, eval_config, view_config)
 
 
 def get_simulation_from_name(name: str) -> Tuple[Type[Simulation], Config, Config]:
@@ -76,20 +85,7 @@ def get_simulation_from_name(name: str) -> Tuple[Type[Simulation], Config, Confi
 register_simulation(
     "Fire-v0",
     FireSimulation,
-    "./configs/sim/simple_small/train.yml",
-    "./configs/sim/simple_small/eval.yml",
-)
-
-register_simulation(
-    "Fire-v1",
-    FireSimulation,
-    "./configs/sim/simple_large/train.yml",
-    "./configs/sim/simple_large/eval.yml",
-)
-
-register_simulation(
-    "Fire-v2",
-    FireSimulation,
-    "./configs/sim/hard_large/train.yml",
-    "./configs/sim/hard_large/eval.yml",
+    "./conf/simulation/simfire/train.yaml",
+    "./conf/simulation/simfire/eval.yaml",
+    "./conf/simulation/simfire/view.yaml",
 )

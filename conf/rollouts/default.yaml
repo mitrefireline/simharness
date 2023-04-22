@@ -1,0 +1,70 @@
+# Number of rollout worker actors to create for parallel sampling. Setting this to 0 will
+# force rollouts to be done in the local worker (driver process or the Algorithm’s actor 
+# when using Tune).
+num_rollout_workers: 0
+
+# Number of environments to evaluate vector-wise per worker. This enables model inference
+# batching, which can improve performance for inference bottlenecked workloads.
+num_envs_per_worker: 1
+
+# The `SampleCollector` class to be used to collect and retrieve environment-, model-, 
+# and sampler data. Override the `SampleCollector` base class to implement your own 
+# collection/buffering/retrieval logic.
+# sample_collector: null
+
+# Divide episodes into fragments of this many steps each during rollouts. Trajectories
+# of this size are collected from rollout workers and combined into a larger batch of
+# `train_batch_size` for learning. For example, given rollout_fragment_length=100 and 
+# train_batch_size=1000: 
+#   1. RLlib collects 10 fragments of 100 steps each from rollout workers. 
+#   2. These fragments are concatenated and we perform an epoch of SGD. 
+# When using multiple envs per worker, the fragment size is multiplied by 
+# `num_envs_per_worker`. This is since we are collecting steps from multiple envs in 
+# parallel. For example, if num_envs_per_worker=5, then rollout workers will return 
+# experiences in chunks of 5*100 = 500 steps. The dataflow here can vary per algorithm. 
+# For example, PPO further divides the train batch into minibatches for multi-epoch SGD. 
+# Set to “auto” to have RLlib compute an exact `rollout_fragment_length` to match the
+# given batch size.
+rollout_fragment_length: "auto"
+
+# How to build per-Sampler (RolloutWorker) batches, which are then usually concat’d to
+# form the train batch. Note that “steps” below can mean different things (either env- 
+# or agent-steps) and depends on the `count_steps_by` setting:
+# 1. “truncate_episodes”: Each call to sample() will return a batch of at most 
+# `rollout_fragment_length * num_envs_per_worker` in size. The batch will be exactly
+# `rollout_fragment_length * num_envs` in size if postprocessing does not change batch 
+# sizes. Episodes may be truncated in order to meet this size requirement. This mode 
+# guarantees evenly sized batches, but increases variance as the future return must now
+# be estimated at truncation boundaries. 
+# 2. “complete_episodes”: Each call to sample() will return a batch of at least 
+# `rollout_fragment_length * num_envs_per_worker` in size. Episodes will not be 
+# truncated, but multiple episodes may be packed within one batch to meet the (minimum)
+# batch size. Note that when `num_envs_per_worker > 1`, episode steps will be buffered
+# until the episode completes, and hence batches may contain significant amounts of 
+# off-policy data.
+batch_mode: "truncate_episodes"
+
+# Whether to validate that each created remote worker is healthy after its construction
+# process.
+validate_workers_after_construction: True
+
+# Whether to attempt to continue training if a worker crashes. The number of currently
+# healthy workers is reported as the “num_healthy_workers” metric.
+ignore_worker_failures: False
+
+# Whether - upon a worker failure - RLlib will try to recreate the lost worker as an 
+# identical copy of the failed one. The new worker will only differ from the failed one 
+# in its `self.recreated_worker=True` property value. It will have the same 
+# `worker_index` as the original one. If True, the `ignore_worker_failures` setting will
+# be ignored.
+recreate_failed_workers: False
+
+# If True and any sub-environment (within a vectorized env) throws any error during env 
+# stepping, the Sampler will try to restart the faulty sub-environment. This is done 
+# without disturbing the other (still intact) sub-environment and without the 
+# RolloutWorker crashing.
+restart_failed_sub_environments: False
+
+# Whether to LZ4 compress individual observations in the SampleBatches collected during 
+# rollouts.
+compress_observations: False
