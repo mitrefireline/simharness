@@ -97,16 +97,16 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
     env_name = cfg.evaluation.evaluation_config.env
 
     env_cfg = OmegaConf.to_container(cfg.environment.env_config)
-    env_cfg.update({"simulation": view_sim})
+    env_cfg.update({"sim": view_sim})
 
     env = gym.make(env_name, **env_cfg)
 
     for _ in range(2):
-        env.simulation.rendering = True
+        env.sim.rendering = True
         obs, _ = env.reset()
         done = False
 
-        fire_loc = env.simulation.fire_manager.init_pos
+        fire_loc = env.sim.fire_manager.init_pos
         agent_pos = env.agent_pos  # type: ignore
         info = f"Agent Start Location: {agent_pos}, Fire Start Location: {fire_loc}"
 
@@ -121,8 +121,8 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
 
         head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
         save_dir = os.path.join(head_path, "gifs", checkpoint_dir)
-        env.simulation.save_gif(save_dir)
-        env.simulation.rendering = False
+        env.sim.save_gif(save_dir)
+        env.sim.rendering = False
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -130,9 +130,9 @@ def main(cfg: DictConfig):
     """FIXME: Docstring for main."""
     ray.init()
 
-    log.info(f"Loading simulation {cfg.environment.env_config.simulation}...")
+    log.info(f"Loading simulation {cfg.environment.env_config.sim}...")
     sim, train_cfg, eval_cfg, view_cfg = get_simulation_from_name(
-        cfg.environment.env_config.simulation
+        cfg.environment.env_config.sim
     )
 
     model_available = False
@@ -151,9 +151,9 @@ def main(cfg: DictConfig):
             # Update the value of `sim` from the name of the requested simulation, ie.
             # `Fire-v0` to the actual simulation object itself, ie. `FireSimulation`.
             # train_sim, eval_sim = sim(train_cfg), sim(eval_cfg)
-            env_settings["env_config"].update({"simulation": sim(train_cfg)})
+            env_settings["env_config"].update({"sim": sim(train_cfg)})
             eval_settings["evaluation_config"]["env_config"].update(
-                {"simulation": sim(eval_cfg)}
+                {"sim": sim(eval_cfg)}
             )
 
             # Prepare exploration options for the algorithm

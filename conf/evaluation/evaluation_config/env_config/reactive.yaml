@@ -1,4 +1,4 @@
-simulation: Fire-v0
+sim: Fire-v0
 movements: [up, down, left, right]
 interactions: [fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
