@@ -1,16 +1,20 @@
 area:
-  screen_size: 100
+  # TODO experiment with scaling size; keep upper bound on screen_size at 512
+  screen_size: 128
+  # The number of feet across that one pixel represents. i.e. For 12, one pixel 
+  # represents a 12ft x 12ft square of land.
   pixel_scale: 12
 
 display:
-  fire_size: 1
-  control_line_size: 1
-  agent_size: 1
+  fire_size: 2
+  control_line_size: 2
+  agent_size: 4
+  rescale_size: 256
 
 simulation:
   update_rate: 1
   runtime: 24hr
-  headless: True
+  headless: true
   record: false
   save_data: false
   draw_spread_graph: false
