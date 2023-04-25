@@ -211,7 +211,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 else:
                     nearby_locs.append((i, j))
 
-        for (i, j) in nearby_locs:
+        for i, j in nearby_locs:
             if self.state[self.attributes.index("fire_map")][i][j] == 1:
                 return True
 

@@ -1,8 +1,6 @@
 from typing import Any, Dict
-import gymnasium as gym
-from gymnasium.envs.registration import register
 
-import gymnasium as gym
+from gymnasium.envs.registration import register
 from ray.tune.registry import register_env
 
 from simharness2.environments.reactive import (

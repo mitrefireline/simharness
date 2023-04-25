@@ -1,14 +1,10 @@
+"""Module for using AIM with simharness2."""
 import logging
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import numpy as np
-from typing import TYPE_CHECKING, Dict, Optional, List, Union
-
 from ray.tune.logger.logger import LoggerCallback
-from ray.tune.result import (
-    TRAINING_ITERATION,
-    TIME_TOTAL_S,
-    TIMESTEPS_TOTAL,
-)
+from ray.tune.result import TIME_TOTAL_S, TIMESTEPS_TOTAL, TRAINING_ITERATION
 from ray.tune.utils import flatten_dict
 from ray.util.annotations import PublicAPI
 
@@ -63,13 +59,12 @@ class AimLoggerCallback(LoggerCallback):
         metrics: Optional[List[str]] = None,
         **aim_run_kwargs,
     ):
-        """
-        See help(AimLoggerCallback) for more information about parameters.
-        """
-        assert Run is not None, (
-            "aim must be installed!. You can install aim with"
-            " the command: `pip install aim`."
-        )
+        """See help(AimLoggerCallback) for more information about parameters."""
+        if Run is None:
+            raise RuntimeError(
+                "aim must be installed!. You can install aim with"
+                " the command: `pip install aim`."
+            )
         self._repo_path = repo
         self._experiment_name = experiment_name
         if not (bool(metrics) or metrics is None):
@@ -99,14 +94,19 @@ class AimLoggerCallback(LoggerCallback):
         # Attach a few useful trial properties
         run["trial_id"] = trial.trial_id
         run["trial_log_dir"] = trial.local_dir
-#         if trial.remote_path:
-#             run["trial_remote_log_dir"] = trial.remote_path
+        #         if trial.remote_path:
+        #             run["trial_remote_log_dir"] = trial.remote_path
         trial_ip = trial.get_runner_ip()
         if trial_ip:
             run["trial_ip"] = trial_ip
         return run
 
     def log_trial_start(self, trial: "Trial"):
+        """Execute on trial start.
+
+        Args:
+            trial: The Tune trial that aim will track as a Run.
+        """
         if trial in self._trial_to_run:
             # Cleanup an existing run if the trial has been restarted
             self._trial_to_run[trial].close()
@@ -118,6 +118,13 @@ class AimLoggerCallback(LoggerCallback):
             self._log_trial_hparams(trial)
 
     def log_trial_result(self, iteration: int, trial: "Trial", result: Dict):
+        """Log a result.
+
+        Args:
+            iteration: The iteration number
+            trial: The Tune trial that aim will track as a Run.
+            result: Dictionary containing key:value information to log
+        """
         tmp_result = result.copy()
 
         step = result.get(TIMESTEPS_TOTAL, None) or result[TRAINING_ITERATION]
@@ -158,10 +165,21 @@ class AimLoggerCallback(LoggerCallback):
                 valid_result[attr] = value
 
     def log_trial_end(self, trial: "Trial", failed: bool = False):
+        """Execute on trial end.
+
+        Args:
+            trial: The Tune trial that aim will track as a Run.
+            failed: Flag indicating whether or not the trial failed
+        """
         trial_run = self._trial_to_run.pop(trial)
         trial_run.close()
 
     def _log_trial_hparams(self, trial: "Trial"):
+        """Log Hyperparameters.
+
+        Args:
+            trial: The Tune trial that aim will track as a Run.
+        """
         params = flatten_dict(trial.evaluated_params, delimiter="/")
         flat_params = flatten_dict(params)
 
@@ -183,8 +201,7 @@ class AimLoggerCallback(LoggerCallback):
         }
         if removed:
             logger.info(
-                "Removed the following hyperparameter values when "
-                "logging to aim: %s",
+                "Removed the following hyperparameter values when " "logging to aim: %s",
                 str(removed),
             )
 

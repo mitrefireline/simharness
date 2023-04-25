@@ -1,14 +1,14 @@
 defaults:
   # Typical usage: pass extra args to evaluation env creator and to disable exploration
-  # by computing deterministic actions, etc. Note that policy gradient algorithms are 
-  # able to find the optimal policy, even if this is a stochastic one.  
+  # by computing deterministic actions, etc. Note that policy gradient algorithms are
+  # able to find the optimal policy, even if this is a stochastic one.
   - evaluation_config: default
   - _self_
 
 # Evaluate with every `evaluation_interval` training iterations.
 evaluation_interval: 50
 
-# Duration for which to run evaluation each `evaluation_interval`. The unit for the 
+# Duration for which to run evaluation each `evaluation_interval`. The unit for the
 # duration can be set via evaluation_duration_unit to either “episodes” (default) or “timesteps”.
 evaluation_duration: 10
 
@@ -18,8 +18,8 @@ evaluation_duration: 10
 evaluation_duration_unit: episodes
 
 # Number of parallel workers to use for evaluation. Note that the default value is 0,
-# which means evaluation will be run in the algorithm process (only if 
-# `evaluation_interval` is not None). If you increase this, it will increase the Ray 
+# which means evaluation will be run in the algorithm process (only if
+# `evaluation_interval` is not None). If you increase this, it will increase the Ray
 # resource usage of the algorithm since evaluation workers are created separately from
 # rollout workers (used to sample data for training).
 evaluation_num_workers: 0
