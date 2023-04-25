@@ -1,7 +1,7 @@
 ARG RAY_VERSION=2.3.0
 
 # Deployment Stage
-FROM butler.mitre.org/fireline/simharness2:simple-{RAY_VERSION}
+FROM butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION}
 
 # Copy the needed code
 WORKDIR $HOME
@@ -21,3 +21,5 @@ RUN rm \
 # Copy the needed code
 WORKDIR /code/
 COPY docker/grafana/grafana.ini docker/prometheus/prometheus.yml $HOME
+# WORKDIR /code/grafana-9.4.7
+# RUN ./bin/grafana-server --config ../grafana.ini web
