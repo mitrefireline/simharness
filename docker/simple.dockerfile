@@ -10,18 +10,11 @@ COPY conf/ conf/
 COPY simharness2/ simharness2/
 
 RUN sudo apt-get update \
-    && sudo apt-get install -y gcc \
-        cmake \
-        # libgtk2.0-dev \
-        zlib1g-dev \
-        # libgl1-mesa-dev \
-        unzip \
-        # unrar \
+    && sudo apt-get install -y \
+        build-essential \
+        wget \
     && $HOME/anaconda3/bin/pip --no-cache-dir install -U pip \
-    # First, install requirements
+    # Install requirements
     && $HOME/anaconda3/bin/pip --no-cache-dir install -U \
            -r requirements.txt \
     && sudo apt-get clean
-
-# Make sure tfp is installed correctly and matches tf version.
-# RUN python -c "import tensorflow_probability"
