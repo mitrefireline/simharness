@@ -9,6 +9,11 @@ COPY requirements.txt README.md LICENSE main.py ./
 COPY conf/ conf/
 COPY simharness2/ simharness2/
 
+# Use below to fix the following error:
+# E: The repository 'http://apt.kubernetes.io kubernetes-xenial Release' does not have a Release file.
+RUN sudo su -c "deb http://packages.cloud.google.com/apt/ kubernetes-xenial main"
+# Use below to fix the following error:
+# 
 RUN sudo su -c "echo 'deb [by-hash=no] http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /' > /etc/apt/sources.list.d/cuda.list"
 # Install MITRE certs
 RUN sudo apt-get update 
