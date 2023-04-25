@@ -5,9 +5,9 @@ attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speed: 9
 reward_cls: null
-deterministic: True
+deterministic: true
 initial_agent_pos: null
-randomize_initial_agent_pos: False
+randomize_initial_agent_pos: false
 benchmark_sim: null
 # Would we want to randomize fire_initial_position during evaluation? Probably NOT.
 # sim_seeds_to_randomize: [fire_initial_position]

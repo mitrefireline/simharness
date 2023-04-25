@@ -5,7 +5,7 @@ attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speed: 9
 reward_cls: null
-deterministic: False
+deterministic: false
 initial_agent_pos: null
 randomize_initial_agent_pos: null
 benchmark_sim: null

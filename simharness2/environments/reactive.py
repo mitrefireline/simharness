@@ -356,23 +356,28 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if not self.deterministic:
             # Set seeds for randomization
             fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
-            elevation_seed = self.sim.get_seeds()["elevation"]
+            # elevation_seed = self.sim.get_seeds()["elevation"]
             seed_dict = {
                 "fire_initial_position": fire_init_seed + 1,
-                "elevation": elevation_seed + 1,
+                # "elevation": elevation_seed + 1,
             }
             self.sim.set_seeds(seed_dict)
-            # set seeds of benchmark simulation
-            self.benchmark_sim.set_seeds(seed_dict)
+            # FIXME quick fix to avoid errors if benchmark_sim is not used (ie. None)
+            if self.benchmark_sim:
+                # set seeds of benchmark simulation
+                self.benchmark_sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         self.sim.reset()
-        # reset benchmark simulation
-        self.benchmark_sim.reset()
+        # FIXME quick fix to avoid errors if benchmark_sim is not used (ie. None)
+        if self.benchmark_sim:
+            # reset benchmark simulation
+            self.benchmark_sim.reset()
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
+        log.info("agent_pos: %s", self.agent_pos)
 
         # Get the starting state of the `Simulation` after it has been reset (above).
         sim_observations = super()._select_from_dict(
@@ -436,6 +441,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         )
 
         # Place the agent on the fire map using the agent ID.
+        log.info(f"type(nonsim_data): {type(nonsim_data)}")
         nonsim_data["fire_map"][self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
         # FIXME the below line has no dependence on `nonsim_data`; needs to be moved.
         # FIXME Why are we placing a fireline at the agents position here?
@@ -582,9 +588,11 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
         attributes: List[str],
         normalized_attributes: List[str],
         agent_speed: int,
+        reward_cls: BaseReward = None,
         deterministic: bool = False,
-        agent_pos: List[int] = [15, 15],
-        randomize_agent_pos: bool = False,
+        initial_agent_pos: List[int] = [15, 15],
+        randomize_initial_agent_pos: bool = False,
+        benchmark_sim: FireSimulation = None,
     ) -> None:
         """See ReactiveHarness (parent/base class)."""
         super().__init__(
@@ -594,9 +602,11 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
             attributes,
             normalized_attributes,
             agent_speed,
+            reward_cls,
             deterministic,
-            agent_pos,
-            randomize_agent_pos,
+            initial_agent_pos,
+            randomize_initial_agent_pos,
+            benchmark_sim,
         )
         self.spec = EnvSpec(
             id="ReactiveHarness-v1",
