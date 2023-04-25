@@ -21,5 +21,8 @@ RUN rm \
 # Copy the needed code
 WORKDIR /code/
 COPY docker/grafana/grafana.ini docker/prometheus/prometheus.yml $HOME/
+
+# Install tmux to allow for launching grafana and prometheus in the background
+RUN sudo apt-get install tmux
 # WORKDIR /code/grafana-9.4.7
 # RUN ./bin/grafana-server --config ../grafana.ini web
