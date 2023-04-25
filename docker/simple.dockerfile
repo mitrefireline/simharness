@@ -9,17 +9,18 @@ COPY requirements.txt README.md LICENSE main.py ./
 COPY conf/ conf/
 COPY simharness2/ simharness2/
 
-RUN echo "deb [by-hash=no] http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+# RUN echo "deb [by-hash=no] http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list
 # Install MITRE certs
-RUN sudo apt-get update && sudo apt-get install -y curl && \
+# RUN sudo apt-get update 
+RUN sudo apt-get install -y curl && \
     curl -ksSL https://gitlab.mitre.org/mitre-scripts/mitre-pki/raw/master/os_scripts/install_certs.sh | sh
 # Set the correct environment variables
 ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
     NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
-RUN sudo apt-get update \
-    && sudo apt-get install -y \
+# RUN sudo apt-get update 
+RUN sudo apt-get install -y \
        build-essential \
        wget \
     && $HOME/anaconda3/bin/pip --no-cache-dir install -U pip \
