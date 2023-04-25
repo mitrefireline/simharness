@@ -9,7 +9,7 @@ COPY requirements.txt README.md LICENSE main.py ./
 COPY conf/ conf/
 COPY simharness2/ simharness2/
 
-RUN sudo su -c "echo "deb [by-hash=no] http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list"
+RUN sudo su -c "echo 'deb [by-hash=no] http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /' > /etc/apt/sources.list.d/cuda.list"
 # Install MITRE certs
 RUN sudo apt-get update 
 RUN sudo apt-get install -y curl && \
