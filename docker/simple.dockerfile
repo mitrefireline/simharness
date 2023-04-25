@@ -18,11 +18,8 @@ RUN sudo su -c "echo 'deb [by-hash=no] http://developer.download.nvidia.com/comp
 
 # Install MITRE certs
 RUN sudo apt-get update 
-RUN sudo apt-get install -y \
-    curl \
-    wget
-# RUN curl -ksSLN https://gitlab.mitre.org/mitre-scripts/mitre-pki/raw/master/os_scripts/install_certs.sh | sh
-RUN wget -q -O - --no-check-certificate https://gitlab.mitre.org/mitre-scripts/mitre-pki/raw/master/os_scripts/install_certs.sh | MODE=ubuntu sh
+RUN sudo apt-get install -y curl
+RUN curl -ksSL https://gitlab.mitre.org/mitre-scripts/mitre-pki/raw/master/os_scripts/install_certs.sh | sudo sh
 # Set the correct environment variables
 ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
@@ -30,7 +27,7 @@ ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
 
 RUN sudo apt-get install -y \
        build-essential \
-    #    wget \
+       wget \
     && $HOME/anaconda3/bin/pip --no-cache-dir install -U pip \
     # Install requirements
     && $HOME/anaconda3/bin/pip --no-cache-dir install -U \
