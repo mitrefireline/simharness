@@ -20,6 +20,6 @@ RUN rm \
 
 # Copy the needed code
 WORKDIR /code/
-COPY docker/grafana/grafana.ini docker/prometheus/prometheus.yml $HOME
+COPY docker/grafana/grafana.ini docker/prometheus/prometheus.yml $HOME/
 # WORKDIR /code/grafana-9.4.7
 # RUN ./bin/grafana-server --config ../grafana.ini web
