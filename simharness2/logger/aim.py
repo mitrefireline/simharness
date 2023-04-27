@@ -1,4 +1,6 @@
 import logging
+import os
+import json
 
 import numpy as np
 from typing import TYPE_CHECKING, Dict, Optional, List, Union
@@ -10,6 +12,7 @@ from ray.tune.result import (
     TIMESTEPS_TOTAL,
 )
 from ray.tune.utils import flatten_dict
+from ray.tune.utils.util import SafeFallbackEncoder
 from ray.util.annotations import PublicAPI
 
 if TYPE_CHECKING:
@@ -90,7 +93,7 @@ class AimLoggerCallback(LoggerCallback):
         Returns:
             Run: The created aim run for a specific trial.
         """
-        experiment_dir = trial._local_dir
+        experiment_dir = trial.local_experiment_path
         run = Run(
             repo=self._repo_path or experiment_dir,
             experiment=self._experiment_name or trial.experiment_dir_name,
@@ -98,9 +101,25 @@ class AimLoggerCallback(LoggerCallback):
         )
         # Attach a few useful trial properties
         run["trial_id"] = trial.trial_id
-        run["trial_log_dir"] = trial.local_dir
-#         if trial.remote_path:
-#             run["trial_remote_log_dir"] = trial.remote_path
+        run["trial_local_dir"] = trial.local_dir
+        run["trial_logdir"] = trial.logdir
+        
+        # Make temp file and write the trial params to it
+        tmp_path = os.path.join(trial.logdir, "expr_param_file.json")
+        with open(tmp_path, "w") as f:
+            json.dump(trial.config, f, indent=2, sort_keys=True, cls=SafeFallbackEncoder)
+        # Load temp file into dictionary, then delete the temp file
+        with open(tmp_path, "r") as f:
+            params_dict = json.load(f)
+
+        os.remove(tmp_path)
+
+        # Add params so that they will appear in `Run Params` in the Aim UI
+        for k,v in params_dict.items():
+            # Make sure v is not None, null, nan, etc.
+            if v:
+                run[k] = v
+
         trial_ip = trial.get_runner_ip()
         if trial_ip:
             run["trial_ip"] = trial_ip
@@ -190,3 +209,9 @@ class AimLoggerCallback(LoggerCallback):
 
         run = self._trial_to_run[trial]
         run["hparams"] = scrubbed_params
+
+    # def update_config(self, config: Dict):
+    #     self.config = config
+    #     config_out = os.path.join(self.logdir, EXPR_PARAM_FILE)
+        with open(config_out, "w") as f:
+            json.dump(self.config, f, indent=2, sort_keys=True, cls=SafeFallbackEncoder)
