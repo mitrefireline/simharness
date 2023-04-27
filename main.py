@@ -29,10 +29,7 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls
 from ray.tune.registry import register_env
 
-from simfire.sim.simulation import Simulation
-
-import logging
-
+from simharness2.logger.aim import AimLoggerCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
@@ -59,6 +56,8 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
             #     )
             # ],
             stop={**cfg.stop_conditions},
+            callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
+            failure_config=None,
             sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
             checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
         ),
@@ -76,7 +75,7 @@ def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
         result = algo.train()
         log.info(pretty_print(result))
 
-        if i % cfg.checkpoint.frequency == 0:
+        if i % cfg.checkpoint.checkpoint_frequency == 0:
             ckpt_path = algo.save()
             log.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
 
@@ -206,7 +205,7 @@ def main(cfg: DictConfig):
                 algo = algo_cfg.build()
                 model_available = True
 
-                train(algo, cfg)
+                train(algo, cfg, log)
 
     elif cfg.cli.mode == "view":
         if not model_available:
