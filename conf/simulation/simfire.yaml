@@ -1,5 +1,7 @@
 defaults:
   - train: default
+  - eval: default
+
 # NOTE: The below can be used to set values within train/eval configs. This would
 # allow for "easier" (?) overrides on the CLI; for now, just install Tab completion.
 # screen_size: 128
