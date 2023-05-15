@@ -59,8 +59,15 @@ terrain:
 
 fire:
   fire_initial_position:
-    type: random
+    type: static  # ${simulation.fire_initial_position.type}
     static:
+      position: 
+        _target_: builtins.tuple
+        # NOTE: This will initialize the fire at the center of the screen
+        _args_: [[
+          "${calculate_half:${simulation.train.area.screen_size}}", 
+          "${calculate_half:${simulation.train.area.screen_size}}"
+        ]]
     random:
       seed: 1234  # ${simulation.fire_initial_position.seed}
   max_fire_duration: 4
