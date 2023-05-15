@@ -35,7 +35,8 @@ import simharness2.environments.env_registry  # noqa
 
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
-log = create_logger(__name__)
+# Register custom resolvers that are used within the config files
+OmegaConf.register_new_resolver("operational_screen_size", lambda x: int((x / 64) * 1920))
 
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:

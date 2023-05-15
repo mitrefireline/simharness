@@ -26,8 +26,8 @@ operational:
   seed: 1
   latitude: 33.032762267449314
   longitude: -116.66412470409439
-  height: 3840
-  width: 3840
+  height: ${operational_screen_size:${..area.screen_size}}
+  width: ${operational_screen_size:${..area.screen_size}}
   resolution: 30
   path: ${cli.data_dir}/data
   year: 2020  # ${simulation.operational.year}
