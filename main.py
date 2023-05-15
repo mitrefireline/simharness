@@ -14,6 +14,8 @@ import os
 
 import gymnasium as gym
 import hydra
+from hydra.core.hydra_config import HydraConfig
+
 import ray
 from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
@@ -25,8 +27,8 @@ from ray.tune.registry import get_trainable_cls
 from simfire.sim.simulation import Simulation
 from simfire.utils.log import create_logger
 
+import logging
 import simharness2.environments.env_registry  # noqa
-from simharness2.sim_registry import get_simulation_from_name
 
 # from simharness2.logger.aim import AimLoggerCallback
 # from ray.rllib.utils.test_utils import check_learning_achieved
@@ -128,7 +130,12 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     """FIXME: Docstring for main."""
+    # Start the Ray runtime
     ray.init()
+    # Fetch logger, which is configured in `conf/hydra/job_logging`
+    log = logging.getLogger(__name__)
+    outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
+    log.warning(f"Configuration files for this job can be found at {outdir}")
 
     log.info(f"Loading simulation {cfg.environment.env_config.simulation}...")
     sim, train_cfg, eval_cfg, view_cfg = get_simulation_from_name(
