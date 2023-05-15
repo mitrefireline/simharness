@@ -248,15 +248,15 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/d70358ec960af5cfbf1855ef78218475cc569247/simfire/sim/simulation.py#L672-718
         # TODO(afennelly) Enable selecting attributes to randomize from config file.
         # FIXME this needs to not be hard-coded and moved outside of method logic.
-        if not self.deterministic:
-            # Set seeds for randomization
-            fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
-            elevation_seed = self.simulation.get_seeds()["elevation"]
-            seed_dict = {
-                "fire_initial_position": fire_init_seed + 1,
-                "elevation": elevation_seed + 1,
-            }
-            self.simulation.set_seeds(seed_dict)
+        # if not self.deterministic:
+        #     # Set seeds for randomization
+        #     fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
+        #     elevation_seed = self.simulation.get_seeds()["elevation"]
+        #     seed_dict = {
+        #         "fire_initial_position": fire_init_seed + 1,
+        #         "elevation": elevation_seed + 1,
+        #     }
+        #     self.simulation.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
