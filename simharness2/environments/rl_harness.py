@@ -20,9 +20,10 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from simfire.sim.simulation import Simulation
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 
-class RLHarness(gym.Env, ABC):
+class RLHarness(MultiAgentEnv, ABC):
     """`Simulation` wrapper enabling RL agent's to interact with different simulators.
 
     The most important API methods a RLHarness exposes are `step()`, `reset()`,
@@ -78,6 +79,8 @@ class RLHarness(gym.Env, ABC):
         intuition behind design choices. This is relatively important since RLHarness
         serves as a base class that each environment will inherit from.
         """
+        
+        super().__init__()
         self.simulation = simulation
         self.movements = copy.deepcopy(movements)
         self.interactions = copy.deepcopy(interactions)

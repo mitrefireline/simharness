@@ -105,7 +105,7 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Lo
 
     env = gym.make(env_name, **env_cfg)
 
-    for _ in range(2):
+    for _ in range(1):
         env.simulation.rendering = True
         obs, _ = env.reset()
         done = False
@@ -116,15 +116,24 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Lo
 
         total_reward = 0.0
         while not done:
-            action = algo.compute_single_action(obs)
+            action = {}
+            for agent_id, agent_obs in obs.items():
+                action[agent_id] = algo.compute_single_action(agent_obs)
+            # action = algo.compute_single_action(obs)
 
-            obs, reward, done, _, _ = env.step(action)
-            total_reward += reward
-        info = info + f", Final Reward: {total_reward}"
-        log.info(info)
+            obs, reward, terminated, truncated, info = env.step(action)
+            total_reward += sum(reward.values())
+            
+            if isinstance(truncated, bool):
+                done = True
+            #done = truncated['__all__'] or terminated['__all__']
+        # info = info + f", Final Reward: {total_reward}"
+        # log.info(info)
+        
+        print(f"Final Reward: {total_reward}")
 
-        head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
-        save_dir = os.path.join(head_path, "gifs", checkpoint_dir)
+        #head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
+        save_dir = "/home/atapley/simharness2/gifs/" #os.path.join(head_path, "gifs", checkpoint_dir)
         env.simulation.save_gif(save_dir)
         env.simulation.rendering = False
 
@@ -133,7 +142,7 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Lo
 def main(cfg: DictConfig):
     """FIXME: Docstring for main."""
     # Start the Ray runtime
-    ray.init()
+    ray.init(num_gpus=0, num_cpus=8)
     # Fetch logger, which is configured in `conf/hydra/job_logging`
     log = logging.getLogger(__name__)
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
@@ -214,7 +223,7 @@ def main(cfg: DictConfig):
                 algo = algo_cfg.build()
                 model_available = True
 
-                train(algo, cfg, log)
+                train(algo, cfg)
 
     # elif cfg.cli.mode == "view":
     #     if not model_available:
