@@ -1,4 +1,5 @@
 defaults:
+  - simulation: simfire
   - training: simfire
   - environment: default
   - framework: default
