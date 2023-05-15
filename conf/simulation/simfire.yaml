@@ -1,0 +1,17 @@
+defaults:
+  - train: default
+# NOTE: The below can be used to set values within train/eval configs. This would
+# allow for "easier" (?) overrides on the CLI; for now, just install Tab completion.
+# screen_size: 128
+# operational:
+#     year: 2019
+# topography:
+#   type: operational
+# fuel:
+#   type: operational
+# fire_initial_position:
+#   type: random
+#   position: [10, 10]
+#   seed: 1234
+# wind:
+#   function: simple
