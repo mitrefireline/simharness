@@ -28,6 +28,8 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls
 from ray.tune.registry import register_env
 
+from simfire.sim.simulation import Simulation
+
 import logging
 
 # from simharness2.logger.aim import AimLoggerCallback
@@ -138,11 +140,6 @@ def main(cfg: DictConfig):
     log = logging.getLogger(__name__)
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
     log.warning(f"Configuration files for this job can be found at {outdir}")
-
-    log.info(f"Loading simulation {cfg.environment.env_config.simulation}...")
-    sim, train_cfg, eval_cfg, view_cfg = get_simulation_from_name(
-        cfg.environment.env_config.simulation
-    )
 
     model_available = False
     if cfg.algo.checkpoint_path:
