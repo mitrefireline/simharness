@@ -122,8 +122,8 @@ simple-2.3.0:
   variables:
     RAY_VERSION: 2.3.0
   extends: .build
-  # only:
-  #   - main
+  only:
+    - main
 
 simple-2.4.0:
   stage: Docker
@@ -137,5 +137,5 @@ simple-2.4.0:
   variables:
     RAY_VERSION: 2.4.0
   extends: .build
-  # only:
-  #   - main
+  only:
+    - main
