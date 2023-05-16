@@ -1,4 +1,4 @@
-ARG RAY_VERSION=2.3.0
+ARG RAY_VERSION=2.4.0
 
 # Deployment Stage
 FROM rayproject/ray:${RAY_VERSION}-py39-cu116 as deploy

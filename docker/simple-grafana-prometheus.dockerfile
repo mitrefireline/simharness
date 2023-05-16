@@ -1,4 +1,4 @@
-ARG RAY_VERSION=2.3.0
+ARG RAY_VERSION=2.4.0
 
 # Deployment Stage
 FROM butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION}
