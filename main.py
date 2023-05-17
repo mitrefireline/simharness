@@ -10,27 +10,23 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+import logging
 import os
 from importlib import import_module
 
 import gymnasium as gym
 import hydra
+import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
-
-import ray
 from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.utils.typing import ResultDict
 from ray.tune.logger import pretty_print
-from ray.tune.registry import get_trainable_cls
-from ray.tune.registry import register_env
-
+from ray.tune.registry import get_trainable_cls, register_env
 from simfire.sim.simulation import Simulation  # noqa: F401
-
-import logging
 
 # from simharness2.logger.aim import AimLoggerCallback
 # from ray.rllib.utils.test_utils import check_learning_achieved
