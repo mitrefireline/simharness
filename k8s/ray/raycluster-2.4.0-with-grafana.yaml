@@ -148,11 +148,11 @@ spec:
               # - mig-2g.10gb
               # - mig-3g.20gb
               # - mig-7g.40gb
-              nvidia.com/2g.10gb: 1
+              nvidia.com/mig-2g.10gb: 1
             requests:
               cpu: "32"
               memory: "60G"
-              nvidia.com/2g.10gb: 1
+              nvidia.com/mig-2g.10gb: 1
           volumeMounts:
             - mountPath: /dev/shm
               name: dshm
