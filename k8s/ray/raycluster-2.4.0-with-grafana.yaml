@@ -20,7 +20,7 @@ spec:
     rayStartParams:
       # The amount of memory (in bytes) to start the object store with. By default, this
       # is capped at 20GB but can be set higher.
-      object-store-memory: "4000000000" # (4 GB)
+      object-store-memory: "18000000000" # (18 GB)
       # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with
       # non-zero CPU requirements) from being scheduled on the head.
       num-cpus: "0"
@@ -66,10 +66,10 @@ spec:
           resources:
             limits:
               cpu: "2"
-              memory: "12G"
+              memory: "30G"
             requests:
               cpu: "2"
-              memory: "12G"
+              memory: "30G"
           volumeMounts:
             - mountPath: /dev/shm
               name: dshm
@@ -78,7 +78,7 @@ spec:
         - name: dshm
           emptyDir:
             medium: Memory
-            sizeLimit: 8Gi
+            sizeLimit: 20Gi
   workerGroupSpecs:
     # the pod replicas in this group typed worker
   - replicas: 1
@@ -94,13 +94,13 @@ spec:
       object-store-memory: "30000000000" # (30 GB)
       # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with
       # non-zero CPU requirements) from being scheduled on the head.
-      # num-cpus: "16"
-      # num-gpus: "1"
+      num-cpus: "32"
+      num-gpus: "1"
       # The host to bind the dashboard server to, either localhost (127.0.0.1) or 0.0.0.0
       # (available from all interfaces). By default, this is localhost.
       dashboard-host: "0.0.0.0"
       # If "true", block forever in the `ray start` command.
-      block: "true"
+      # block: "true"
       # Manually specify the root temporary dir of the Ray process.
       # temp-dir: TODO
       # The port to use to expose Ray metrics through a Prometheus endpoint
@@ -142,7 +142,7 @@ spec:
           resources:
             limits:
               cpu: "32"
-              memory: "60G"
+              memory: "40G"
               # MIG Options: 
               # - mig-1g.5gb
               # - mig-2g.10gb
@@ -151,7 +151,7 @@ spec:
               nvidia.com/mig-2g.10gb: 1
             requests:
               cpu: "32"
-              memory: "60G"
+              memory: "40G"
               nvidia.com/mig-2g.10gb: 1
           volumeMounts:
             - mountPath: /dev/shm
