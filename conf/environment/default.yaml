@@ -3,7 +3,7 @@ defaults:
   - env_config: reactive
   - _self_
 
-# The environment specifier. This can either be a tune-registered env, via 
+# The environment specifier. This can either be a tune-registered env, via
 # `tune.register_env([name], lambda env_ctx: [env object])`, or a string specifier of an
 # RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
 # either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
@@ -11,22 +11,22 @@ defaults:
 env: simharness2.environments.reactive.ReactiveDiscreteHarness
 
 env_task_fn: null
-# If True, try to render the environment on the local worker or on worker 1 (if 
+# If True, try to render the environment on the local worker or on worker 1 (if
 # num_rollout_workers > 0). For vectorized envs, this usually means that only the first
-# sub-environment will be rendered. In order for this to work, your env will have to 
-# implement the `render()` method which either: 
-# a) handles window generation and rendering itself (returning True), or 
+# sub-environment will be rendered. In order for this to work, your env will have to
+# implement the `render()` method which either:
+# a) handles window generation and rendering itself (returning True), or
 # b) returns a numpy uint8 image of shape [height x width x 3 (RGB)]
 render_env: False
 # Whether to clip rewards during Policy’s postprocessing. Options are:
-# - None (default): Clip for Atari only (r=sign(r)). 
-# - True: r=sign(r): Fixed rewards -1.0, 1.0, or 0.0. 
-# - False: Never clip. 
-# - [float value]: Clip at -value and + value. 
+# - None (default): Clip for Atari only (r=sign(r)).
+# - True: r=sign(r): Fixed rewards -1.0, 1.0, or 0.0.
+# - False: Never clip.
+# - [float value]: Clip at -value and + value.
 # - Tuple[value1, value2]: Clip at value1 and value2.
 clip_rewards: null
 # If True, RLlib will learn entirely inside a normalized action space (0.0 centered with
-# small stddev; only affecting Box components). We will unsquash actions (and clip, just 
+# small stddev; only affecting Box components). We will unsquash actions (and clip, just
 # in case) to the bounds of the env's action space before sending actions back to env.
 normalize_actions: True
 disable_env_checking: False

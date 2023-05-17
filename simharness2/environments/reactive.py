@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
-from simfire.sim.simulation import Simulation
 from ray.rllib.env.env_context import EnvContext
 from simfire.utils.log import create_logger
 
@@ -204,7 +203,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 else:
                     nearby_locs.append((i, j))
 
-        for (i, j) in nearby_locs:
+        for i, j in nearby_locs:
             if self.state[self.attributes.index("fire_map")][i][j] == 1:
                 return True
 

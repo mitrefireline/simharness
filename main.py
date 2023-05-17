@@ -10,27 +10,23 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+import logging
 import os
 from importlib import import_module
 
 import gymnasium as gym
 import hydra
+import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
-
-import ray
 from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.utils.typing import ResultDict
 from ray.tune.logger import pretty_print
-from ray.tune.registry import get_trainable_cls
-from ray.tune.registry import register_env
-
-from simfire.sim.simulation import Simulation
-
-import logging
+from ray.tune.registry import get_trainable_cls, register_env
+from simfire.sim.simulation import Simulation  # noqa: F401
 
 # from simharness2.logger.aim import AimLoggerCallback
 # from ray.rllib.utils.test_utils import check_learning_achieved
@@ -69,7 +65,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     return results
 
 
-def train(algo: Algorithm, cfg: DictConfig):
+def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
     """FIXME: Docstring for train."""
     stop_cond = cfg.stop_conditions
     # Run manual training loop and print results after each iteration
@@ -97,7 +93,7 @@ def train(algo: Algorithm, cfg: DictConfig):
     algo.stop()
 
 
-def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
+def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
     """FIXME: Docstring for view."""
     log.info("Collecting gifs of trained model...")
     env_name = cfg.evaluation.evaluation_config.env
@@ -210,11 +206,11 @@ def main(cfg: DictConfig):
 
                 train(algo, cfg)
 
-    elif cfg.cli.mode == "view":
-        if not model_available:
-            raise ValueError("No model is available for viewing.")
+    # elif cfg.cli.mode == "view":
+    #     if not model_available:
+    #         raise ValueError("No model is available for viewing.")
 
-        view(algo, cfg, sim(view_cfg))
+    #     view(algo, cfg, sim(view_cfg))
     else:
         raise ValueError(f"Invalid mode: {cfg.cli.mode}")
 
