@@ -28,7 +28,7 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls
 from ray.tune.registry import register_env
 
-from simfire.sim.simulation import Simulation
+from simfire.sim.simulation import Simulation  # noqa: F401
 
 import logging
 
@@ -69,7 +69,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     return results
 
 
-def train(algo: Algorithm, cfg: DictConfig):
+def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
     """FIXME: Docstring for train."""
     stop_cond = cfg.stop_conditions
     # Run manual training loop and print results after each iteration
@@ -97,7 +97,7 @@ def train(algo: Algorithm, cfg: DictConfig):
     algo.stop()
 
 
-def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
+def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
     """FIXME: Docstring for view."""
     log.info("Collecting gifs of trained model...")
     env_name = cfg.evaluation.evaluation_config.env
