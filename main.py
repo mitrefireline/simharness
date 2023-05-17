@@ -10,30 +10,32 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+import logging
 import os
+from importlib import import_module
 
 import gymnasium as gym
 import hydra
 import ray
+from hydra.core.hydra_config import HydraConfig
+from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.utils.typing import ResultDict
 from ray.tune.logger import pretty_print
-from ray.tune.registry import get_trainable_cls
-from simfire.sim.simulation import Simulation
-from simfire.utils.log import create_logger
-
-import simharness2.environments.env_registry  # noqa
-from simharness2.sim_registry import get_simulation_from_name
+from ray.tune.registry import get_trainable_cls, register_env
+from simfire.sim.simulation import Simulation  # noqa: F401
 
 # from simharness2.logger.aim import AimLoggerCallback
 # from ray.rllib.utils.test_utils import check_learning_achieved
 
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
-log = create_logger(__name__)
+# Register custom resolvers that are used within the config files
+OmegaConf.register_new_resolver("operational_screen_size", lambda x: int((x / 64) * 1920))
+OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
 
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
@@ -63,7 +65,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     return results
 
 
-def train(algo: Algorithm, cfg: DictConfig):
+def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
     """FIXME: Docstring for train."""
     stop_cond = cfg.stop_conditions
     # Run manual training loop and print results after each iteration
@@ -91,7 +93,7 @@ def train(algo: Algorithm, cfg: DictConfig):
     algo.stop()
 
 
-def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
+def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
     """FIXME: Docstring for view."""
     log.info("Collecting gifs of trained model...")
     env_name = cfg.evaluation.evaluation_config.env
@@ -128,12 +130,12 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation):
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     """FIXME: Docstring for main."""
+    # Start the Ray runtime
     ray.init()
-
-    log.info(f"Loading simulation {cfg.environment.env_config.simulation}...")
-    sim, train_cfg, eval_cfg, view_cfg = get_simulation_from_name(
-        cfg.environment.env_config.simulation
-    )
+    # Fetch logger, which is configured in `conf/hydra/job_logging`
+    log = logging.getLogger(__name__)
+    outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
+    log.warning(f"Configuration files for this job can be found at {outdir}")
 
     model_available = False
     if cfg.algo.checkpoint_path:
@@ -145,17 +147,14 @@ def main(cfg: DictConfig):
     if cfg.cli.mode == "train" or cfg.cli.mode == "tune":
         log.info(f"Training model on {cfg.environment.env}")
         if not model_available:
-            # Convert the immutable configs to mutable dictionaries
-            env_settings = OmegaConf.to_container(cfg.environment)
-            eval_settings = OmegaConf.to_container(cfg.evaluation)
-            # Update the value of `sim` from the name of the requested simulation, ie.
-            # `Fire-v0` to the actual simulation object itself, ie. `FireSimulation`.
-            # train_sim, eval_sim = sim(train_cfg), sim(eval_cfg)
-            env_settings["env_config"].update({"simulation": sim(train_cfg)})
-            eval_settings["evaluation_config"]["env_config"].update(
-                {"simulation": sim(eval_cfg)}
-            )
-
+            # Instantiate objects based on the provided settings
+            # TODO: Move this to a utility function (ie `instantiate_from_config`)?
+            # NOTE: We are instantiating to a NEW object on purpose; otherwise a
+            # `TypeError` will be raised when attempting to log the cfg to Aim.
+            env_settings = instantiate(cfg.environment, _convert_="partial")
+            eval_settings = instantiate(cfg.evaluation, _convert_="partial")
+            # TODO: Move (both) NOTE below to docs and remove from code
+            # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
             # Prepare exploration options for the algorithm
             explore = cfg.exploration.explore
             exploration_cfg = OmegaConf.to_container(cfg.exploration.exploration_config)
@@ -178,6 +177,12 @@ def main(cfg: DictConfig):
                     }
                 }
             )
+            # Register the environment with Ray
+            # TODO: Move this to a function (ie `register_env`)?
+            # NOTE: Assume that same environment cls is used for training and evaluation.
+            env_module, env_cls = cfg.environment.env.rsplit(".", 1)
+            env_cls = getattr(import_module(env_module), env_cls)
+            register_env(cfg.environment.env, lambda config: env_cls(config))
 
             # Build the `AlgorithmConfig` object using the provided settings.
             algo_cfg = (
@@ -201,11 +206,11 @@ def main(cfg: DictConfig):
 
                 train(algo, cfg)
 
-    elif cfg.cli.mode == "view":
-        if not model_available:
-            raise ValueError("No model is available for viewing.")
+    # elif cfg.cli.mode == "view":
+    #     if not model_available:
+    #         raise ValueError("No model is available for viewing.")
 
-        view(algo, cfg, sim(view_cfg))
+    #     view(algo, cfg, sim(view_cfg))
     else:
         raise ValueError(f"Invalid mode: {cfg.cli.mode}")
 

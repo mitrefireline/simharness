@@ -3,23 +3,23 @@ num_gpus: 0
 # Number of CPUs to allocate per worker.
 num_cpus_per_worker: 1
 # Number of GPUs to allocate per worker. This can be fractional. This is usually needed
-# only if your env itself requires a GPU (i.e., it is a GPU-intensive video game), or 
+# only if your env itself requires a GPU (i.e., it is a GPU-intensive video game), or
 # model inference is unusually expensive.
 num_gpus_per_worker: 0
 # Number of CPUs to allocate for the algorithm. Note: this only takes effect when running
 # in Tune. Otherwise, the algorithm runs in the main program (driver).
 num_cpus_for_local_worker: 1
 
-# The strategy for the placement group factory returned by 
+# The strategy for the placement group factory returned by
 # `Algorithm.default_resource_request()`. A PlacementGroup defines, which devices
 # (resources) should always be co-located on the same node. For example, an Algorithm
 # with 2 rollout workers, running with num_gpus=1 will request a placement group with the
-# bundles: [{“gpu”: 1, “cpu”: 1}, {“cpu”: 1}, {“cpu”: 1}], where the first bundle is for 
-# the driver and the other 2 bundles are for the two workers. These bundles can now be 
-# “placed” on the same or different nodes depending on the value of `placement_strategy`: 
-# - “PACK”: Packs bundles into as few nodes as possible. 
-# - “SPREAD”: Places bundles across distinct nodes as even as possible. 
+# bundles: [{“gpu”: 1, “cpu”: 1}, {“cpu”: 1}, {“cpu”: 1}], where the first bundle is for
+# the driver and the other 2 bundles are for the two workers. These bundles can now be
+# “placed” on the same or different nodes depending on the value of `placement_strategy`:
+# - “PACK”: Packs bundles into as few nodes as possible.
+# - “SPREAD”: Places bundles across distinct nodes as even as possible.
 # - “STRICT_PACK”: Packs bundles into one node. The group is not allowed to span multiple
-#    nodes. 
+#    nodes.
 # “STRICT_SPREAD”: Packs bundles across distinct nodes.
 placement_strategy: "PACK"
