@@ -8,7 +8,7 @@ defaults:
 # RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
 # either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
 # qualified classpath to an Env class, ie. "ray.rllib.examples.env.random_env.RandomEnv".
-env: ReactiveHarness-v1
+env: simharness2.environments.reactive.ReactiveDiscreteHarness
 
 env_task_fn: null
 # If True, try to render the environment on the local worker or on worker 1 (if

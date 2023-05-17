@@ -1,43 +1,47 @@
 area:
-  screen_size: 100
+  screen_size: 128  # ${simulation.screen_size}
   pixel_scale: 12
 
 display:
-  fire_size: 1
-  control_line_size: 1
-  agent_size: 1
+  fire_size: 2
+  control_line_size: 2
+  agent_size: 4
+  rescale_size: 256 
 
 simulation:
   update_rate: 1
   runtime: 24hr
-  headless: True
+  headless: true
   record: false
   save_data: false
   draw_spread_graph: false
   data_type: "npy"
-  save_path: "./gifs/"
+  # NOTE: Below path isn't used to save gifs; we specify `save_path` via `save_gif(path)`
+  save_path: ${oc.env:HOME}/.simfire/simulation_outputs"
 
 mitigation:
   ros_attenuation: False
 
 operational:
-  seed: 3456
-  latitude: 39.67
-  longitude: 119.8
-  height: 1920
-  width: 1920
+  seed: 1
+  latitude: 33.032762267449314
+  longitude: -116.66412470409439
+  height: ${operational_screen_size:${..area.screen_size}}
+  width: ${operational_screen_size:${..area.screen_size}}
   resolution: 30
+  path: ${cli.data_dir}/data
+  year: 2020  # ${simulation.operational.year}
 
 terrain:
   topography:
-    type: functional
+    type: operational  # ${simulation.topography.type}
     functional:
       function: perlin
       perlin:
         octaves: 3
         persistence: 0.7
         lacunarity: 2.0
-        seed: 444
+        seed: 827
         range_min: 100.0
         range_max: 300.0
       gaussian:
@@ -47,27 +51,30 @@ terrain:
         sigma_x: 50
         sigma_y: 50
   fuel:
-    type: functional
+    type: operational  # ${simulation.fuel.type}
     functional:
       function: chaparral
       chaparral:
         seed: 1113
 
-
 fire:
   fire_initial_position:
-    type: random
+    type: static  # ${simulation.fire_initial_position.type}
     static:
-      position: (50,50)
-    random:
-      seed: 3456
+      position: 
+        _target_: builtins.tuple
+        # NOTE: This will initialize the fire at the center of the screen
+        _args_: [[
+          "${calculate_half:${simulation.train.area.screen_size}}", 
+          "${calculate_half:${simulation.train.area.screen_size}}"
+        ]]
   max_fire_duration: 4
 
 environment:
   moisture: 0.03
 
 wind:
-  function: simple
+  function: simple  # ${simulation.wind.function}
   cfd:
     time_to_train: 1000
     iterations: 1

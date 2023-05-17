@@ -8,4 +8,4 @@ defaults:
 # RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
 # either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
 # qualified classpath to an Env class, ie. "ray.rllib.examples.env.random_env.RandomEnv".
-env: ReactiveHarness-v1
+env: ${environment.env}
