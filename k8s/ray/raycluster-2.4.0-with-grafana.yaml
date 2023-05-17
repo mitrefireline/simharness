@@ -91,7 +91,7 @@ spec:
     rayStartParams:
       # The amount of memory (in bytes) to start the object store with. By default, this
       # is capped at 20GB but can be set higher.
-      object-store-memory: "60000000000" # (60 GB)
+      object-store-memory: "30000000000" # (30 GB)
       # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with
       # non-zero CPU requirements) from being scheduled on the head.
       # num-cpus: "16"
@@ -167,7 +167,7 @@ spec:
         - name: dshm
           emptyDir:
             medium: Memory
-            sizeLimit: 70Gi
+            sizeLimit: 40Gi
         - name: aim-runs
           persistentVolumeClaim:
             claimName: aim-runs-claim
