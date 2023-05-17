@@ -210,11 +210,11 @@ def main(cfg: DictConfig):
 
                 train(algo, cfg)
 
-    elif cfg.cli.mode == "view":
-        if not model_available:
-            raise ValueError("No model is available for viewing.")
+    # elif cfg.cli.mode == "view":
+    #     if not model_available:
+    #         raise ValueError("No model is available for viewing.")
 
-        view(algo, cfg, sim(view_cfg))
+    #     view(algo, cfg, sim(view_cfg))
     else:
         raise ValueError(f"Invalid mode: {cfg.cli.mode}")
 
