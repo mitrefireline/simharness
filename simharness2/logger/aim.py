@@ -139,7 +139,7 @@ class AimLoggerCallback(LoggerCallback):
         tmp_result = result.copy()
 
         step = result.get(TIMESTEPS_TOTAL, None) or result[TRAINING_ITERATION]
-
+        episode = result.get(EPISODES_TOTAL, None)
         for k in ["config", "pid", "timestamp", TIME_TOTAL_S, TRAINING_ITERATION]:
             tmp_result.pop(k, None)  # not useful to log these
 
