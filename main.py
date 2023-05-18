@@ -30,7 +30,6 @@ from simfire.sim.simulation import Simulation  # noqa: F401
 
 from simharness2.logger.aim import AimLoggerCallback
 
-
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
 OmegaConf.register_new_resolver("operational_screen_size", lambda x: int((x / 64) * 1920))
