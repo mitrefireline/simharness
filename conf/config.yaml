@@ -11,6 +11,14 @@ defaults:
   - hydra: group_by_day-time
   - _self_
 
+# Specify configuration pass to the `AimLoggerCallback`
+aim:
+  run_hash: null 
+  repo: ${cli.data_dir}/aim
+  experiment: debug
+  system_tracking_interval: null
+  log_system_params: true
+  capture_terminal_logs: true
 cli:
   # Specify the run mode. Supported options: train, tune, view
   mode: ??? # Force command-line override
