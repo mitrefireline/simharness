@@ -66,13 +66,13 @@ class AimLoggerCallback(LoggerCallback):
         cfg: Optional[DictConfig] = None,
         **aim_run_kwargs,
     ):
-        """
-        See help(AimLoggerCallback) for more information about parameters.
-        """
-        assert Run is not None, (
-            "aim must be installed!. You can install aim with"
-            " the command: `pip install aim`."
-        )
+        """See help(AimLoggerCallback) for more information about parameters."""
+        if Run is None:
+            raise RuntimeError(
+                "aim must be installed!. You can install aim with"
+                " the command: `pip install aim`."
+            )
+
         self._repo_path = repo
         if not (bool(metrics) or metrics is None):
             raise ValueError(
