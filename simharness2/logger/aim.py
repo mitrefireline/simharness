@@ -3,9 +3,17 @@ import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import numpy as np
+from omegaconf import DictConfig
 from ray.tune.logger.logger import LoggerCallback
-from ray.tune.result import TIME_TOTAL_S, TIMESTEPS_TOTAL, TRAINING_ITERATION
+from ray.tune.result import (
+    EPISODES_TOTAL,
+    TIME_TOTAL_S,
+    TIMESTEPS_TOTAL,
+    TRAINING_ITERATION,
+)
 from ray.tune.utils import flatten_dict
+from hydra.utils import instantiate
+
 from ray.util.annotations import PublicAPI
 
 if TYPE_CHECKING:
