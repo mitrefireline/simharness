@@ -166,7 +166,7 @@ class AimLoggerCallback(LoggerCallback):
                     value=value,
                     name=full_attr,
                     epoch=epoch,
-                    step=step,
+                    step=episode or step,
                     context=context,
                 )
             elif (isinstance(value, (list, tuple, set)) and len(value) > 0) or (
