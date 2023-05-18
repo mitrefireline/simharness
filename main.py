@@ -28,8 +28,7 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from simfire.sim.simulation import Simulation  # noqa: F401
 
-# from simharness2.logger.aim import AimLoggerCallback
-# from ray.rllib.utils.test_utils import check_learning_achieved
+from simharness2.logger.aim import AimLoggerCallback
 
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
@@ -40,6 +39,7 @@ OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     """FIXME: Docstring for train_with_tune."""
+    log_cfg = cfg.aim.log_hydra_config
     # automated run with Tune and grid search and TensorBoard
     tuner = tune.Tuner(
         cfg.algo.name,
@@ -57,6 +57,8 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
             #     )
             # ],
             stop={**cfg.stop_conditions},
+            callbacks=[AimLoggerCallback(cfg=cfg if log_cfg else None, **cfg.aim)],
+            failure_config=None,
             sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
             checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
         ),
