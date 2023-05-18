@@ -98,7 +98,6 @@ class AimLoggerCallback(LoggerCallback):
         experiment_dir = trial.local_experiment_path
         run = Run(
             repo=self._repo_path or experiment_dir,
-            experiment=self._experiment_name or trial.experiment_dir_name,
             **self._aim_run_kwargs,
         )
         # Attach a few useful trial properties
