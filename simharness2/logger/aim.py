@@ -63,24 +63,26 @@ class AimLoggerCallback(LoggerCallback):
     def __init__(
         self,
         repo: Optional[Union[str, "Repo"]] = None,
-        experiment_name: Optional[str] = None,
         metrics: Optional[List[str]] = None,
+        cfg: Optional[DictConfig] = None,
         **aim_run_kwargs,
     ):
-        """See help(AimLoggerCallback) for more information about parameters."""
-        if Run is None:
-            raise RuntimeError(
-                "aim must be installed!. You can install aim with"
-                " the command: `pip install aim`."
-            )
+        """
+        See help(AimLoggerCallback) for more information about parameters.
+        """
+        assert Run is not None, (
+            "aim must be installed!. You can install aim with"
+            " the command: `pip install aim`."
+        )
         self._repo_path = repo
-        self._experiment_name = experiment_name
         if not (bool(metrics) or metrics is None):
             raise ValueError(
                 "`metrics` must either contain at least one metric name, or be None, "
                 "in which case all reported metrics will be logged to the aim repo."
             )
         self._metrics = metrics
+        # NOTE: I think a shallow copy is okay here; better to use a copy for safety?
+        self._cfg = cfg.copy() if cfg else None
         self._aim_run_kwargs = aim_run_kwargs
         self._trial_to_run: Dict["Trial", Run] = {}
 
