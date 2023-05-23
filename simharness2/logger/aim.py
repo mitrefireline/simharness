@@ -81,7 +81,8 @@ class AimLoggerCallback(LoggerCallback):
             )
         self._metrics = metrics
         # NOTE: I think a shallow copy is okay here; better to use a copy for safety?
-        self._cfg = cfg.copy() if cfg else None
+        log_hydra_cfg = aim_run_kwargs.pop("log_hydra_config", None)
+        self._cfg = cfg.copy() if log_hydra_cfg else None
         self._aim_run_kwargs = aim_run_kwargs
         self._trial_to_run: Dict["Trial", Run] = {}
 

@@ -38,7 +38,6 @@ OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     """FIXME: Docstring for train_with_tune."""
-    log_cfg = cfg.aim.log_hydra_config
     # automated run with Tune and grid search and TensorBoard
     tuner = tune.Tuner(
         cfg.algo.name,
@@ -56,7 +55,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
             #     )
             # ],
             stop={**cfg.stop_conditions},
-            callbacks=[AimLoggerCallback(cfg=cfg if log_cfg else None, **cfg.aim)],
+            callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
             failure_config=None,
             sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
             checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
@@ -75,7 +74,7 @@ def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
         result = algo.train()
         log.info(pretty_print(result))
 
-        if i % cfg.checkpoint.frequency == 0:
+        if i % cfg.checkpoint.checkpoint_frequency == 0:
             ckpt_path = algo.save()
             log.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
 
@@ -205,7 +204,7 @@ def main(cfg: DictConfig):
                 algo = algo_cfg.build()
                 model_available = True
 
-                train(algo, cfg)
+                train(algo, cfg, log)
 
     # elif cfg.cli.mode == "view":
     #     if not model_available:
