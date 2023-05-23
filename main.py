@@ -30,6 +30,7 @@ from ray.tune.registry import get_trainable_cls
 from ray.tune.registry import register_env
 
 from simharness2.logger.aim import AimLoggerCallback
+from simharness2.utils.evaluation_fires import get_default_operational_fires
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
@@ -137,6 +138,9 @@ def main(cfg: DictConfig):
     log = logging.getLogger(__name__)
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
     log.warning(f"Configuration files for this job can be found at {outdir}")
+
+    # assume for now that operational fires are the default
+    operational_fires = get_default_operational_fires(cfg)
 
     model_available = False
     if cfg.algo.checkpoint_path:
