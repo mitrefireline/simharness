@@ -31,6 +31,7 @@ from ray.tune.registry import register_env
 
 from simharness2.logger.aim import AimLoggerCallback
 from simharness2.utils.evaluation_fires import get_default_operational_fires
+from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
@@ -158,6 +159,10 @@ def main(cfg: DictConfig):
             # `TypeError` will be raised when attempting to log the cfg to Aim.
             env_settings = instantiate(cfg.environment, _convert_="partial")
             eval_settings = instantiate(cfg.evaluation, _convert_="partial")
+            # Inject operational fires into the evaluation settings
+            eval_settings["evaluation_config"]["env_config"].update(
+                {"scenarios": operational_fires}
+            )
             # TODO: Move (both) NOTE below to docs and remove from code
             # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
             # Prepare exploration options for the algorithm
@@ -201,6 +206,7 @@ def main(cfg: DictConfig):
                 .exploration(explore=explore, exploration_config=exploration_cfg)
                 .resources(**cfg.resources)
                 .debugging(**debug_settings)
+                .callbacks(SetEnvSeedsCallback)
             )
 
             if cfg.cli.mode == "tune":

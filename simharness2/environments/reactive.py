@@ -99,6 +99,19 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.is_remote = config.remote
         # Total number of (remote) workers in the set. 0 if only a local worker exists.
         self.num_workers = config.num_workers
+
+        # Indicates whether the environment was created for evaluation purposes.
+        self._is_eval_env = config.get("is_evaluation_env", False)
+        eval_duration = config.get("evaluation_duration")
+        if eval_duration and not (eval_duration / self.num_workers).is_integer():
+            raise ValueError(
+                f"The `evaluation_duration` ({eval_duration}) must be evenly divisible "
+                f"by the `num_workers` ({self.num_workers}.)"
+            )
+        # Indicates how many rounds of evaluation will be run using this environment.
+        self._total_eval_rounds = eval_duration / self.num_workers if eval_duration else 0
+        self._current_eval_round = 1
+
         # Set the max number of steps that the environment can take before truncation
         # self.spec.max_episode_steps = 1000
         self.spec = EnvSpec(
