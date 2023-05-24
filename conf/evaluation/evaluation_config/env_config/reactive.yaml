@@ -16,3 +16,5 @@ deterministic: True
 # Would we want to randomize fire_initial_position during evaluation? Probably NOT.
 # sim_seeds_to_randomize: [fire_initial_position]
 # sim_seeds_to_randomize: [fire_start_location, elevation, fuel, wind_speed, wind_direction]
+is_evaluation_env: True
+evaluation_duration: ${evaluation.evaluation_duration}
