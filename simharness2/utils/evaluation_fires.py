@@ -115,11 +115,12 @@ def get_default_operational_fires(
         fire_positions = rng.permutation(fire_positions)
         agent_positions = rng.permutation(agent_positions)
         for idx in range(len(fire_positions)):
-            op_fires[num_op_fires] = (
+            op_fires[num_op_fires] = [
                 op_loc,
+                # FIXME do we want them to be tuples or list? (tuples for now)
                 tuple(fire_positions[idx]),
-                tuple(agent_positions[idx]),
-            )
+                list(agent_positions[idx]),
+            ]
             num_op_fires += 1
 
     return op_fires
