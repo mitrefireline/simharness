@@ -59,6 +59,7 @@ from simfire.sim.simulation import FireSimulation
 
 def get_default_operational_fires(
     cfg: DictConfig,
+    seed: int = None,
 ) -> Tuple[Tuple[float, float], Tuple[int, int], Tuple[int, int]]:
     """FIXME: Docstring for get_default_operational_fires."""
     # FIXME hard-coded values for now
@@ -67,7 +68,7 @@ def get_default_operational_fires(
     num_fire_positions = 10
     num_agent_positions = 10
     # FIXME mine as well just use the seed from the config?
-    seed = cfg.debugging.seed or 1
+    seed = seed or cfg.debugging.seed
     screen_size = cfg.simulation.train.area.screen_size
     output_shape = (screen_size, screen_size)
     # total_fires = cfg.evaluation.get("evaluation_duration", 0)
