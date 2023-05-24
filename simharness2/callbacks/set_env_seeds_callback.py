@@ -99,12 +99,39 @@ class SetEnvSeedsCallback(DefaultCallbacks):
                 `on_episode_start` event will be triggered.
             kwargs: Forward compatibility placeholder.
         """
-        log = logging.getLogger(__name__)
         in_evaluation = worker.policy_config["in_evaluation"]
         if in_evaluation:
             env = base_env.vector_env.envs[env_index]
-            log.warning("beginning ON_EPISODE_CREATED callback...")
-            log.warning(f"Current eval round: {env._current_eval_round}")
+            # log.warning("beginning ON_EPISODE_CREATED callback...")
+            # log.warning(f"Current eval round: {env._current_eval_round}")
+
+            # Retrieve data that represents the current operational fire scenario
+            worker_idx = worker.env_context.worker_index
+            if worker_idx == 0:
+                worker_idx += 1
+            fire_idx = worker_idx * env._current_eval_round
+            # log.warning(f"fire_idx: {fire_idx}")
+            (lat, lon), fire_pos, agent_pos = env.fire_scenarios[fire_idx - 1]
+            # Retrieve the data dictionary used to create the current simulation
+            sim_data = env.simulation.config.yaml_data
+            # Update the simulation parameters to reflect the current fire scenario
+            # NOTE: If seed is specified, setting lat,lon below will have NO EFFECT!
+            sim_data["operational"]["seed"] = None
+            sim_data["operational"]["latitude"] = lat
+            sim_data["operational"]["longitude"] = lon
+            sim_data["fire"]["fire_initial_position"]["static"]["position"] = fire_pos
+            # NOTE: We should be able to simply update parameters, and have the updates
+            # reflected after a call to `reset()`. However, this is not the case with
+            # the current version of simfire, so we need to manually create a new obj.
+            # Instantiate new simulation object with updated parameters
+            del base_env.vector_env.envs[env_index].simulation
+            base_env.vector_env.envs[env_index].simulation = FireSimulation(
+                Config(config_dict=sim_data)
+            )
+            # Update the environment to use the specified agent position
+            base_env.vector_env.envs[env_index].initial_agent_pos = agent_pos
+            # Set the agent_pos attribute, just in case environment is not reset.
+            base_env.vector_env.envs[env_index].agent_pos = agent_pos
 
         # TODO find out what attribute of `episode` gives the iteration
         # if in_evaluation and log10(episode_iter).is_integer() and log10(episode_iter) > 0:
@@ -159,6 +186,17 @@ class SetEnvSeedsCallback(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
+        log = logging.getLogger(__name__)
+        in_evaluation = worker.policy_config["in_evaluation"]
+        if in_evaluation:
+            env = base_env.vector_env.envs[env_index]
+            # log.warning("beginning ON_EPISODE_CREATED callback...")
+            log.warning(f"Starting eval round: {env._current_eval_round}")
+            log.warning(f"Worker index: {worker.env_context.worker_index}")
+            log.warning(f"Fire center: {env.simulation.config.lat_long_box.center}")
+            fire_pos = env.simulation.config.fire.fire_initial_position
+            log.warning(f"Fire position: {fire_pos}")
+            log.warning(f"Agent position: {env.agent_pos}")
         # NOTE: To check if the `RolloutWorker`` is in evaluation mode, access
         # `worker.policy_config["in_evaluation"]`
         # NOTE: The underlying sub-environment objects can be retrieved by calling
@@ -216,8 +254,8 @@ class SetEnvSeedsCallback(DefaultCallbacks):
         in_evaluation = worker.policy_config["in_evaluation"]
         if in_evaluation:
             env = base_env.vector_env.envs[env_index]
-            log.warning("beginning ON_EPISODE_END callback...")
-            log.warning(f"Current eval round: {env._current_eval_round}")
+            # log.warning("beginning ON_EPISODE_END callback...")
+            # log.warning(f"Current eval round: {env._current_eval_round}")
             # Reset the number of eval rounds
             if env._current_eval_round == env._total_eval_rounds:
                 base_env.vector_env.envs[env_index]._current_eval_round = 1
@@ -312,13 +350,13 @@ class SetEnvSeedsCallback(DefaultCallbacks):
         # Add gif paths to
 
 
-def _prepare_env_for_rendering(base_env: BaseEnv, env_ctx: EnvContext):
-    # env_index = env_ctx.vector_index
-    worker_idx = env_ctx.worker_index
-    # if worker_idx > 0:
-    #     # TODO: once below works, update simulation based on the worker, vector idxs
-    #     # if isinstance(base_env, FireSimulation):
-    #     base_env.simulation = FireSimulation(Config(_EVAL_SIM_CONFIG_MAP[worker_idx]))
+# def _prepare_env_for_rendering(base_env: BaseEnv, env_ctx: EnvContext):
+#     # env_index = env_ctx.vector_index
+#     worker_idx = env_ctx.worker_index
+# if worker_idx > 0:
+#     # TODO: once below works, update simulation based on the worker, vector idxs
+#     # if isinstance(base_env, FireSimulation):
+#     base_env.simulation = FireSimulation(Config(_EVAL_SIM_CONFIG_MAP[worker_idx]))
 
 
 # def _prepare_env_after_rendering_and_save_gif(base_env: BaseEnv, env_ctx: EnvContext):

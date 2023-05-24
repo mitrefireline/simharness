@@ -103,15 +103,23 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Indicates whether the environment was created for evaluation purposes.
         self._is_eval_env = config.get("is_evaluation_env", False)
         eval_duration = config.get("evaluation_duration")
-        if eval_duration and not (eval_duration / self.num_workers).is_integer():
-            raise ValueError(
-                f"The `evaluation_duration` ({eval_duration}) must be evenly divisible "
-                f"by the `num_workers` ({self.num_workers}.)"
+        if self.num_workers != 0:
+            if eval_duration and not (eval_duration / self.num_workers).is_integer():
+                raise ValueError(
+                    f"The `evaluation_duration` ({eval_duration}) must be evenly divisible "
+                    f"by the `num_workers` ({self.num_workers}.)"
+                )
+            # Indicates how many rounds of evaluation will be run using this environment.
+            self._total_eval_rounds = (
+                eval_duration / self.num_workers if eval_duration else 0
             )
-        # Indicates how many rounds of evaluation will be run using this environment.
-        self._total_eval_rounds = eval_duration / self.num_workers if eval_duration else 0
+        else:
+            # Eval will be run in the algorithm process, so no need to divide.
+            self._total_eval_rounds = eval_duration if eval_duration else 0
+
         self._current_eval_round = 1
 
+        self.fire_scenarios = config.get("scenarios", None)
         # Set the max number of steps that the environment can take before truncation
         # self.spec.max_episode_steps = 1000
         self.spec = EnvSpec(
