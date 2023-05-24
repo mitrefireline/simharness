@@ -111,6 +111,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._total_eval_rounds = eval_duration / self.num_workers if eval_duration else 0
         self._current_eval_round = 1
 
+        self.fire_scenarios = config.get("scenarios", None)
         # Set the max number of steps that the environment can take before truncation
         # self.spec.max_episode_steps = 1000
         self.spec = EnvSpec(

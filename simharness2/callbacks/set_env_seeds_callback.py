@@ -105,6 +105,12 @@ class SetEnvSeedsCallback(DefaultCallbacks):
             env = base_env.vector_env.envs[env_index]
             log.warning("beginning ON_EPISODE_CREATED callback...")
             log.warning(f"Current eval round: {env._current_eval_round}")
+            # Retrieve data that represents the current operational fire scenario
+            fire_idx = worker.env_context.worker_index * env._current_eval_round
+            # log.warning(f"fire_idx: {fire_idx}")
+            # FIXME create `fire_scenarios` inside of harness class
+            fire_scenario = env.fire_scenarios[fire_idx - 1]
+            log.warning(f"fire_scenario: {fire_scenario}")
 
         # TODO find out what attribute of `episode` gives the iteration
         # if in_evaluation and log10(episode_iter).is_integer() and log10(episode_iter) > 0:
