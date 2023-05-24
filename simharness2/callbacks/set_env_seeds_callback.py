@@ -252,8 +252,8 @@ class SetEnvSeedsCallback(DefaultCallbacks):
         in_evaluation = worker.policy_config["in_evaluation"]
         if in_evaluation:
             env = base_env.vector_env.envs[env_index]
-            log.warning("beginning ON_EPISODE_END callback...")
-            log.warning(f"Current eval round: {env._current_eval_round}")
+            # log.warning("beginning ON_EPISODE_END callback...")
+            # log.warning(f"Current eval round: {env._current_eval_round}")
             # Reset the number of eval rounds
             if env._current_eval_round == env._total_eval_rounds:
                 base_env.vector_env.envs[env_index]._current_eval_round = 1
@@ -348,13 +348,13 @@ class SetEnvSeedsCallback(DefaultCallbacks):
         # Add gif paths to
 
 
-def _prepare_env_for_rendering(base_env: BaseEnv, env_ctx: EnvContext):
-    # env_index = env_ctx.vector_index
-    worker_idx = env_ctx.worker_index
-    # if worker_idx > 0:
-    #     # TODO: once below works, update simulation based on the worker, vector idxs
-    #     # if isinstance(base_env, FireSimulation):
-    #     base_env.simulation = FireSimulation(Config(_EVAL_SIM_CONFIG_MAP[worker_idx]))
+# def _prepare_env_for_rendering(base_env: BaseEnv, env_ctx: EnvContext):
+#     # env_index = env_ctx.vector_index
+#     worker_idx = env_ctx.worker_index
+# if worker_idx > 0:
+#     # TODO: once below works, update simulation based on the worker, vector idxs
+#     # if isinstance(base_env, FireSimulation):
+#     base_env.simulation = FireSimulation(Config(_EVAL_SIM_CONFIG_MAP[worker_idx]))
 
 
 # def _prepare_env_after_rendering_and_save_gif(base_env: BaseEnv, env_ctx: EnvContext):
