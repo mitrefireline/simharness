@@ -19,9 +19,10 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
-from simfire.sim.simulation import FireSimulation
+from ray.rllib.env.env_context import EnvContext
 
 from simharness2.rewards.base_reward import BaseReward
+from simfire.sim.simulation import FireSimulation
 from simfire.utils.log import create_logger
 
 # TODO(afennelly) fix import path (relative to root)
@@ -80,21 +81,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     - TODO(afennelly) add more details about the episode termination.
     """
 
-    def __init__(
-        self,
-        sim: FireSimulation,
-        movements: List[str],
-        interactions: List[str],
-        attributes: List[str],
-        normalized_attributes: List[str],
-        agent_speed: int,
-        reward_cls: BaseReward = None,
-        deterministic: bool = False,
-        initial_agent_pos: List[int] = [15, 15],
-        randomize_initial_agent_pos: bool = False,
-        benchmark_sim: FireSimulation = None,
-    ) -> None:
+    def __init__(self, config: EnvContext) -> None:
         """See RLHarness (parent/base class)."""
+        # NOTE: We don't set a default value in `config.get` for required arguments.
         # Set the max number of steps that the environment can take before truncation
         # self.spec.max_episode_steps = 1000
         self.spec = EnvSpec(
@@ -106,25 +95,27 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.timesteps = 0
 
         # If provided, the object is used to perform reward calculation.
-        self.reward_cls = reward_cls
+        self.reward_cls = config.get("reward_cls")
 
         # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
-        self.agent_speed = agent_speed
+        self.agent_speed = config.get("agent_speed")
         self.agent_pos: List[int]
-        self.initial_agent_pos = initial_agent_pos
-        self.randomize_initial_agent_pos = randomize_initial_agent_pos
-
+        # FIXME: Default value (ie. [15, 15]) should be set in the config file.
+        self.initial_agent_pos = config.get("initial_agent_pos", [15, 15])
+        self.randomize_initial_agent_pos = config.get(
+            "randomize_initial_agent_pos", False
+        )
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
         super().__init__(
-            sim,
-            movements,
-            interactions,
-            attributes,
-            normalized_attributes,
-            deterministic,
-            benchmark_sim=benchmark_sim,
+            config.get("sim"),
+            config.get("movements"),
+            config.get("interactions"),
+            config.get("attributes"),
+            config.get("normalized_attributes"),
+            config.get("deterministic"),
+            benchmark_sim=config.get("benchmark_sim"),
         )
 
     def step(
@@ -305,7 +296,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 else:
                     nearby_locs.append((i, j))
 
-        for (i, j) in nearby_locs:
+        for i, j in nearby_locs:
             if self.state[self.attributes.index("fire_map")][i][j] == 1:
                 return True
 
@@ -353,19 +344,15 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/d70358ec960af5cfbf1855ef78218475cc569247/simfire/sim/simulation.py#L672-718
         # TODO(afennelly) Enable selecting attributes to randomize from config file.
         # FIXME this needs to not be hard-coded and moved outside of method logic.
-        if not self.deterministic:
-            # Set seeds for randomization
-            fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
-            # elevation_seed = self.sim.get_seeds()["elevation"]
-            seed_dict = {
-                "fire_initial_position": fire_init_seed + 1,
-                # "elevation": elevation_seed + 1,
-            }
-            self.sim.set_seeds(seed_dict)
-            # FIXME quick fix to avoid errors if benchmark_sim is not used (ie. None)
-            if self.benchmark_sim:
-                # set seeds of benchmark simulation
-                self.benchmark_sim.set_seeds(seed_dict)
+        # if not self.deterministic:
+        #     # Set seeds for randomization
+        #     fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
+        #     elevation_seed = self.simulation.get_seeds()["elevation"]
+        #     seed_dict = {
+        #         "fire_initial_position": fire_init_seed + 1,
+        #         "elevation": elevation_seed + 1,
+        #     }
+        #     self.simulation.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
@@ -474,20 +461,7 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
     locations for reproducability.
     """
 
-    def __init__(
-        self,
-        sim: FireSimulation,
-        movements: List[str],
-        interactions: List[str],
-        attributes: List[str],
-        normalized_attributes: List[str],
-        agent_speed: int,
-        deterministic: bool = False,
-        initial_agent_pos: List[int] = [15, 15],
-        randomize_initial_agent_pos: bool = False,
-        sims_per_growth: int = 1,
-        growth_per_step: int = 1,
-    ) -> None:
+    def __init__(self, config: EnvContext) -> None:
         """Initialize the harness.
 
         This checks that the fire initial position is static
@@ -501,17 +475,7 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
         TODO (afennelly) Update docstring.
 
         """
-        super().__init__(
-            sim,
-            movements,
-            interactions,
-            attributes,
-            normalized_attributes,
-            agent_speed,
-            deterministic,
-            initial_agent_pos,
-            randomize_initial_agent_pos,
-        )
+        super().__init__(config)
         # Verify that a static initial position is used
         fire_init_pos_type = self.sim.config.yaml_data["fire"]["fire_initial_position"][
             "type"
@@ -522,9 +486,9 @@ class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
                 f"but the supplied value is {fire_init_pos_type}"
             )
         # Number of sims to run before each growth step
-        self.sims_per_growth = sims_per_growth
+        self.sims_per_growth = config.get("sims_per_growth", 1)
         # Number of pixels to allow starting region to grow per growths step
-        self.growth_per_step = growth_per_step
+        self.growth_per_step = config.get("growth_per_step", 1)
         # Number of times the simulation has run (or been reset)
         self.num_sims = 0
 
@@ -580,34 +544,9 @@ class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
     option for no movement and no interaction.
     """
 
-    def __init__(
-        self,
-        sim: FireSimulation,
-        movements: List[str],
-        interactions: List[str],
-        attributes: List[str],
-        normalized_attributes: List[str],
-        agent_speed: int,
-        reward_cls: BaseReward = None,
-        deterministic: bool = False,
-        initial_agent_pos: List[int] = [15, 15],
-        randomize_initial_agent_pos: bool = False,
-        benchmark_sim: FireSimulation = None,
-    ) -> None:
+    def __init__(self, config: EnvContext) -> None:
         """See ReactiveHarness (parent/base class)."""
-        super().__init__(
-            sim,
-            movements,
-            interactions,
-            attributes,
-            normalized_attributes,
-            agent_speed,
-            reward_cls,
-            deterministic,
-            initial_agent_pos,
-            randomize_initial_agent_pos,
-            benchmark_sim,
-        )
+        super().__init__(config)
         self.spec = EnvSpec(
             id="ReactiveHarness-v1",
             entry_point="simharness2.environments.reactive:ReactiveDiscreteHarness",

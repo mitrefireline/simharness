@@ -1,32 +1,119 @@
 # Developing
 
+## Local
+
+TODO add details/info/steps/etc. for `developing locally`.
+
+## Ray on Kubernetes (via MITRE's AI Platform)
+
+Deployments of Ray on Kubernetes follow the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+
+### Deploying the KubeRay operator
+
+The `KubeRay` operator is a [custom controller](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#custom-controllers) that manages Ray pods in order to match the `RayCluster`'s spec. This step must be performed by a user who has **admin** access to the K8S cluster. To confirm that the operator is running in your default namespace, run:
+
+```sh
+kubectl get pods --selector=app.kubernetes.io/component=kuberay-operator
+# NAME                                READY   STATUS    RESTARTS      AGE
+# kuberay-operator-6557df7df7-vmfsn   2/2     Running   1 (24d ago)   24d
+```
+
+### Deploying a Ray Cluster
+
+Once the `KubeRay` operator is running, we are ready to deploy a Ray cluster. To do so, we create a [custom resource](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) called a `RayCluster` describing the desired state of a Ray cluster. The [k8s/ray](simharness2/k8s/ray) directory contains configuration files that can be used to deploy a Ray cluster.
+
+#### Using Prometheus and Grafana
+
+Ray supports [Prometheus](https://docs.ray.io/en/latest/cluster/running-applications/monitoring-and-observability.html#prometheus) for emitting and recording time-series metrics. Additionally, Ray dashboard integrates with [Grafana](https://docs.ray.io/en/latest/cluster/running-applications/monitoring-and-observability.html#grafana) to show visualizations of time-series metrics. See [metrics](https://docs.ray.io/en/latest/ray-observability/ray-metrics.html#ray-metrics) for more details of the metrics emitted.
+
+The Ray cluster defined in [raycluster-grafana.yaml](simharness2/k8s/ray/raycluster-grafana.yaml) will use both `Prometheus` and `Grafana`. From your **local workstation**, run the following commands to deploy the cluster:
+
+```sh
+# Deploy the Ray cluster
+kubectl apply -f k8s/ray/raycluster-grafana.yaml
+# raycluster.ray.io/raycluster-grafana created
+
+# Check the `STATUS` of the head node
+kubectl get pods --selector=ray.io/node-type=head
+# NAME                                              READY   STATUS             RESTARTS         AGE
+# raycluster-grafana-head-w8nvr                     2/2     Running            0                94m
+
+# Once the head node has `STATUS == Running`, start grafana and prometheus
+chmod +x scripts/start_grafana_and_prometheus.sh && ./scripts/start_grafana_and_prometheus.sh
+```
+
+If you want to delete the Ray cluster created above, do the following:
+```sh
+# Interrupt prometheus and grafana
+chmod +x scripts/stop_grafana_and_prometheus.sh && ./scripts/stop_grafana_and_prometheus.sh
+
+# Delete the cluster (named raycluster-grafana)
+kubectl delete raycluster raycluster-grafana
+```
+
+### Running Ray workloads
+
+The recommended way to execute an application on a Ray Cluster is to use [Ray Jobs](https://docs.ray.io/en/latest/cluster/running-applications/job-submission/quickstart.html#jobs-quickstart).
+
+#### Exposing dashboards/services
+The `KubeRay` operator configures a Kubernetes service targeting the Ray head pod. This service allows us to interact with Ray clusters without directly executing commands in the Ray container. We can use port-forwarding to access the Ray Dashboard port (8265 by default). 
+
+There are a few other dashboards/services that we want to have access to from our local workstation. Currently, we have:
+- Aim server
+- Ray dashboard
+- Ray client server
+- Grafana dashboard
+- Prometheus dashboard
+
+To quickly access the dashboards/services mentioned above, the [port_forward.sh](simharness2/scripts/port_forward.sh) can be used as follows:
+```sh
+chmod +x scripts/port_forward.sh && ./scripts/port_forward.sh
+```
+In order for the script to run, `tmux` must be installed locally. One quick install method uses `brew`:
+```sh
+brew install tmux
+```
+
+#### Job Submission
+
+Before submitting any jobs to the cluster, you will need to ...
+
+TODO: add details on how to submit a job to the cluster.
+
 ## Configuration Management with Hydra
+
 Configuration management in `simharness` is done using the [Hydra](https://hydra.cc/docs/intro/#introduction) framework.
 > Hydra is an open-source Python framework that simplifies the development of research and other complex applications. The key feature is the ability to dynamically create a hierarchical configuration by composition and override it through config files and the command line. The name Hydra comes from its ability to run multiple similar jobs - much like a Hydra with multiple heads.
 >
 > Key features:​
+>
 > - Hierarchical configuration composable from multiple sources
 > - Configuration can be specified or overridden from the command line
 > - Dynamic command line tab completion
 
 Notice that the `main()` method in [main.py](simharness2/main.py) is decorated with:
+
 ```python
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
 ```
+
 - Hydra needs to know where to find the config. This is done by specifying the directory containing the config (relative to `simharness`, our *application*) by passing `config_path`. In our case, the [conf](simharness2/conf) directory is used.
 - The *top-level* configuration file is specified by passing the `config_name` parameter. In our case, [config.yaml](simharness2/conf/config.yaml) will be used as the default configuration file. Note that you should omit the `.yaml` extension.
-    - To override the `config_name` specified in `hydra.main()`, set the `--config-name` (or `-cn`) flag . For example, to run `main.py` using the `dqn.yaml` configuration file, we can do:
+  - To override the `config_name` specified in `hydra.main()`, set the `--config-name` (or `-cn`) flag . For example, to run `main.py` using the `dqn.yaml` configuration file, we can do:
+
     ```shell
     python main.py --config-name dqn
     ```
-    - See [Hydra's command line flags](https://hydra.cc/docs/1.1/advanced/hydra-command-line-flags/) to learn more.
 
+  - See [Hydra's command line flags](https://hydra.cc/docs/1.1/advanced/hydra-command-line-flags/) to learn more.
 
 ## Customizing an RLlib `Algorithm`
+
 As mentioned above, configuration files for `simharness` are stored in the [conf](simharness2/conf) directory. To customize the configuration of an RLlib `Algorithm`, an `AlgorithmConfig` object will be built using the settings provided in the specified hierarchical configuration.
 
 The current structure of `conf` is as follows:
+
 ```shell
 ├── conf                      <- Hydra configs directory
 │   ├── config.yaml              <- Main config
@@ -51,100 +138,98 @@ See below for more information on each of level of the configuration hierarchy:
 <details>
   <summary>Main config</summary>
 
-  - `cli`
-    - `mode`: The run mode to use. I recommend using `tune` to train an `Algorithm`, as it is (currently) the only
+- `cli`
+  - `mode`: The run mode to use. I recommend using `tune` to train an `Algorithm`, as it is (currently) the only
     way to track experiments with `Aim`. The `view` mode is intended to be used to do inference with a trained
     `Algorithm` on a fixed evaluation simulation and save a `.gif` of the agent acting in the simulation.
-        - Options: `train`, `tune`, `view`
-        - Default: `???`
-  - `algo`
-    - `name`: The desired `Algorithm` class to use. See [Available Algorithms - Overview](https://docs.ray.io/en/latest/rllib/rllib-algorithms.html#available-algorithms-overview) for the algorithms currently available in RLlib.
-        - Default: `DQN`
-  - `runtime`: *Some* of the configuration that will be used to create a [ray.air.RunConfig](https://docs.ray.io/en/latest/ray-air/api/doc/ray.air.RunConfig.html#ray-air-runconfig) object.
-    - `name`: Name of the trial or experiment. If not provided, will be deduced from the Trainable.
-        - Default: `null`
-    - `local_dir`: Local dir to save training results to.
-        - Default: `${hydra:run.dir}`
-  - `checkpoint`: The configuration that will be used to create a [ray.air.CheckpointConfig](https://docs.ray.io/en/latest/ray-air/api/doc/ray.air.CheckpointConfig.html#ray-air-checkpointconfig) object.
-    - `checkpoint_frequency`: Number of iterations between checkpoints. Checkpointing is disabled when set to `0`.
-        - Default: `20` (TODO: decide default value)
-    - `num_to_keep`: The number of checkpoints to keep on disk for this run. If a checkpoint is persisted to disk after there are already this many checkpoints, then an existing checkpoint will be deleted. If this is `None`, checkpoints will not be deleted. Must be >= 1.
-        - Default: `null`
-  - `stop_conditions`: The stop conditions to consider. This will be used to set the `stop` argument when initializing the `ray.air.RunConfig` object. **Note**: The specified values **must** match keys contained in the `ray.rllib.utils.typing.ResultDict` (which represents the result dict returned by `Algorithm.train()`; see below for the default keys).
-    - `training_iteration`:
-        - Default: `1000000` (1 million)
-    - `timesteps_total`:
-        - Default: `2000000000` (2 billion)
-    - `episode_reward_mean`:
-        - Default: `100` (currently, this value is arbitrary)
-  - `debugging`: *Some* of the options that will be passed to configure `AlgorithmConfig.debugging()` settings.
-    - `log_level`: Set the `ray.rllib.*` log level for the agent process and its workers. The `DEBUG` level will also periodically print out summaries of relevant internal dataflow (this is also printed out once at startup at the `INFO` level).
-        - Options: `DEBUG`, `INFO`, `WARN`, `ERROR`
-        - Default: `WARN`
-    - `log_sys_usage`: Log system resource metrics to results. This requires `psutil` to be installed for sys stats, and `gputil` for GPU metrics.
-        - Default: `True`
-    - `seed`: This argument, in conjunction with worker_index, sets the random seed of each worker, so that **identically configured trials will have identical results. This makes experiments reproducible.**
-        - Default: `2000`
-
-
+    - Options: `train`, `tune`, `view`
+    - Default: `???`
+- `algo`
+  - `name`: The desired `Algorithm` class to use. See [Available Algorithms - Overview](https://docs.ray.io/en/latest/rllib/rllib-algorithms.html#available-algorithms-overview) for the algorithms currently available in RLlib.
+    - Default: `DQN`
+- `runtime`: *Some* of the configuration that will be used to create a [ray.air.RunConfig](https://docs.ray.io/en/latest/ray-air/api/doc/ray.air.RunConfig.html#ray-air-runconfig) object.
+  - `name`: Name of the trial or experiment. If not provided, will be deduced from the Trainable.
+    - Default: `null`
+  - `local_dir`: Local dir to save training results to.
+    - Default: `${hydra:run.dir}`
+- `checkpoint`: The configuration that will be used to create a [ray.air.CheckpointConfig](https://docs.ray.io/en/latest/ray-air/api/doc/ray.air.CheckpointConfig.html#ray-air-checkpointconfig) object.
+  - `checkpoint_frequency`: Number of iterations between checkpoints. Checkpointing is disabled when set to `0`.
+    - Default: `20` (TODO: decide default value)
+  - `num_to_keep`: The number of checkpoints to keep on disk for this run. If a checkpoint is persisted to disk after there are already this many checkpoints, then an existing checkpoint will be deleted. If this is `None`, checkpoints will not be deleted. Must be >= 1.
+    - Default: `null`
+- `stop_conditions`: The stop conditions to consider. This will be used to set the `stop` argument when initializing the `ray.air.RunConfig` object. **Note**: The specified values **must** match keys contained in the `ray.rllib.utils.typing.ResultDict` (which represents the result dict returned by `Algorithm.train()`; see below for the default keys).
+  - `training_iteration`:
+    - Default: `1000000` (1 million)
+  - `timesteps_total`:
+    - Default: `2000000000` (2 billion)
+  - `episode_reward_mean`:
+    - Default: `100` (currently, this value is arbitrary)
+- `debugging`: *Some* of the options that will be passed to configure `AlgorithmConfig.debugging()` settings.
+  - `log_level`: Set the `ray.rllib.*` log level for the agent process and its workers. The `DEBUG` level will also periodically print out summaries of relevant internal dataflow (this is also printed out once at startup at the `INFO` level).
+    - Options: `DEBUG`, `INFO`, `WARN`, `ERROR`
+    - Default: `WARN`
+  - `log_sys_usage`: Log system resource metrics to results. This requires `psutil` to be installed for sys stats, and `gputil` for GPU metrics.
+    - Default: `True`
+  - `seed`: This argument, in conjunction with worker_index, sets the random seed of each worker, so that **identically configured trials will have identical results. This makes experiments reproducible.**
+    - Default: `2000`
 
 </details>
 
 <details>
   <summary>AlgorithmConfig.environment() settings</summary>
 
-  ### TODO
+### TODO
 
 </details>
 
 <details>
   <summary>AlgorithmConfig.evaluation() settings</summary>
 
-  ### TODO
+### TODO
 
 </details>
 
 <details>
   <summary>AlgorithmConfig.exploration() settings</summary>
 
-  ### TODO
+### TODO
 
 </details>
 
 <details>
   <summary>AlgorithmConfig.framework() settings</summary>
 
-  ### TODO
+### TODO
 
 </details>
 
 <details>
   <summary>AlgorithmConfig.resources() settings</summary>
 
-  ### TODO
+### TODO
 
 </details>
 
 <details>
   <summary>AlgorithmConfig.rollouts() settings</summary>
 
-  ### TODO
+### TODO
 
 </details>
 
 <details>
   <summary>Simulation configs</summary>
 
-  ### TODO
-  `simfire.sim.simulation.Simulation` configs
+### TODO
 
+  `simfire.sim.simulation.Simulation` configs
 
 </details>
 
 <details>
   <summary>Hydra-specific configs</summary>
 
-  ### TODO
+### TODO
 
 </details>
 

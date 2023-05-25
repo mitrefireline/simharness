@@ -39,17 +39,6 @@ black:
   only:
     - merge_requests
 
-mypy:
-  stage: Static Analysis
-  tags:
-    - lslab2
-  script:
-    - poetry install --only dev
-    - poetry run mypy .
-  needs: []
-  only:
-    - merge_requests
-
 isort:
   stage: Static Analysis
   tags:
@@ -118,6 +107,8 @@ pages:
     - docker login butler.mitre.org --username ${HARBOR_SIMHARNESS_USER} --password ${HARBOR_SIMHARNESS_PASS}
     - docker build --build-arg RAY_VERSION=${RAY_VERSION} -f docker/simple.dockerfile -t butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION} .
     - docker push butler.mitre.org/fireline/simharness2:simple-${RAY_VERSION}
+    - docker build --build-arg RAY_VERSION=${RAY_VERSION} -f docker/simple-grafana-prometheus.dockerfile -t butler.mitre.org/fireline/simharness2:simple-grafana-prometheus-${RAY_VERSION} .
+    - docker push butler.mitre.org/fireline/simharness2:simple-grafana-prometheus-${RAY_VERSION}
 
 simple-2.3.0:
   stage: Docker
@@ -131,10 +122,10 @@ simple-2.3.0:
   variables:
     RAY_VERSION: 2.3.0
   extends: .build
-  # only:
-  #   - main
+  only:
+    - main
 
-simple-2.3.1:
+simple-2.4.0:
   stage: Docker
   tags:
     - lslab2
@@ -144,7 +135,7 @@ simple-2.3.1:
   before_script:
     - docker --version
   variables:
-    RAY_VERSION: 2.3.1
+    RAY_VERSION: 2.4.0
   extends: .build
   only:
     - main

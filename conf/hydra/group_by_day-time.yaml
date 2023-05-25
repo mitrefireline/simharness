@@ -1,4 +1,4 @@
 run:
   dir: ${oc.env:HOME}/experiments/${now:%Y-%m-%d_%H-%M-%S}
-job: 
+job:
   chdir: False

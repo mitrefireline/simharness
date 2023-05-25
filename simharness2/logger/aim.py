@@ -1,13 +1,16 @@
+"""Module for using AIM with simharness2."""
 import logging
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import numpy as np
-from typing import TYPE_CHECKING, Dict, Optional, List, Union
-
+from hydra.utils import instantiate
+from omegaconf import DictConfig
 from ray.tune.logger.logger import LoggerCallback
 from ray.tune.result import (
-    TRAINING_ITERATION,
+    EPISODES_TOTAL,
     TIME_TOTAL_S,
     TIMESTEPS_TOTAL,
+    TRAINING_ITERATION,
 )
 from ray.tune.utils import flatten_dict
 from ray.util.annotations import PublicAPI
@@ -59,25 +62,26 @@ class AimLoggerCallback(LoggerCallback):
     def __init__(
         self,
         repo: Optional[Union[str, "Repo"]] = None,
-        experiment_name: Optional[str] = None,
         metrics: Optional[List[str]] = None,
+        cfg: Optional[DictConfig] = None,
         **aim_run_kwargs,
     ):
-        """
-        See help(AimLoggerCallback) for more information about parameters.
-        """
-        assert Run is not None, (
-            "aim must be installed!. You can install aim with"
-            " the command: `pip install aim`."
-        )
+        """See help(AimLoggerCallback) for more information about parameters."""
+        if Run is None:
+            raise RuntimeError(
+                "aim must be installed!. You can install aim with"
+                " the command: `pip install aim`."
+            )
+
         self._repo_path = repo
-        self._experiment_name = experiment_name
         if not (bool(metrics) or metrics is None):
             raise ValueError(
                 "`metrics` must either contain at least one metric name, or be None, "
                 "in which case all reported metrics will be logged to the aim repo."
             )
         self._metrics = metrics
+        # NOTE: I think a shallow copy is okay here; better to use a copy for safety?
+        self._cfg = cfg.copy() if cfg else None
         self._aim_run_kwargs = aim_run_kwargs
         self._trial_to_run: Dict["Trial", Run] = {}
 
@@ -90,23 +94,29 @@ class AimLoggerCallback(LoggerCallback):
         Returns:
             Run: The created aim run for a specific trial.
         """
-        experiment_dir = trial._local_dir
+        experiment_dir = trial.local_experiment_path
         run = Run(
             repo=self._repo_path or experiment_dir,
-            experiment=self._experiment_name or trial.experiment_dir_name,
             **self._aim_run_kwargs,
         )
         # Attach a few useful trial properties
         run["trial_id"] = trial.trial_id
-        run["trial_log_dir"] = trial.local_dir
-#         if trial.remote_path:
-#             run["trial_remote_log_dir"] = trial.remote_path
+        run["trial_logdir"] = trial.logdir
+
+        # Log the (hydra) config if it exists
+        if self._cfg:
+            self._log_hydra_config(run)
         trial_ip = trial.get_runner_ip()
         if trial_ip:
             run["trial_ip"] = trial_ip
         return run
 
     def log_trial_start(self, trial: "Trial"):
+        """Execute on trial start.
+
+        Args:
+            trial: The Tune trial that aim will track as a Run.
+        """
         if trial in self._trial_to_run:
             # Cleanup an existing run if the trial has been restarted
             self._trial_to_run[trial].close()
@@ -118,10 +128,17 @@ class AimLoggerCallback(LoggerCallback):
             self._log_trial_hparams(trial)
 
     def log_trial_result(self, iteration: int, trial: "Trial", result: Dict):
+        """Log a result.
+
+        Args:
+            iteration: The iteration number
+            trial: The Tune trial that aim will track as a Run.
+            result: Dictionary containing key:value information to log
+        """
         tmp_result = result.copy()
 
         step = result.get(TIMESTEPS_TOTAL, None) or result[TRAINING_ITERATION]
-
+        episode = result.get(EPISODES_TOTAL, None)
         for k in ["config", "pid", "timestamp", TIME_TOTAL_S, TRAINING_ITERATION]:
             tmp_result.pop(k, None)  # not useful to log these
 
@@ -149,7 +166,7 @@ class AimLoggerCallback(LoggerCallback):
                     value=value,
                     name=full_attr,
                     epoch=epoch,
-                    step=step,
+                    step=episode or step,
                     context=context,
                 )
             elif (isinstance(value, (list, tuple, set)) and len(value) > 0) or (
@@ -158,10 +175,21 @@ class AimLoggerCallback(LoggerCallback):
                 valid_result[attr] = value
 
     def log_trial_end(self, trial: "Trial", failed: bool = False):
+        """Execute on trial end.
+
+        Args:
+            trial: The Tune trial that aim will track as a Run.
+            failed: Flag indicating whether or not the trial failed
+        """
         trial_run = self._trial_to_run.pop(trial)
         trial_run.close()
 
     def _log_trial_hparams(self, trial: "Trial"):
+        """Log Hyperparameters.
+
+        Args:
+            trial: The Tune trial that aim will track as a Run.
+        """
         params = flatten_dict(trial.evaluated_params, delimiter="/")
         flat_params = flatten_dict(params)
 
@@ -183,10 +211,85 @@ class AimLoggerCallback(LoggerCallback):
         }
         if removed:
             logger.info(
-                "Removed the following hyperparameter values when "
-                "logging to aim: %s",
+                "Removed the following hyperparameter values when " "logging to aim: %s",
                 str(removed),
             )
 
         run = self._trial_to_run[trial]
         run["hparams"] = scrubbed_params
+
+    def _log_hydra_config(self, run: Run):
+        """Log a subset of the hydra config to Aim as `Run Params`."""
+        for cfg_k, cfg_v in self._cfg.items():
+            if cfg_k == "simulation":
+                self._log_simulation_config(run, cfg_v)
+            elif cfg_k == "environment":
+                self._log_environment_config(run, cfg_v)
+            elif cfg_k == "evaluation":
+                self._log_evaluation_config(run, cfg_v)
+            else:
+                # Simple case, just log the config key and its contents.
+                run[cfg_k] = instantiate(cfg_v)
+            continue
+            # run[k] = v
+        # run["cfg"] = self._cfg
+
+    def _log_evaluation_config(self, run: Run, cfg: DictConfig):
+        """Log the evaluation config to Aim as `Run Params`."""
+        eval_cfg_settings = instantiate(cfg.evaluation_config)
+
+        if "simulation" in eval_cfg_settings.env_config.keys():
+            sim_obj = eval_cfg_settings.env_config.simulation
+            # Intention: create a (dotpath) string representation of `sim_obj`.
+            if not isinstance(sim_obj, str):
+                sim_obj = ".".join(
+                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
+                )
+            eval_cfg_settings.env_config.simulation = sim_obj
+
+        cfg.evaluation_config = eval_cfg_settings
+        run["evaluation"] = cfg
+
+    def _log_environment_config(self, run: Run, cfg: DictConfig):
+        """Log the environment config to Aim as `Run Params`."""
+        env_settings = instantiate(cfg)
+
+        if "simulation" in env_settings.env_config.keys():
+            sim_obj = env_settings.env_config.simulation
+            # Intention: create a (dotpath) string representation of `sim_obj`.
+            if not isinstance(sim_obj, str):
+                sim_obj = ".".join(
+                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
+                )
+            env_settings.env_config.simulation = sim_obj
+
+        run["environment"] = env_settings
+
+    def _log_simulation_config(self, run: Run, cfg: DictConfig):
+        """Log the simulation config to Aim as `Run Params`."""
+        # NOTE: Both `train` and `eval` configs are logged, even if they are the same. In
+        # TODO: In future, log `train` config and only log parameters within `eval`
+        # config that differ from the `train` config (to reduce redundancy).
+        run["simulation"] = instantiate(cfg)
+        # sim_cfg_flat = flatten_dict(instantiate(cfg_v), delimiter=".")
+        # Log all training simulation parameters, and only log the evaluation
+        # simulation parameters that are different from the training ones.
+        # train_cfg = OmegaConf.to_container(instantiate(cfg_v["train"]))
+        # eval_cfg = OmegaConf.to_container(instantiate(cfg_v["eval"]))
+        # train_cfg_flat = flatten_dict(train_cfg, delimiter=".")
+        # eval_cfg_flat = flatten_dict(eval_cfg, delimiter=".")
+
+        # for k, tr_v in train_cfg_flat.items():
+        #     # Check if evaluation simulation has a different value for parameter.
+        #     eval_v = eval_cfg_flat.get(k, None)
+        #     if eval_v and tr_v != eval_v:
+        #         params_dict["simulation"]["eval"].update({k: eval_v})
+        #     # Always log the training simulation parameters.
+        #     params_dict["simulation"]["train"].update({k: tr_v})
+
+        # Remove the `eval` dict if it is empty.
+        # if not params_dict["simulation"]["eval"]:
+        #     params_dict["simulation"].pop("eval")
+
+        # train_set = set(train_cfg_flat.items())
+        # eval_set = set(eval_cfg_flat.items())

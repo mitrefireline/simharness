@@ -1,0 +1,176 @@
+apiVersion: ray.io/v1alpha1
+kind: RayCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+    # A unique identifier for the head node and workers of this cluster.
+  name: raycluster-with-grafana
+  namespace: fireline
+spec:
+  # The version of Ray you are using. Make sure all Ray containers are running this version of Ray.
+  # Just make sure `rayVersion` == version installed in the docker image that will be used.
+  rayVersion: "2.4.0"
+  ######################headGroupSpec#################################
+  # head group template and specs, (perhaps 'group' is not needed in the name)
+  headGroupSpec:
+    # Kubernetes Service Type, valid values are 'ClusterIP', 'NodePort' and 'LoadBalancer'
+    serviceType: ClusterIP
+    # The following params are used to complete the ray start: ray start --head --block ...
+    # To see all options available for the ray start command, see https://docs.ray.io/en/latest/cluster/cli.html#ray-start
+    rayStartParams:
+      # The amount of memory (in bytes) to start the object store with. By default, this
+      # is capped at 20GB but can be set higher.
+      object-store-memory: "18000000000" # (18 GB)
+      # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with
+      # non-zero CPU requirements) from being scheduled on the head.
+      num-cpus: "0"
+      # The host to bind the dashboard server to, either localhost (127.0.0.1) or 0.0.0.0
+      # (available from all interfaces). By default, this is localhost.
+      dashboard-host: "0.0.0.0"
+      # If "true", block forever in the `ray start` command.
+      block: "true"
+      # Manually specify the root temporary dir of the Ray process.
+      # temp-dir: TODO
+    # Pod template
+    template:
+      spec:
+        containers:
+        # The Ray head pod
+        - name: ray-head
+          image: butler.mitre.org/fireline/simharness2:simple-grafana-prometheus-2.4.0
+          env:
+            - name: RAY_GRAFANA_HOST
+              value: "http://localhost:3000"
+            - name: RAY_PROMETHEUS_HOST
+              value: "http://localhost:9090"
+              # NOTE: Attempting to fix issue captured here:
+              # https://github.com/ray-project/ray/issues/29753
+            # - name: NVIDIA_VISIBLE_DEVICES
+            #   value: "void"
+          imagePullPolicy: Always
+          lifecycle:
+            # TODO: Can we make `postStart` below work? But, not a priority right now.
+            # Attempt to start Grafana and Prometheus
+            # postStart:
+            #   exec:
+            #     command: [
+            #       "/bin/sh",
+            #       "-c",
+            #       "$HOME/grafana-9.4.7/bin/grafana-server --config $HOME/grafana.ini web; $HOME/prometheus-2.43.0.linux-amd64/prometheus --config.file=$HOME/prometheus.yml",
+            #     ]
+            # For intuition on preStop, see: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/config.html#prestophook
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+          # NOTE: Intentionally setting resource requests equal to resource limits
+          resources:
+            limits:
+              cpu: "2"
+              memory: "30G"
+            requests:
+              cpu: "2"
+              memory: "30G"
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: dshm
+        # Intuition behind the `dshm` volume: https://stackoverflow.com/a/46434614
+        volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 20Gi
+  workerGroupSpecs:
+    # the pod replicas in this group typed worker
+  - replicas: 1
+    # TODO: Configure KubeRay Autoscaling, otherwise min/max Replicas doesn't make sense.
+    minReplicas: 1
+    maxReplicas: 1
+    # logical group name, for this called small-group, also can be functional
+    groupName: worker-group
+    # To see all options available for the ray start command, see https://docs.ray.io/en/latest/cluster/cli.html#ray-start
+    rayStartParams:
+      # The amount of memory (in bytes) to start the object store with. By default, this
+      # is capped at 20GB but can be set higher.
+      object-store-memory: "30000000000" # (30 GB)
+      # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with
+      # non-zero CPU requirements) from being scheduled on the head.
+      num-cpus: "32"
+      num-gpus: "1"
+      # The host to bind the dashboard server to, either localhost (127.0.0.1) or 0.0.0.0
+      # (available from all interfaces). By default, this is localhost.
+      dashboard-host: "0.0.0.0"
+      # If "true", block forever in the `ray start` command.
+      # block: "true"
+      # Manually specify the root temporary dir of the Ray process.
+      # temp-dir: TODO
+      # The port to use to expose Ray metrics through a Prometheus endpoint
+      metrics-export-port: "8080"
+    #pod template
+    template:
+      spec:
+        # For intuition on initContainers, see: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/config.html#initcontainer
+        initContainers:
+        # the env var $RAY_IP is set by the operator if missing, with the value of the head service name
+        - name: init-myservice
+          image: busybox:1.28
+          # env:
+          #   - name: RAY_GRAFANA_HOST
+          #     value: "http://localhost:3000"
+          #   - name: RAY_PROMETHEUS_HOST
+          #     value: "http://localhost:9090"
+          command: ['sh', '-c', "until nslookup $RAY_IP.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
+          resources:
+            limits:
+              cpu: "2"
+              memory: "4G"
+        containers:
+          # must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc')
+        - name: gpu-group
+          image: butler.mitre.org/fireline/simharness2:simple-2.4.0
+          # env:
+          #   - name: AUTOSCALER_CONSERVE_GPU_NODES
+          #     value: "0"
+            # - name: RAY_GRAFANA_HOST
+            #   value: "http://localhost:3000"
+            # - name: RAY_PROMETHEUS_HOST
+            #   value: "http://localhost:9090"
+          lifecycle:
+            # For intuition on preStop, see: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/config.html#prestophook
+            preStop:
+              exec:
+                  command: ["/bin/sh","-c","ray stop"]
+          resources:
+            limits:
+              cpu: "32"
+              memory: "40G"
+              # MIG Options: 
+              # - mig-1g.5gb
+              # - mig-2g.10gb
+              # - mig-3g.20gb
+              # - mig-7g.40gb
+              nvidia.com/mig-2g.10gb: 1
+            requests:
+              cpu: "32"
+              memory: "40G"
+              nvidia.com/mig-2g.10gb: 1
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: dshm
+            # NOTE: $HOME == "/home/ray" in the respective image
+            - mountPath: /home/ray/aim
+              name: aim-runs
+            # NOTE: $HOME == "/home/ray" in the respective image
+            - mountPath: /home/ray/experiments
+              name: experiment-data
+        volumes:
+        # Intuition behind the `dshm` volume: https://stackoverflow.com/a/46434614
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 40Gi
+        - name: aim-runs
+          persistentVolumeClaim:
+            claimName: aim-runs-claim
+        - name: experiment-data
+          persistentVolumeClaim:
+            claimName: experiment-data-claim
