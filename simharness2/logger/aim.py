@@ -240,13 +240,13 @@ class AimLoggerCallback(LoggerCallback):
         eval_cfg_settings = instantiate(cfg.evaluation_config)
 
         if "simulation" in eval_cfg_settings.env_config.keys():
-            sim_obj = eval_cfg_settings.env_config.simulation
+            sim_obj = eval_cfg_settings.env_config.sim
             # Intention: create a (dotpath) string representation of `sim_obj`.
             if not isinstance(sim_obj, str):
                 sim_obj = ".".join(
                     [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
                 )
-            eval_cfg_settings.env_config.simulation = sim_obj
+            eval_cfg_settings.env_config.sim = sim_obj
 
         cfg.evaluation_config = eval_cfg_settings
         run["evaluation"] = cfg
@@ -256,13 +256,13 @@ class AimLoggerCallback(LoggerCallback):
         env_settings = instantiate(cfg)
 
         if "simulation" in env_settings.env_config.keys():
-            sim_obj = env_settings.env_config.simulation
+            sim_obj = env_settings.env_config.sim
             # Intention: create a (dotpath) string representation of `sim_obj`.
             if not isinstance(sim_obj, str):
                 sim_obj = ".".join(
                     [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
                 )
-            env_settings.env_config.simulation = sim_obj
+            env_settings.env_config.sim = sim_obj
 
         run["environment"] = env_settings
 

@@ -1,4 +1,4 @@
-simulation:
+sim:
   _target_: simfire.sim.simulation.FireSimulation
   config:
     _target_: simfire.utils.config.Config
