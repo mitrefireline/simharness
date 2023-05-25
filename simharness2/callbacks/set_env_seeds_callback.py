@@ -130,6 +130,8 @@ class SetEnvSeedsCallback(DefaultCallbacks):
             )
             # Update the environment to use the specified agent position
             base_env.vector_env.envs[env_index].initial_agent_pos = agent_pos
+            # Set the agent_pos attribute, just in case environment is not reset.
+            base_env.vector_env.envs[env_index].agent_pos = agent_pos
 
         # TODO find out what attribute of `episode` gives the iteration
         # if in_evaluation and log10(episode_iter).is_integer() and log10(episode_iter) > 0:
