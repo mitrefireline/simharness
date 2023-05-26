@@ -11,6 +11,10 @@ agent_speed: 9
 reward_cls: null
 # initial_agent_pos: null
 # randomize_initial_agent_pos: null
+benchmark_sim: ${.sim}
+# TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
+# NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).
+# benchmark_sim: null
 action_space_type:
   _partial_: true
   _target_: gymnasium.spaces.Discrete
