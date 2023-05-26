@@ -194,11 +194,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self._update_mitigation(interaction)
 
         # Update reward tracker after agent has taken one step (callback inside method)
-        self.reward_cls.tracker.update_after_one_agent_step(
-            self.agent_pos,
-            self.sim.fire_map,
-            self.interactions[interaction] != "none",
-        )
+        if self.reward_cls:
+            self.reward_cls.tracker.update_after_one_agent_step(
+                self.agent_pos,
+                self.sim.fire_map,
+                self.interactions[interaction] != "none",
+            )
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
         """Parse the action into movement and interaction."""
@@ -406,7 +407,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # NOTE: `self.num_burned` is not currently used in the reward calculation.
         # self.num_burned = 0 FIXME include once we modularize the reward function
-        self.num_agent_steps = 0
+        self.timesteps = 0
 
         return self.state, {}
 
