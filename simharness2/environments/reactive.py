@@ -373,7 +373,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
-        log.info("agent_pos: %s", self.agent_pos)
 
         # Get the starting state of the `Simulation` after it has been reset (above).
         sim_observations = super()._select_from_dict(
@@ -437,7 +436,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         )
 
         # Place the agent on the fire map using the agent ID.
-        log.info(f"type(nonsim_data): {type(nonsim_data)}")
         nonsim_data["fire_map"][self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
         # FIXME the below line has no dependence on `nonsim_data`; needs to be moved.
         # FIXME Why are we placing a fireline at the agents position here?
