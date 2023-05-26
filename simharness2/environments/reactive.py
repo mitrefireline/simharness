@@ -197,7 +197,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Calculate the reward for the current timestep
         if self.reward_cls:
-            reward = self.reward_cls.get_reward(self.timesteps, sim_run)
+            reward = self.reward_cls.get_reward(sim_run)
+            #update the tracker to reset the agent if sim_run = True
+            if sim_run:
+                self.tracker.update_after_one_simulation_step_and_reward()
         else:
             fire_map_idx = self.attributes.index("fire_map")
             reward = self._calculate_reward(self.state[..., fire_map_idx], sim_run)
