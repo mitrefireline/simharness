@@ -217,6 +217,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
         truncated = False
+
+        if self.sim.active == False:
+            #update the tracker after the previous episode has ended
+            #TODO: is this the best place to keep this tracker update
+            self.tracker.update_after_one_episode(reward=reward)
+
         return self.state, reward, not self.sim.active, truncated, {}
 
     def _do_one_agent_step(self, action: np.ndarray) -> None:
