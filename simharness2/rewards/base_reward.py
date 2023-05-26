@@ -37,36 +37,39 @@ class BaseReward(ABC):
 
 
 class SimpleReward(BaseReward):
-    """TODO Add class docstring."""
 
     def __init__(self, tracker: AnalyticsTracker):
         """TODO Add constructor docstring."""
         super().__init__(tracker)
 
-    def get_reward(self, timestep: int, sim_run: bool) -> float:
+    def get_reward(self, sim_run: bool) -> float:
         """TODO Add function docstring."""
-        # Simulation was not run this timestep, so return intermediate reward
+
+        # if Simulation was not run this timestep, return intermediate reward
         if not sim_run:
             # No intermediate reward calculation used currently, so 0.0 is returned.
-            return self.get_intermediate_reward(timestep)
+            return self.get_timestep_intermediate_reward()
+        
         
         # Use the data stored in the tracker object to calculate this timesteps reward
-        # FIXME burning = np.count_nonzero(fire_map == 1)
-        burning = self.tracker.sim_data.num_burning_per_step[timestep]
-        # burnt = np.count_nonzero(fire_map == 2)
 
-        # diff = burnt - self.num_burned
-        # self.num_burned = burnt
+        ## set the simplereward to be the number of new_damaged squares in the main simulation
+        new_damaged = self.tracker.sim_tracker.num_new_damaged
+         
+        #total = self.simulation.config.area.screen_size**2
 
-        # firelines = np.count_nonzero(fire_map == 3)
+        #get the total area from the sim_tracker
+        total = self.tracker.sim_tracker.sim_area
 
-        total = self.simulation.config.area.screen_size**2
-        reward = -(burning / total) * 10
+        reward = -(new_damaged / total) * 100
 
+        #update self.latest_reward and then return the reward
+        self.latest_reward = reward
         return reward
 
-    def get_intermediate_reward(self, timestep: int) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
+        #Basic Intermediate reward is 0
         return 0.0
 
 
