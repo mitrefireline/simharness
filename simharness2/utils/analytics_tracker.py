@@ -1,43 +1,30 @@
-"""FIXME: A one line summary of the module or program.
+"""
 
-Leave one blank line.  The rest of this docstring should contain an
-overall description of the module or program.  Optionally, it may also
-contain a brief description of exported classes and functions and/or usage
-examples.
+Base AnalyticsTracker for SimHarness and BaseReward
 
-Typical usage example:
+    -dgandikota, afennelly
 
-  foo = ClassFoo()
-  bar = foo.FunctionBar()
+
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
-
 import numpy as np
 from simfire.enums import BurnStatus
-from simfire.sim.simulation import Simulation
-
-from .tracker_config import SimpleSimulationMetricsTracker
-
-# NOTE on Terminology:
-#  - "Run" == a single experiment with a single set of parameters
-#  - "Episode" == a single episode within a run
-#  - "Timestep" == a single timestep within an episode
+from simfire.sim.simulation import FireSimulation
+import math
 
 
-# class BaseTracker(ABC):
-# Other names: `AnalyticsData`, RLHarnessDataStore`, `RLHarnessData`?
-class AnalyticsTracker(ABC):
+
+
+class BaseAnalyticsTracker(ABC):
     """TODO Add class docstring."""
 
     def __init__(
         self,
-        # TODO add type anns to input arguments
-        sim_data,
-        sim_screen_size: int,
-        run_data=None,
-        agent_data=None,
-        benchmark_sim_data=None,
+        sim_area,
+        agent_speed,
+        num_agent = 1,
+
     ):
         """TODO (afennelly): Add docstring.
 
@@ -53,20 +40,22 @@ class AnalyticsTracker(ABC):
             benchmark_sim_data: TODO
         """
         # Required attributes that track simulation data across each episode in a run.
-        self.sim_data = sim_data
-        self.sim_screen_size = sim_screen_size
+        #self.sim_data = sim_data
+        #self.sim_screen_size = sim_screen_size
         # Optional attributes that track additional data for the RLHarness.
-        self.run_data = run_data
-        self.agent_data = agent_data
-        self.benchmark_sim_data = benchmark_sim_data
+        #self.run_data = run_data
+        #self.agent_data = agent_data
+        #self.benchmark_sim_data = benchmark_sim_data
+        raise NotImplementedError
 
     @abstractmethod
     def update_after_one_simulation_step(
         self,
-        sim_map: np.ndarray,
+        timestep,
+        fire_map: np.ndarray,
         sim_active: bool,
-        benchmark_sim_map: np.ndarray,
-        benchmark_sim_active: bool,
+        bench_fire_map: np.ndarray,
+        benchsim_active: bool,
         **kwargs,
     ):
         """TODO Add docstring."""
@@ -75,12 +64,34 @@ class AnalyticsTracker(ABC):
     @abstractmethod
     def update_after_one_agent_step(
         self,
+        timestep,
         agent_pos: List[int],
-        sim_map: np.ndarray,
+        fire_map: np.ndarray,
+        interaction: bool,
         **kwargs,
     ):
         """TODO Add docstring."""
         raise NotImplementedError
+
+    @abstractmethod
+    def update_after_one_simulation_step_and_reward(
+        self
+    ):
+
+        """TODO Add docstring."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_after_one_episode(
+        self,
+        reward
+    ):      
+
+        """TODO Add docstring."""
+        raise NotImplementedError
+
+
+
 
 
 """The status of each pixel in a `fire_map`

@@ -183,15 +183,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
         # NOTE: We can also return (agent_moved, agent_interacted) as (bool, bool),
         # and then call the `tracker.update_after_one_agent_step()` method (for clarity?)
-        self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
-        if self.reward_cls:
-            # Update reward tracker after agent has taken one step
-            self.reward_cls.tracker.update_after_one_agent_step(
-                self.agent_pos,
-                self.sim.fire_map,
-                # FIXME what other args are needed as input??
-                # self.interactions[interaction] != "none",
-            )
+        interaction_str = self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
+
+        if self.tracker:
+            #update the tracker after the agent action
+            self.tracker.update_after_one_agent_step(self.timestep, self.agent_pos, self.sim.fire_map, interaction_str != "none")
+        
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
         # indicate how to calculate the reward for the current timestep.
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
