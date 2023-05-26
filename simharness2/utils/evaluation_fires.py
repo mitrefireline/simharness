@@ -77,7 +77,7 @@ def get_default_operational_fires(
     rng, seed = np_random(seed)
     op_location_seeds = rng.integers(low=1, high=1000, size=num_locations, dtype=int)
 
-    sim = instantiate(cfg.environment.env_config.simulation)
+    sim = instantiate(cfg.environment.env_config.sim)
     sim_yaml_data = sim.config.yaml_data
     del sim
 
