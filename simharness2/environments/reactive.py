@@ -15,6 +15,7 @@ Typical usage example:
 """
 from collections import OrderedDict as ordered_dict
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
+from functools import partial
 
 import numpy as np
 from gymnasium import spaces
@@ -108,6 +109,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
+        # Ensure proper usage of the provided `action_space_type`
+        if not isinstance(config.get("action_space_type"), partial):
+            raise TypeError(
+                f"Expected `action_space_type` to be an instance of functools.partial, "
+                f"but got {type(config.get('action_space_type'))}."
+            )
+
         super().__init__(
             config.get("sim"),
             config.get("movements"),
@@ -116,6 +124,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             config.get("normalized_attributes"),
             config.get("deterministic"),
             benchmark_sim=config.get("benchmark_sim"),
+            action_space_type=config.get("action_space_type").func,
         )
 
     def step(
