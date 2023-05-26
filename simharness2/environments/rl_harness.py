@@ -14,7 +14,16 @@ import copy
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, OrderedDict, Tuple, no_type_check
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    OrderedDict,
+    Tuple,
+    no_type_check,
+    Union,
+)
 
 import gymnasium as gym
 import numpy as np
@@ -66,6 +75,7 @@ class RLHarness(gym.Env, ABC):
         normalized_attributes: List[str],
         deterministic: bool = False,
         benchmark_sim: FireSimulation = None,
+        action_space_type: spaces.Space = spaces.Discrete,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -158,8 +168,8 @@ class RLHarness(gym.Env, ABC):
             dtype=np.float32,
         )
 
-        action_shape = [len(self.movements), len(self.interactions)]
-        self.action_space = spaces.MultiDiscrete(action_shape)
+        action_shape = self._get_action_space_shape(space_type=action_space_type)
+        self.action_space = action_space_type(action_shape)
 
     @no_type_check
     @abstractmethod
@@ -364,3 +374,16 @@ class RLHarness(gym.Env, ABC):
             )
 
         return observations
+
+    def _get_action_space_shape(
+        self, space_type: spaces.Space
+    ) -> Union[int, np.ndarray, List]:
+        """Get the shape of the action space, dependent on the action space type."""
+
+        if space_type is spaces.Discrete:
+            return len(self.movements) * len(self.interactions)
+        elif space_type is spaces.MultiDiscrete:
+            return [len(self.movements), len(self.interactions)]
+        else:
+            # TODO provide a descriptive error message.
+            raise NotImplementedError
