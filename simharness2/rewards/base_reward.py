@@ -16,22 +16,24 @@ from ..utils.analytics_tracker import AnalyticsTracker
 
 
 class BaseReward(ABC):
-    """TODO Add class docstring."""
+    """Abstract Class for Reward_Class template with the update functions implemented"""
 
     def __init__(self, tracker: AnalyticsTracker):
         """TODO Add constructor docstring."""
-        # FIXME is "tracker" a good name to use? update later if needed.
+        #reference to the tracker object within the environment
         self.tracker = tracker
 
     @abstractmethod
-    def get_reward(self, timestep: int, sim_run: bool) -> float:
+    def get_reward(self, sim_run: bool) -> float:
         """TODO Add docstring."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_intermediate_reward(self, timestep: int) -> float:
+    def get_timestep_intermediate_reward(self) -> float:
         """TODO Add docstring."""
         raise NotImplementedError
+
+    #---------------------
 
 
 class SimpleReward(BaseReward):
