@@ -29,6 +29,8 @@ from ray.tune.registry import get_trainable_cls, register_env
 from simfire.sim.simulation import Simulation  # noqa: F401
 
 from simharness2.logger.aim import AimLoggerCallback
+from simharness2.utils.evaluation_fires import get_default_operational_fires
+from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
@@ -38,7 +40,6 @@ OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     """FIXME: Docstring for train_with_tune."""
-    log_cfg = cfg.aim.log_hydra_config
     # automated run with Tune and grid search and TensorBoard
     tuner = tune.Tuner(
         cfg.algo.name,
@@ -56,7 +57,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
             #     )
             # ],
             stop={**cfg.stop_conditions},
-            callbacks=[AimLoggerCallback(cfg=cfg if log_cfg else None, **cfg.aim)],
+            callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
             failure_config=None,
             sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
             checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
@@ -75,7 +76,7 @@ def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
         result = algo.train()
         log.info(pretty_print(result))
 
-        if i % cfg.checkpoint.frequency == 0:
+        if i % cfg.checkpoint.checkpoint_frequency == 0:
             ckpt_path = algo.save()
             log.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
 
@@ -138,6 +139,9 @@ def main(cfg: DictConfig):
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
     log.warning(f"Configuration files for this job can be found at {outdir}")
 
+    # assume for now that operational fires are the default
+    operational_fires = get_default_operational_fires(cfg)
+
     model_available = False
     if cfg.algo.checkpoint_path:
         log.info(f"Creating an algorithm instance from {cfg.algo.checkpoint_path}")
@@ -154,6 +158,10 @@ def main(cfg: DictConfig):
             # `TypeError` will be raised when attempting to log the cfg to Aim.
             env_settings = instantiate(cfg.environment, _convert_="partial")
             eval_settings = instantiate(cfg.evaluation, _convert_="partial")
+            # Inject operational fires into the evaluation settings
+            eval_settings["evaluation_config"]["env_config"].update(
+                {"scenarios": operational_fires}
+            )
             # TODO: Move (both) NOTE below to docs and remove from code
             # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
             # Prepare exploration options for the algorithm
@@ -197,6 +205,7 @@ def main(cfg: DictConfig):
                 .exploration(explore=explore, exploration_config=exploration_cfg)
                 .resources(**cfg.resources)
                 .debugging(**debug_settings)
+                .callbacks(SetEnvSeedsCallback)
             )
 
             if cfg.cli.mode == "tune":
@@ -205,7 +214,7 @@ def main(cfg: DictConfig):
                 algo = algo_cfg.build()
                 model_available = True
 
-                train(algo, cfg)
+                train(algo, cfg, log)
 
     # elif cfg.cli.mode == "view":
     #     if not model_available:

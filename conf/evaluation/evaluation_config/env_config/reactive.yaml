@@ -3,3 +3,5 @@ sim:
   config:
     config_dict: ${simulation.eval}
 benchmark_sim: ${.sim}
+is_evaluation_env: True
+evaluation_duration: ${evaluation.evaluation_duration}
