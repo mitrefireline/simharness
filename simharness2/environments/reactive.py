@@ -137,9 +137,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Track the number of timesteps that have occurred within an episode.
         self.timesteps: int = 0
 
-        # If provided, the object is used to perform reward calculation.
-        self.reward_cls: BaseReward = config.get("reward_cls")
-
         # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
         self.agent_speed: int = config.get("agent_speed")
         self.agent_pos: List[int]
