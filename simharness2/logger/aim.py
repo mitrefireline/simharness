@@ -1,6 +1,7 @@
 """Module for using AIM with simharness2."""
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from functools import partial
 
 import numpy as np
 from hydra.utils import instantiate
@@ -284,6 +285,19 @@ class AimLoggerCallback(LoggerCallback):
         else:
             env_cfg.env_config.benchmark_sim = None
 
+        if env_cfg.env_config.get("action_space_type"):
+            # Intention: create a (dotpath) string representation of `action_space_type`.
+            action_space_type = env_cfg.env_config.action_space_type
+            if isinstance(action_space_type, partial):
+                action_space_type = action_space_type.func
+            if not isinstance(action_space_type, str):
+                action_space_type = ".".join(
+                    [
+                        action_space_type.__module__,
+                        action_space_type.__name__,
+                    ]
+                )
+            env_cfg.env_config.action_space_type = action_space_type
 
         run["environment"] = env_cfg
 
@@ -306,6 +320,20 @@ class AimLoggerCallback(LoggerCallback):
             eval_cfg_settings.env_config.benchmark_sim = sim_obj
         else:
             eval_cfg_settings.env_config.benchmark_sim = None
+
+        if eval_cfg_settings.env_config.get("action_space_type"):
+            # Intention: create a (dotpath) string representation of `action_space_type`.
+            action_space_type = eval_cfg_settings.env_config.action_space_type
+            if isinstance(action_space_type, partial):
+                action_space_type = action_space_type.func
+            if not isinstance(action_space_type, str):
+                action_space_type = ".".join(
+                    [
+                        action_space_type.__module__,
+                        action_space_type.__name__,
+                    ]
+                )
+            eval_cfg_settings.env_config.action_space_type = action_space_type
 
         cfg.evaluation_config = eval_cfg_settings
         run["evaluation"] = cfg
