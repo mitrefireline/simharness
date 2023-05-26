@@ -225,7 +225,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         return self.state, reward, not self.sim.active, truncated, {}
 
-    def _do_one_agent_step(self, action: np.ndarray) -> None:
+    def _do_one_agent_step(self, action: np.ndarray) -> str:
         """Move the agent and interact with the environment."""
         # Parse the movement and interaction from the action
         movement, interaction = self._parse_action(action)
@@ -250,6 +250,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 self.sim.fire_map,
                 self.interactions[interaction] != "none",
             )
+        return interaction
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
         """Parse the action into movement and interaction."""
