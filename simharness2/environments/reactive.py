@@ -189,15 +189,11 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
         # indicate how to calculate the reward for the current timestep.
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
-        if sim_run and self.reward_cls:
-            # Update reward tracker after simulation has taken one step
-            self.reward_cls.tracker.update_after_one_simulation_step(
-                self.sim.fire_map,
-                self.sim.active,
-                self.benchmark_sim.fire_map if self.benchmark_sim else None,
-                self.benchmark_sim.active if self.benchmark_sim else None,
-                # FIXME what args are needed as input??
-            )
+
+        if sim_run and self.tracker:
+            #update the tracker after the simulation has been updated
+            self.tracker.update_after_one_simulation_step(self.timestep, self.sim.fire_map, self.sim.active, self.benchmark_sim.fire_map, self.benchmark_sim.active)
+
 
         # Calculate the reward for the current timestep
         if self.reward_cls:
