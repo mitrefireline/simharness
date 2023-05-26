@@ -19,6 +19,7 @@ aim:
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true
+  log_hydra_config: true
 cli:
   # Specify the run mode. Supported options: train, tune, view
   mode: ??? # Force command-line override

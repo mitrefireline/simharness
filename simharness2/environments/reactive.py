@@ -10,6 +10,7 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+import logging
 from collections import OrderedDict as ordered_dict
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
@@ -78,6 +79,46 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def __init__(self, config: EnvContext) -> None:
         """See RLHarness (parent/base class)."""
         # NOTE: We don't set a default value in `config.get` for required arguments.
+
+        # Create a log that will be used to log information about the environment
+        self.log = logging.getLogger(__name__)
+        # Indicates that environment information should be logged at various points.
+        self._debug_mode = config.get("debug_mode", False)
+        self._debug_duration = config.get("debug_duration", 1)
+        self._episodes_debugged = 0
+        self.log.debug(f"Initializing environment {hex(id(self))}")
+
+        # When there are multiple workers created, this uniquely identifies the worker
+        # the env is created in. 0 for local worker, >0 for remote workers.
+        self.worker_idx = config.worker_index
+        # When there are multiple envs per worker, this uniquely identifies the env index
+        # within the worker. Starts from 0.
+        self.vector_idx = config.vector_index
+        # Whether individual sub-envs (in a vectorized env) are @ray.remote actors.
+        self.is_remote = config.remote
+        # Total number of (remote) workers in the set. 0 if only a local worker exists.
+        self.num_workers = config.num_workers
+
+        # Indicates whether the environment was created for evaluation purposes.
+        self._is_eval_env = config.get("is_evaluation_env", False)
+        eval_duration = config.get("evaluation_duration")
+        if self.num_workers != 0:
+            if eval_duration and not (eval_duration / self.num_workers).is_integer():
+                raise ValueError(
+                    f"The `evaluation_duration` ({eval_duration}) must be evenly divisible "
+                    f"by the `num_workers` ({self.num_workers}.)"
+                )
+            # Indicates how many rounds of evaluation will be run using this environment.
+            self._total_eval_rounds = (
+                eval_duration / self.num_workers if eval_duration else 0
+            )
+        else:
+            # Eval will be run in the algorithm process, so no need to divide.
+            self._total_eval_rounds = eval_duration if eval_duration else 0
+
+        self._current_eval_round = 1
+
+        self.fire_scenarios = config.get("scenarios", None)
         # Set the max number of steps that the environment can take before truncation
         # self.spec.max_episode_steps = 1000
         self.spec = EnvSpec(
@@ -107,6 +148,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             config.get("normalized_attributes"),
             config.get("deterministic"),
         )
+        self._log_env_init()
 
     def step(
         self, action: np.ndarray
@@ -296,6 +338,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # self.num_burned = 0 FIXME include once we modularize the reward function
         self.num_agent_steps = 0
 
+        self._log_env_reset()
+
         return self.state, {}
 
     def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:  # noqa
@@ -344,6 +388,42 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         else:
             # TODO(afennelly): Verify initial_agent_pos is within the bounds of the map
             self.agent_pos = self.initial_agent_pos
+
+    def _log_env_init(self):
+        """Log information about the environment that is being initialized."""
+
+        if self._is_eval_env:
+            i, j = self.worker_idx, self.vector_idx
+            self.log.warning(
+                f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}"
+            )
+
+        if not self._debug_mode:
+            return
+
+        # TODO: What log level should we use here?
+        self.log.info(f"Object {hex(id(self))}: worker_index: {self.worker_idx}")
+        self.log.info(f"Object {hex(id(self))}: vector_index: {self.vector_idx}")
+        self.log.info(f"Object {hex(id(self))}: num_workers: {self.num_workers}")
+        self.log.info(f"Object {hex(id(self))}: is_remote: {self.is_remote}")
+
+    def _log_env_reset(self):
+        """Log information about the environment that is being reset."""
+        if not self._debug_mode or self._episodes_debugged > self._debug_duration:
+            return
+
+        # TODO: What log level should we use here?
+        for idx, feat in enumerate(self.attributes):
+            low, high = self.low[..., idx].min(), self.high[..., idx].max()
+            obs_min = round(self.state[..., idx].min(), 2)
+            obs_max = round(self.state[..., idx].max(), 2)
+            # Log lower bound of the (obs space) and max returned obs for each attribute.
+            self.log.info(f"{feat} LB: {low}, obs min: {obs_min}")
+            # Log upper (lower) bounds of the returned observations for each attribute.
+            self.log.info(f"{feat} UB: {high}, obs max: {obs_max}")
+
+        # Increment the number of episodes that have been debugged.
+        self._episodes_debugged += 1
 
 
 class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
