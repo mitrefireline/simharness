@@ -93,17 +93,17 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             max_episode_steps=2000,
         )
         # Track the number of timesteps that have occurred within an episode.
-        self.timesteps = 0
+        self.timesteps: int = 0
 
         # If provided, the object is used to perform reward calculation.
-        self.reward_cls = config.get("reward_cls")
+        self.reward_cls: BaseReward = config.get("reward_cls")
 
         # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
-        self.agent_speed = config.get("agent_speed")
+        self.agent_speed: int = config.get("agent_speed")
         self.agent_pos: List[int]
         # FIXME: Default value (ie. [15, 15]) should be set in the config file.
-        self.initial_agent_pos = config.get("initial_agent_pos", [15, 15])
-        self.randomize_initial_agent_pos = config.get(
+        self.initial_agent_pos: List[int] = config.get("initial_agent_pos", [15, 15])
+        self.randomize_initial_agent_pos: bool = config.get(
             "randomize_initial_agent_pos", False
         )
         # Set the agent's initial position on the map
