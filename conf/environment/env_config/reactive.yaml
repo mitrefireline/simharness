@@ -8,7 +8,15 @@ interactions: [fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speed: 9
-reward_cls: null
+tracker:
+  _target_: simharness2.utils.analytics_tracker.AnalyticsTracker
+  sim_area: ${square:${simulation.train.area.screen_size}}
+  agent_speed: ${..agent_speed}
+  num_agents: 1
+
+reward_cls:
+  _target_: simharness2.rewards.base_reward.SimpleReward
+  tracker: ${..tracker}
 # initial_agent_pos: null
 # randomize_initial_agent_pos: null
 benchmark_sim: ${.sim}
