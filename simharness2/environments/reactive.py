@@ -173,32 +173,42 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If provided, the object is used to perform reward calculation.
         self.reward_cls: BaseReward = config.get("reward_cls")
 
-
-
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
         # NOTE: We can also return (agent_moved, agent_interacted) as (bool, bool),
         # and then call the `tracker.update_after_one_agent_step()` method (for clarity?)
-        interaction_str = self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
+        interaction_str = self._do_one_agent_step(
+            action
+        )  # alternatively, self._step_agent(action)
 
         if self.tracker:
-            #update the tracker after the agent action
-            self.tracker.update_after_one_agent_step(self.timestep, self.agent_pos, self.sim.fire_map, interaction_str != "none")
-        
+            # update the tracker after the agent action
+            self.tracker.update_after_one_agent_step(
+                self.timestep,
+                self.agent_pos,
+                self.sim.fire_map,
+                interaction_str != "none",
+            )
+
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
         # indicate how to calculate the reward for the current timestep.
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
 
         if sim_run and self.tracker:
-            #update the tracker after the simulation has been updated
-            self.tracker.update_after_one_simulation_step(self.timestep, self.sim.fire_map, self.sim.active, self.benchmark_sim.fire_map, self.benchmark_sim.active)
-
+            # update the tracker after the simulation has been updated
+            self.tracker.update_after_one_simulation_step(
+                self.timestep,
+                self.sim.fire_map,
+                self.sim.active,
+                self.benchmark_sim.fire_map,
+                self.benchmark_sim.active,
+            )
 
         # Calculate the reward for the current timestep
         if self.reward_cls:
             reward = self.reward_cls.get_reward(sim_run)
-            #update the tracker to reset the agent if sim_run = True
+            # update the tracker to reset the agent if sim_run = True
             if sim_run:
                 self.tracker.update_after_one_simulation_step_and_reward()
         else:
@@ -219,8 +229,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         truncated = False
 
         if self.sim.active == False:
-            #update the tracker after the previous episode has ended
-            #TODO: is this the best place to keep this tracker update
+            # update the tracker after the previous episode has ended
+            # TODO: is this the best place to keep this tracker update
             self.tracker.update_after_one_episode(reward=reward)
 
         return self.state, reward, not self.sim.active, truncated, {}
