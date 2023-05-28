@@ -246,6 +246,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Update reward tracker after agent has taken one step (callback inside method)
         if self.reward_cls:
             self.reward_cls.tracker.update_after_one_agent_step(
+                self.timesteps,
                 self.agent_pos,
                 self.sim.fire_map,
                 self.interactions[interaction] != "none",
