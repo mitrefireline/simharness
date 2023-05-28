@@ -226,11 +226,11 @@ class SimulationMetricsTracker:
 
         # ----------------------
 
-        # number of total mitigations places during the simulation
-        self.num_mitigations
+        # number of total mitigations placed during the simulation
+        self.num_mitigations = 0
 
         # number of new mitigations placed during the recent sim_step
-        self.num_new_mitigations
+        self.num_new_mitigations = 0
 
         # ----------------------
 
