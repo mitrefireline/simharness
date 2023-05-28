@@ -185,7 +185,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.tracker:
             # update the tracker after the agent action
             self.tracker.update_after_one_agent_step(
-                self.timestep,
+                self.timesteps,
                 self.agent_pos,
                 self.sim.fire_map,
                 interaction_str != "none",
@@ -198,7 +198,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if sim_run and self.tracker:
             # update the tracker after the simulation has been updated
             self.tracker.update_after_one_simulation_step(
-                self.timestep,
+                self.timesteps,
                 self.sim.fire_map,
                 self.sim.active,
                 self.benchmark_sim.fire_map,
