@@ -139,7 +139,7 @@ class AnalyticsTracker(BaseAnalyticsTracker):
         self.sim_tracker.update(self.timestep, fire_map, sim_active)
 
         # update the benchmark simulation
-        self.benchsim_tracker.update(self.timstep, bench_fire_map, benchsim_active)
+        self.benchsim_tracker.update(self.timestep, bench_fire_map, benchsim_active)
 
     # run this reset function AFTER the final reward is calculated for a sim_step & after every sim_step within an episode within a simulation
     def update_after_one_simulation_step_and_reward(self):
@@ -255,8 +255,8 @@ class SimulationMetricsTracker:
         burning_tmp = np.count_nonzero(fire_map == BurnStatus.BURNING)
 
         # Use the stored previous values of burning and burned to calculate the num_new_burning and num_new_burned squares in this timestep
-        self.num_new_burned = burned_tmp - self.burned
-        self.num_new_burning = burning_tmp - self.burning
+        self.num_new_burned = burned_tmp - self.num_burned
+        self.num_new_burning = burning_tmp - self.num_burning
 
         # set num_new_burning and num_new_burned to 0 if the are negative (indicating no new burned/burning squares)
         if self.num_new_burning < 0:
@@ -265,8 +265,8 @@ class SimulationMetricsTracker:
             self.num_new_burned = 0
 
         # Now we update the class values of burned and burning to match the updated simulation
-        self.burned = burned_tmp
-        self.burning = burning_tmp
+        self.num_burned = burned_tmp
+        self.num_burning = burning_tmp
 
         # update the number of new mitigations from the agent_tracker.recent_mitigations
         self.num_new_mitigations = self.agent_tracker.new_mitigations
@@ -276,7 +276,7 @@ class SimulationMetricsTracker:
 
         # Calculate the number of undamaged squares in this updated simulation
         num_undamaged_tmp = (
-            self.sim_area - self.burned - self.burning - self.num_mitigations
+            self.sim_area - self.num_burned - self.num_burning - self.num_mitigations
         )
 
         # Calulate the number of recently damaged squares based of the old stored number of undamaged squares
@@ -287,7 +287,7 @@ class SimulationMetricsTracker:
             self.num_new_damaged = 0
 
         # update self.num_damaged_per_step with the new updated self.num_new_damaged
-        self.num_damaged_per_step[self.timesteps] = self.num_new_damaged
+        self.num_damaged_per_step[self.timestep] = self.num_new_damaged
 
         # Now can update the self.num_undamaged with its new value
         self.num_undamaged = num_undamaged_tmp
