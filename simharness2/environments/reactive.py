@@ -168,7 +168,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._log_env_init()
 
         # Instantiate the Tracker Object for the experiment
-        self.tracker = AnalyticsTracker(sim_area = self.simulation.config.area.screen_size**2, agent_speed=self.agent_speed, num_agents=1)
+        self.tracker = config.get("tracker")
 
         # If provided, the object is used to perform reward calculation.
         self.reward_cls: BaseReward = config.get("reward_cls")
