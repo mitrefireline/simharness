@@ -45,8 +45,6 @@ class SimpleReward(BaseReward):
         if not sim_run:
             # No intermediate reward calculation used currently, so 0.0 is returned.
             return self.get_timestep_intermediate_reward()
-        
-        
 
         # Use the data stored in the tracker object to calculate this timesteps reward
 
@@ -64,7 +62,7 @@ class SimpleReward(BaseReward):
         self.latest_reward = reward
         return reward
 
-    def get_timestep_intermediate_reward(self, timestep: int) -> float:
+    def get_timestep_intermediate_reward(self) -> float:
         """TODO Add function docstring."""
         # Basic Intermediate reward is 0
         return 0.0
