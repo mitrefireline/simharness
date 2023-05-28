@@ -340,7 +340,7 @@ class AgentMetricsTracker:
         self.sim_area = sim_area
 
         # track the current timestep that the agent is operating within
-        self.timestep
+        self.timestep = 0
 
         # number of actions that the agent has taken within this timestep
         self.num_agent_actions = 0
