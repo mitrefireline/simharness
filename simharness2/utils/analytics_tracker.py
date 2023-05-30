@@ -103,6 +103,15 @@ class AnalyticsTracker(BaseAnalyticsTracker):
         # Track the latest episode reward
         self.latest_reward = 0.0
 
+        # Track the avg BenchSim timesteps
+        self.bench_timesteps = 0
+
+        # Track the avg BenchSim damage total
+        self.bench_damage = 0
+
+        # Bool to determine if the bench metrics were intialized by the bench sim, or an estimation from the main sim 
+        self.bench_estimated = True
+
         ## VARIABLES TRACKED within an episode
         # ---------------------
 
@@ -140,6 +149,24 @@ class AnalyticsTracker(BaseAnalyticsTracker):
 
         # update the benchmark simulation
         self.benchsim_tracker.update(self.timestep, bench_fire_map, benchsim_active)
+
+        #Use this to update the self.bench_timesteps and the self.bench_damage
+        if benchsim_active == False and self.bench_estimated==False:
+            #if the benchsim has reached it's end, then use this to set the values of the variables
+            self.bench_timesteps = self.benchsim_tracker.timestep
+            self.bench_damage = self.sim_area - self.benchsim_tracker.num_undamaged
+            self.bench_estimated = True
+
+        #use this to initialize the self.bench_timesteps and the self.bench_damage if the bench_sim has not ended before the main_sim yet
+        #TODO make this more efficient or just have the benchsim run once before the agent makes any actions
+        elif self.bench_estimated==False:
+
+            if self.benchsim_tracker.timestep > self.bench_timesteps:
+                self.bench_timesteps = self.benchsim_tracker.timestep + 1
+
+            if (self.sim_area - self.benchsim_tracker.num_undamaged) > self.bench_damage:
+                self.bench_damage = (self.sim_area - self.benchsim_tracker.num_undamaged) + 1
+
 
     # run this reset function AFTER the final reward is calculated for a sim_step & after every sim_step within an episode within a simulation
     def update_after_one_simulation_step_and_reward(self):
@@ -387,10 +414,10 @@ class AgentMetricsTracker:
         self.agent_burning = self._agent_is_burning(fire_map, agent_pos)
 
         # update the bool if the agent is operating within already burnt area
-        self.agent_in_burned_area = self._agent_is_burning(fire_map, agent_pos)
+        self.agent_in_burned_area = self._agent_in_burned_area(fire_map, agent_pos)
 
         # update the bool if the agent is nearby the fire
-        self.agent_near_burning_area = self._nearby_fire(fire_map, agent_pos)
+        self.agent_near_fire = self._nearby_fire(fire_map, agent_pos)
 
     # reset a set of the AgentMetricsTracker object variables at the end of each simulation update *after the reward has been calculated
     def reset_after_sim_update(self):
