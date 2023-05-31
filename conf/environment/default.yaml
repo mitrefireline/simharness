@@ -1,6 +1,6 @@
 defaults:
   # Arguments dict passed to the env creator as an `EnvContext` object
-  - env_config: reactive_marl
+  - env_config: reactive
   - _self_
 
 # The environment specifier. This can either be a tune-registered env, via
@@ -8,11 +8,7 @@ defaults:
 # RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
 # either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
 # qualified classpath to an Env class, ie. "ray.rllib.examples.env.random_env.RandomEnv".
-<<<<<<< HEAD
 env: simharness2.environments.reactive.ReactiveDiscreteHarness
-=======
-env: MARLReactiveHarness-v0
->>>>>>> mvp for multi-agent with bugs
 
 env_task_fn: null
 # If True, try to render the environment on the local worker or on worker 1 (if

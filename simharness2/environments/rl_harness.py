@@ -23,7 +23,7 @@ from simfire.sim.simulation import Simulation
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 
-class RLHarness(MultiAgentEnv, ABC):
+class RLHarness(gym.Env, ABC):
     """`Simulation` wrapper enabling RL agent's to interact with different simulators.
 
     The most important API methods a RLHarness exposes are `step()`, `reset()`,

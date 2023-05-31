@@ -23,30 +23,18 @@ mitigation:
   ros_attenuation: False
 
 operational:
-<<<<<<< HEAD:conf/simulation/eval/default.yaml
   seed: 1
   latitude: 33.032762267449314
   longitude: -116.66412470409439
   height: ${operational_screen_size:${..area.screen_size}}
   width: ${operational_screen_size:${..area.screen_size}}
-=======
-  seed: 1236
-  latitude: 39.67
-  longitude: 119.8
-  height: 3000 #1920
-  width: 3000 #1920
->>>>>>> mvp for multi-agent with bugs:conf/simulation/simfire/train.yaml
   resolution: 30
   path: ${cli.data_dir}/data
   year: 2020  # ${simulation.operational.year}
 
 terrain:
   topography:
-<<<<<<< HEAD:conf/simulation/eval/default.yaml
     type: operational  # ${simulation.topography.type}
-=======
-    type: operational
->>>>>>> mvp for multi-agent with bugs:conf/simulation/simfire/train.yaml
     functional:
       function: perlin
       perlin:

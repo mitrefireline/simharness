@@ -76,7 +76,7 @@ def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
         result = algo.train()
         log.info(pretty_print(result))
 
-        if i % cfg.checkpoint.checkpoint_frequency == 0:
+        if i % cfg.checkpoint.frequency == 0:
             ckpt_path = algo.save()
             log.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
 
@@ -216,20 +216,22 @@ def main(cfg: DictConfig):
                 .debugging(**debug_settings)
                 .callbacks(SetEnvSeedsCallback)
             )
+            
+            algo = algo_cfg.build()
+            model_available = True
 
-            if cfg.cli.mode == "tune":
-                train_with_tune(algo_cfg, cfg)
-            else:
-                algo = algo_cfg.build()
-                model_available = True
+        if cfg.cli.mode == "tune":
+            train_with_tune(algo_cfg, cfg)
+        else:
+            train(algo, cfg, log)
 
-                train(algo, cfg)
-
-    # elif cfg.cli.mode == "view":
-    #     if not model_available:
-    #         raise ValueError("No model is available for viewing.")
-
-    #     view(algo, cfg, sim(view_cfg))
+    elif cfg.cli.mode == "view":
+        if not model_available:
+            raise ValueError("No model is available for viewing.")
+        
+        sim_path = cfg.evaluation.evaluation_config.env_config.simulation
+        sim = instantiate(sim_path, _convert_="partial")
+        view(algo, cfg, sim)
     else:
         raise ValueError(f"Invalid mode: {cfg.cli.mode}")
 

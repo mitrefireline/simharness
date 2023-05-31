@@ -137,8 +137,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.randomize_initial_agent_pos = config.get(
             "randomize_initial_agent_pos", False
         )
-        # Set the agent's initial position on the map
-        self._set_agent_pos_for_episode_start()
 
         super().__init__(
             config.get("simulation"),
@@ -149,6 +147,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             config.get("deterministic"),
         )
         self._log_env_init()
+        
+        # Set the agent's initial position on the map
+        self._set_agent_pos_for_episode_start()
 
     def step(
         self, action: np.ndarray

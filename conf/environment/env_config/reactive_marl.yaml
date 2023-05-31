@@ -1,4 +1,8 @@
-simulation: Fire-v0
+simulation:
+  _target_: simfire.sim.simulation.FireSimulation
+  config:
+    _target_: simfire.utils.config.Config
+    config_dict: ${simulation.train}
 movements: [up, down, left, right]
 interactions: [fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
