@@ -247,9 +247,9 @@ class SimulationMetricsTracker:
         # number of squares damaged (burned + burning + mitigations) during the last sim_step
         self.num_new_damaged = 0
 
-        # TODO decide how to initialize array
+        # TODO decide how to initialize array; for debugging, just use a list.
         # array that tracks the number of new damaged squares at each simulation sim_step
-        self.num_damaged_per_step = [0]
+        self.num_damaged_per_step = []
 
         # ----------------------
 
@@ -314,7 +314,8 @@ class SimulationMetricsTracker:
             self.num_new_damaged = 0
 
         # update self.num_damaged_per_step with the new updated self.num_new_damaged
-        self.num_damaged_per_step[self.timestep] = self.num_new_damaged
+        # self.num_damaged_per_step[self.timestep] = self.num_new_damaged
+        self.num_damaged_per_step.append(self.num_new_damaged)
 
         # Now can update the self.num_undamaged with its new value
         self.num_undamaged = num_undamaged_tmp
