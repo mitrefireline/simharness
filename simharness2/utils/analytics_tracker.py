@@ -79,7 +79,7 @@ class BaseAnalyticsTracker(ABC):
         raise NotImplementedError
 
 
-class AnalyticsTracker(BaseAnalyticsTracker):
+class ReactiveAnalyticsTracker(BaseAnalyticsTracker):
     """TODO add docstring"""
 
     def __init__(self, sim_area, agent_speed, num_agents=1):
@@ -207,8 +207,7 @@ class AnalyticsTracker(BaseAnalyticsTracker):
 
 
 # metrics tracked after the simulation updates
-class SimulationMetricsTracker:
-    def __init__(self, sim_area, agent_speed, num_agents=1):
+class FireSimulationMetricsTracker:
         # number of squares within the simulation
         self.sim_area = sim_area
 
