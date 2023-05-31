@@ -63,7 +63,7 @@ def get_default_operational_fires(
 ) -> Tuple[Tuple[float, float], Tuple[int, int], Tuple[int, int]]:
     """FIXME: Docstring for get_default_operational_fires."""
     # FIXME hard-coded values for now
-    num_locations = 6
+    num_locations = 1
     # NOTE: logic below assumes num_fire_positions == num_agent_positions
     num_fire_positions = 10
     num_agent_positions = 10
