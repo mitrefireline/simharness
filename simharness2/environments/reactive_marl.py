@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
+from ray.rllib.env.env_context import EnvContext
 from simfire.sim.simulation import Simulation
 from simfire.utils.log import create_logger
 
@@ -75,19 +76,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     - TODO(afennelly) add more details about the episode termination.
     """
 
-    def __init__(
-        self,
-        simulation: Simulation,
-        movements: List[str],
-        interactions: List[str],
-        attributes: List[str],
-        normalized_attributes: List[str],
-        agent_speeds: List[int],
-        deterministic: bool = False,
-        initial_agent_pos: List[List[int]] = [[15, 15]],
-        randomize_initial_agent_pos: List[bool] = [False],
-        num_agents: int = 1
-    ) -> None:
+    def __init__(self, config: EnvContext) -> None:
         """See RLHarness (parent/base class)."""
         # Set the max number of steps that the environment can take before truncation
         # self.spec.max_episode_steps = 1000
@@ -98,23 +87,26 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         )
         # Set the number of steps an agent has taken in the current simulation.
         self.num_agent_steps = 0
-        self.agent_speeds = agent_speeds
-        self.num_agents = num_agents
+        self.agent_speeds = config.get("agent_speeds")
+        self.num_agents = config.get("num_agents", 1)
 
         # Store agent position parameters for use in `step()`, `reset()`, etc.
         self.agent_pos: List[List[int]] = [None] * self.num_agents
-        self.initial_agent_pos = initial_agent_pos
-        self.randomize_initial_agent_pos = randomize_initial_agent_pos
+        default_pos_list = [[15, 15], [15, 15], [15, 15], [15, 15]]
+        self.initial_agent_pos = config.get("initial_agent_pos", default_pos_list)
+        self.randomize_initial_agent_pos = config.get(
+            "randomize_initial_agent_pos", [False] * self.num_agents
+        )
 
         super().__init__(
-            simulation,
-            movements,
-            interactions,
-            attributes,
-            normalized_attributes,
-            deterministic,
+            config.get("simulation"),
+            config.get("movements"),
+            config.get("interactions"),
+            config.get("attributes"),
+            config.get("normalized_attributes"),
+            config.get("deterministic"),
         )
-        
+
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
