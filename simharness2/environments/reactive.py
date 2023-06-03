@@ -597,3 +597,31 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         else:
             self.tracker = None
 
+    def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
+        """Instantiates the reward class used to perform reward calculation each episode.
+
+        This method must be called AFTER `self._setup_tracker()`, as the reward class
+        requires `self.tracker` to be passed as an argument to its constructor.
+
+        Arguments:
+            reward_cls_partial: A `functools.partial` object that indicates the reward
+                class that will be used to perform reward calculation after each timestep
+                in an episode.
+
+        Raises:
+            TypeError: If `tracker_partial.keywords` does not contain a
+                `sim_data_partial` key with value of type `functools.partial`.
+            AttributeError: If `self` does not have a `tracker` attribute. See the above
+                message for more details.
+
+        """
+        self.reward_cls: BaseReward
+        if reward_cls_partial:
+            try:
+                self.reward_cls = reward_cls_partial(tracker=self.tracker)
+            except TypeError as e:
+                raise e
+            except AttributeError as e:
+                raise e
+        else:
+            self.reward_cls = None
