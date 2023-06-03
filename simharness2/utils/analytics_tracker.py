@@ -408,27 +408,26 @@ class AgentMetricsTracker:
         agent_pos_is_empty_space: bool,
     ) -> None:
         """Update the AgentMetricsTracker object variables after each agent action"""
-        # track the current timestep
-        self.timestep = timestep
+        # NOTE: Attribute (s) useful for debugging; may be removed later.
+        if mitigation_placed:
+            self.num_interactions_since_last_sim_step += 1
+        if movements[movement] != "none":
+            self.num_movements_since_last_sim_step += 1
 
-        # track how many actions the agent has taken within the timestep
-        self.num_agent_actions += 1
+        # Update interaction-specific attributes.
+        self.agent_interactions.append(interaction)
 
-        # update the mitigation_placed bool and the new_mitigations count if the agent has placed a mitigation
-        if interaction:
-            self.new_mitigations += 1
-            self.mitigation_placed = True
+        # Update movement-specific attributes.
+        self.agent_movements.append(movement)
+        self.agent_positions.append(agent_pos)
 
-        # TODO add tracker variable to store the latest action and then pass that information into the update arguments
-
-        # update the bool if the agent is burning
-        self.agent_burning = self._agent_is_burning(fire_map, agent_pos)
-
-        # update the bool if the agent is operating within already burnt area
+        fire_map, agent_pos = self._sim.fire_map, agent_pos
+        self.agent_is_burning = self._agent_is_burning(fire_map, agent_pos)
         self.agent_in_burned_area = self._agent_in_burned_area(fire_map, agent_pos)
+        self.agent_nearby_fire = self._agent_nearby_fire(fire_map, agent_pos)
 
-        # update the bool if the agent is nearby the fire
-        self.agent_near_fire = self._nearby_fire(fire_map, agent_pos)
+        # NOTE: We may want to penalize the agent for moving into a non-empty space.
+        self.agent_pos_is_empty_space = agent_pos_is_empty_space
 
     # reset a set of the AgentMetricsTracker object variables at the end of each simulation update *after the reward has been calculated
 
