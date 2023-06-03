@@ -174,7 +174,7 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
         """TODO Add docstring."""
         # run this update function at the end of an episode before the next episode
         # update the number of episodes
-        self.episode_num += 1
+        self.episodes_total += 1
 
         # get the total number of undamaged squares from the sim_tracker object
         simulation_undamaged = self.sim_tracker.num_undamaged
