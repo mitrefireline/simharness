@@ -461,9 +461,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         if self._is_eval_env:
             i, j = self.worker_idx, self.vector_idx
-            logger.warning(
-                f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}"
-            )
+            logger.warning(f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}")
 
         if not self._debug_mode:
             return
@@ -515,7 +513,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 else:
                     nearby_locs.append((i, j))
 
-        for (i, j) in nearby_locs:
+        for i, j in nearby_locs:
             if self.state[self.attributes.index("fire_map")][i][j] == 1:
                 return True
 
