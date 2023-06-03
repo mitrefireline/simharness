@@ -82,40 +82,6 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
             `agent_data_partial` key with value of type `functools.partial`.
 
         """
-        ## VARIABLES TRACKED ACROSS ALL EPISODES
-        # ---------------------
-
-        # Define metrics that are tracked across all episodes in a run.
-        # Highest number of undamaged squares achieved during a single-episode across the
-        # course of a trial.
-        # FIXME currently, this doesn't seem to be used for any reward calculations?        
-        self.max_episode_unburned_squares = -1
-
-        # lowest number of timesteps used to stop fire
-        # FIXME currently, this doesn't seem to be used for any reward calculations?
-        # FIXME better default value?
-        self.min_episode_sim_steps = 9999
-
-        # The Number of experiments/episodes and also the current episode that we are in
-        self.episode_num = 0
-
-        # Track the current timestep of the episode that we are in
-        self.timestep = 0
-
-        # Track the latest episode reward
-        self.latest_reward = 0.0
-
-        # Track the avg BenchSim timesteps
-        self.bench_timesteps = 0
-
-        # Track the avg BenchSim damage total
-        self.bench_damage = 0
-
-        # Bool to determine if the bench metrics were intialized by the bench sim, or an estimation from the main sim 
-        self.bench_estimated = True
-
-        ## VARIABLES TRACKED within an episode
-        # ---------------------
 
         # Store objects used to track simulation data within each episode in a run.
         try:
@@ -126,6 +92,8 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
                 )
         except TypeError as e:
             raise e
+
+        self.reset()
 
     def update_after_one_agent_step(
         self,
@@ -228,6 +196,49 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
 
 # ------------------------------------------------------------------------------------
 
+    def reset(self):
+        """TODO Add docstring."""
+        # Define metrics that are tracked across all episodes in a run.
+        # Highest number of undamaged squares achieved during a single-episode across the
+        # course of a trial.
+        # FIXME currently, this doesn't seem to be used for any reward calculations?
+        self.max_episode_unburned_squares = -1
+
+        # lowest number of timesteps used to stop fire
+        # FIXME currently, this doesn't seem to be used for any reward calculations?
+        # FIXME better default value?
+        self.min_episode_sim_steps = 9999
+
+        # Stores the current episode
+        # NOTE: ray tracks this via `ray.tune.result.EPISODES_TOTAL`
+        self.episodes_total = 0
+
+        # Track the current timestep of the episode that we are in
+        # Incremented after `update...agent_step` and `update...simulation_step`.
+        # FIXME use better variable name: `timesteps_total` or `timesteps_this_episode`?
+        # NOTE: ray tracks this via `ray.tune.result.TIMESTEPS_TOTAL`
+        # self.timestep = 0
+
+        # Track the latest episode reward
+        # TODO is this the reward for the latest timestep or the latest episode?
+        self.latest_reward = 0.0
+
+        self.sim_data.reset()
+
+        if self.benchmark_sim_data:
+            # Track the avg BenchSim timesteps
+            self.bench_timesteps = 0
+            # self.min_episode_benchmark_sim_steps = -1
+
+            # Track the avg BenchSim damage total
+            self.bench_damage = 0
+            # self.max_episode_benchmark_unburned_squares = -1
+
+            # FIXME what is `bench_estimated` trying to represent?
+            # Bool to determine if the bench metrics were intialized by the bench sim, or an estimation from the main sim
+            self.bench_estimated = True
+
+            self.benchmark_sim_data.reset()
 
 # metrics tracked after the simulation updates
 class FireSimulationMetricsTracker:
