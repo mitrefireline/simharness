@@ -327,7 +327,7 @@ class FireSimulationMetricsTracker:
         return
 
     # reset all of the SimulationMetricsTracker object variables at the end of each episode
-    def sim_reset(self):
+    def reset(self):
         self.active = True
 
         self.timestep = 0
