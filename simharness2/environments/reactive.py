@@ -265,27 +265,19 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.movement, self.interaction = self._parse_action(action)
 
         # Update agent location on map
-        movement_str = self.movements[movement]
-        if movement_str != "none":
-            self._update_agent_position(movement_str)
+        if self.movements[self.movement] != "none":
+            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
+            self._update_agent_position()
 
         # Check if there was an interaction already done on this space
-        is_empty = self._is_empty_space()
+        # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
+        self._agent_pos_is_empty_space()
 
-        # TODO Penalize agent when `is_empty == False` (chose "invalid" interaction)?
         # Interact with the environment
-        if is_empty and self.interactions[interaction] != "none":
-            self._update_mitigation(interaction)
-
-        # Update reward tracker after agent has taken one step (callback inside method)
-        if self.reward_cls:
-            self.reward_cls.tracker.update_after_one_agent_step(
-                self.timesteps,
-                self.agent_pos,
-                self.sim.fire_map,
-                self.interactions[interaction] != "none",
-            )
-        return interaction
+        interact = self.interactions[self.interaction] != "none"
+        if self.agent_pos_is_empty_space and interact:
+            # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
+            self._update_mitigation()
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
         """Parse the action into movement and interaction."""
