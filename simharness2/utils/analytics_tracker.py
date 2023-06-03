@@ -122,10 +122,16 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
             agent_pos_is_empty_space: A boolean indicating if the agent is currently in an
                 empty space.
         """
-        self.sim_tracker.agent_tracker.update(
-            self.timestep, agent_pos, fire_map, interaction
-        )
-        
+        if self.sim_data.agent_tracker:
+            self.sim_data.agent_tracker.update(
+                mitigation_placed=mitigation_placed,
+                movements=movements,
+                movement=movement,
+                interaction=interaction,
+                agent_pos=agent_pos,
+                agent_pos_is_empty_space=agent_pos_is_empty_space,
+            )
+
     def update_after_one_simulation_step(self):
         """Calls `update()` on `self.sim_data` (`self.benchmark_sim_data`, if exists).
 
@@ -161,7 +167,8 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
     # run this reset function AFTER the final reward is calculated for a sim_step & after every sim_step within an episode within a simulation
     def update_after_one_simulation_step_and_reward(self):
         # reset the agent_tracker only after all of the rewards have been calculated for the sim_step
-        self.sim_tracker.agent_tracker.reset_after_sim_update()
+        if self.sim_data.agent_tracker:
+            self.sim_data.agent_tracker.reset_after_sim_update()
 
     def update_after_one_episode(self, reward: float):
         """TODO Add docstring."""
