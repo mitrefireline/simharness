@@ -324,7 +324,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # FIXME Store the value that indicates whether space is empty or not
         #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
-        return self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
+        self.agent_pos_is_empty_space = (
+            self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
+        )
 
     def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""
