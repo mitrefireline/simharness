@@ -175,6 +175,15 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
+        # After every agent action, store the respective movement and interaction
+        # FIXME: any ideas on "better" names? we can prepend `prev_`, or `curr_`?
+        self.movement: int = -1
+        self.interaction: int = -1
+        # If the square the agent is on is "empty", this is set to True.
+        self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
+        # If the agent places a mitigation, this is set to True.
+        self.mitigation_placed: bool = False
+
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
