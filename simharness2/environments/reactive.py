@@ -241,10 +241,28 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         return self.state, reward, not self.sim.active, truncated, {}
 
-    def _do_one_agent_step(self, action: np.ndarray) -> str:
-        """Move the agent and interact with the environment."""
-        # Parse the movement and interaction from the action
-        movement, interaction = self._parse_action(action)
+    def _do_one_agent_step(self, action: np.ndarray) -> None:
+        """Move the agent and interact with the environment.
+
+        Within this method, the movement and interaction that the agent will
+        take are stored in `self.movement` and `self.interaction`, respectively. If this
+        movement is not "none", then the agent's position on the map is updated and
+        stored in `self.agent_pos`.
+
+        Given some arbitrary method that defines whether a space in the simulation is
+        empty or not (see `_agent_pos_is_empty_space()`), the value of
+        `self.agent_pos_is_empty_space` is updated accordingly. If the space occupied by
+        the agent (`self.agent_pos`) is *empty* and the interaction is not "none", then
+        the agent will place a mitigation on the map and `self.mitigation_placed` is set
+        to True. Otherwise, `self.mitigation_placed` is set to False.
+
+        Arguments:
+            action: An ndarray provided by the agent to update the environment state.
+        """
+        # Parse the movement and interaction from the action, and store them.
+        # TODO We can set `self.movement` and `self.interaction` inside `_parse_action`?
+        # But, would that make things less clear? Maybe rename `_parse_action` if so.
+        self.movement, self.interaction = self._parse_action(action)
 
         # Update agent location on map
         movement_str = self.movements[movement]
