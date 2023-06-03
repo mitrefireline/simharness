@@ -85,11 +85,16 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
         ## VARIABLES TRACKED ACROSS ALL EPISODES
         # ---------------------
 
-        # lowest number of undamaged squares achieved across all of the simulations in an experiment
-        self.lowest_undamaged_overall = sim_area + 1
+        # Define metrics that are tracked across all episodes in a run.
+        # Highest number of undamaged squares achieved during a single-episode across the
+        # course of a trial.
+        # FIXME currently, this doesn't seem to be used for any reward calculations?        
+        self.max_episode_unburned_squares = -1
 
         # lowest number of timesteps used to stop fire
-        self.lowest_timesteps = 9999
+        # FIXME currently, this doesn't seem to be used for any reward calculations?
+        # FIXME better default value?
+        self.min_episode_sim_steps = 9999
 
         # The Number of experiments/episodes and also the current episode that we are in
         self.episode_num = 0
