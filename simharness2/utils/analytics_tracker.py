@@ -369,10 +369,9 @@ class AgentMetricsTracker:
 
     def __init__(self, sim: FireSimulation):
         """TODO: Docstring for __init__."""
-        self.sim_area = sim_area
-
-        # track the current timestep that the agent is operating within
-        self.timestep = 0
+        # Store a reference to the agent's world, the `FireSimulation` object.
+        self._sim = sim
+        self.reset()
 
         # number of actions that the agent has taken within this timestep
         self.num_agent_actions = 0
