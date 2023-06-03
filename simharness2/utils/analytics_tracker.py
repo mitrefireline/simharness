@@ -330,9 +330,8 @@ class FireSimulationMetricsTracker:
     def reset(self):
         self.active = True
 
-        self.timestep = 0
+        self.num_sim_steps: int = 0
 
-        self.num_sim_updates = 0
 
         # ---------------------
 
