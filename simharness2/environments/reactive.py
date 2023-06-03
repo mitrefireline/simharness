@@ -96,6 +96,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._episodes_debugged = 0
         self.log.debug(f"Initializing environment {hex(id(self))}")
 
+        # Indicator variable to determine if environment has ever been reset.
+        self._has_reset = False
         # When there are multiple workers created, this uniquely identifies the worker
         # the env is created in. 0 for local worker, >0 for remote workers.
         self.worker_idx = config.worker_index
@@ -483,6 +485,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.timesteps = 0
 
         self._log_env_reset()
+        self._has_reset = True
 
         return self.state, {}
 
