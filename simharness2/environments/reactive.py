@@ -145,8 +145,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.randomize_initial_agent_pos: bool = config.get(
             "randomize_initial_agent_pos", False
         )
-        # Set the agent's initial position on the map
-        self._set_agent_pos_for_episode_start()
 
         action_space_partial: partial = config.get("action_space_partial")
         # Ensure the provided `action_space_partial` has a `func` attribute.
@@ -167,6 +165,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             action_space_cls=action_space_partial.func,
         )
         self._log_env_init()
+
+        # Set the agent's initial position on the map
+        self._set_agent_pos_for_episode_start()
 
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         self._setup_tracker(tracker_partial=config.get("tracker_partial"))
