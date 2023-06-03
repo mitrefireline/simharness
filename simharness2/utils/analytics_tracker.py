@@ -350,10 +350,10 @@ class FireSimulationMetricsTracker:
         self.num_damaged_per_step = [0]
 
         # ----------------------
+        # We do not need to track mitigation lines in the benchmark simulation.
+        self.num_mitigations_total: int = 0 if not self.is_benchmark else None
 
-        self.num_mitigations
-
-        self.num_new_mitigations
+        self.num_new_mitigations: int = 0 if not self.is_benchmark else None
 
         # ----------------------
 
