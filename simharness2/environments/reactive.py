@@ -326,12 +326,14 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         fire_map_idx = self.attributes.index("fire_map")
         return self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
 
-    def _update_mitigation(self, interaction: int) -> None:
+    def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""
         # Perform interaction on new space
-        sim_interaction = self.harness_to_sim[interaction]
+        sim_interaction = self.harness_to_sim[self.interaction]
         mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
         self.sim.update_mitigation([mitigation_update])
+        # Store indicator that a mitigation was placed
+        self.mitigation_placed = True
 
     def _do_one_simulation_step(self) -> bool:
         """Step the simulation forward one timestep, depending on `self.agent_speed`."""
