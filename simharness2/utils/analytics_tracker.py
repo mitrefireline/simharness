@@ -448,10 +448,12 @@ class AgentMetricsTracker:
     def reset(self):
         """Reset the AgentMetricsTracker to initial values."""
         # reset the agent_trackers previous reset func
-        self.agent_tracker.reset_after_sim_update()
+        self.reset_after_one_simulation_step()
 
-        # reset the timesteps within the agent_tracker at the end of an episode]
-        self.agent_tracker.timestep = 0
+        # Attributes used to store the agent's behavior across a single episode.
+        self.agent_interactions: List[int] = []
+        self.agent_movements: List[int] = []
+        self.agent_positions: List[List[int]] = []
 
     def _agent_nearby_fire(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
         """Check if the agent is adjacent to a space that is currently burning.
