@@ -571,3 +571,29 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Increment the number of episodes that have been debugged.
         self._episodes_debugged += 1
+
+    def _setup_tracker(self, tracker_partial: partial) -> None:
+        """Instantiates the tracker used to monitor this `ReactiveHarness` object.
+
+        Arguments:
+            tracker_partial: A `functools.partial` object that indicates the top-level
+                class that will be used to monitor the `ReactiveHarness` object. The user
+                is expected to provide the `sim_data_partial` keyword argument, along
+                with a valid value.
+
+        Raises:
+            TypeError: If `tracker_partial.keywords` does not contain a
+            `sim_data_partial` key with value of type `functools.partial`.
+
+        """
+        self.tracker: ReactiveAnalyticsTracker
+        if tracker_partial:
+            try:
+                self.tracker = tracker_partial(
+                    sim=self.sim, benchmark_sim=self.benchmark_sim
+                )
+            except TypeError as e:
+                raise e
+        else:
+            self.tracker = None
+
