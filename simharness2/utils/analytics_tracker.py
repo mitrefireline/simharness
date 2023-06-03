@@ -321,10 +321,7 @@ class FireSimulationMetricsTracker:
         # run this tracker update function after the agents actions and right after the
         # simulation has updated
         # track the current timestep
-        self.timestep = timestep
-
-        # update the simulation update counter
-        self.num_sim_updates += 1
+        self.num_sim_steps += 1
 
         # update whether the simulation is active
         self.active = sim_active
