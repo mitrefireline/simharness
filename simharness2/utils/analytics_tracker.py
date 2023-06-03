@@ -117,13 +117,15 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
         ## VARIABLES TRACKED within an episode
         # ---------------------
 
-        # Tracker Object for the Metrics from the main_simulation
-        self.sim_tracker = SimulationMetricsTracker(sim_area, agent_speed, num_agents)
-
-        # Tracker Object for the Metrics from the bench_simulation
-        self.benchsim_tracker = SimulationMetricsTracker(
-            sim_area, agent_speed, num_agents
-        )
+        # Store objects used to track simulation data within each episode in a run.
+        try:
+            self.sim_data: FireSimulationMetricsTracker = sim_data_partial(sim=sim)
+            if benchmark_sim:
+                self.benchmark_sim_data: FireSimulationMetricsTracker = sim_data_partial(
+                    sim=benchmark_sim, is_benchmark=True
+                )
+        except TypeError as e:
+            raise e
 
     def update_after_one_agent_step(
         self,
