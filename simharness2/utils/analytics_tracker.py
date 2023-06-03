@@ -444,6 +444,7 @@ class AgentMetricsTracker:
         self.agent_in_burned_area = False
 
         self.agent_near_fire = False
+        self.agent_pos_is_empty_space = False
 
     def reset(self):
         """Reset the AgentMetricsTracker to initial values."""
