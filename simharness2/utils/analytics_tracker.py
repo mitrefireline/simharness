@@ -404,9 +404,9 @@ class FireSimulationMetricsTracker:
         self.num_new_mitigations: int = 0 if not self.is_benchmark else None
 
         # ----------------------
-
-        # reset the agent_tracker
-        self.agent_tracker.reset_after_episode()
+        # TODO: Indicate (maybe in docstring?) that `agent_tracker` is reset here.
+        if self.agent_tracker:
+            self.agent_tracker.reset()
 
 class AgentMetricsTracker:
     """Monitors and tracks the behavior of a single agent within the simulation."""
