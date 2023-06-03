@@ -14,7 +14,7 @@ from simfire.sim.simulation import FireSimulation
 import math
 
 
-class BaseAnalyticsTracker(ABC):
+class RLAnalyticsTracker(ABC):
     """Base class with several built in methods."""
 
     @abstractmethod
@@ -52,7 +52,7 @@ class BaseAnalyticsTracker(ABC):
         pass
 
 
-class ReactiveAnalyticsTracker(BaseAnalyticsTracker):
+class ReactiveAnalyticsTracker(RLAnalyticsTracker):
     """TODO add docstring"""
 
     def __init__(
