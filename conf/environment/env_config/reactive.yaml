@@ -22,8 +22,8 @@ tracker_partial:
       _partial_: true
 reward_cls: 
   _target_: simharness2.rewards.base_reward.ComprehensiveReward
-# initial_agent_pos: null
-# randomize_initial_agent_pos: null
+initial_agent_pos: [15, 15]
+randomize_initial_agent_pos: false
 benchmark_sim: ${.sim}
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
 # NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).
