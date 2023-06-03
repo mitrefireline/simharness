@@ -15,58 +15,31 @@ import math
 
 
 class BaseAnalyticsTracker(ABC):
-    """TODO Add class docstring."""
-
-    def __init__(
-        self,
-        sim_area,
-        agent_speed,
-        num_agents=1,
-    ):
-        """TODO (afennelly): Add docstring.
-
-        Expected usage:
-            TODO
-
-        Arguments:
-            sim_area: An int representing how large the simulation is in pixels.
-              The screen_size sets both the height and the width of the screen.
-            agent_speed: TODO
-            num_agents: TODO
-        """
-        # Required attributes that track simulation data across each episode in a run.
-        # Optional attributes that track additional data for the RLHarness.
-        # self.run_data = run_data
-        # self.agent_data = agent_data
-        # self.benchmark_sim_data = benchmark_sim_data
-        self.sim_area = sim_area
-        self.agent_speed = agent_speed
-        self.num_agents = num_agents
+    """Base class with several built in methods."""
 
     @abstractmethod
-    def update_after_one_simulation_step(
-        self,
-        timestep,
-        fire_map: np.ndarray,
-        sim_active: bool,
-        bench_fire_map: np.ndarray,
-        benchsim_active: bool,
-        **kwargs,
-    ):
-        """TODO Add docstring."""
-        raise NotImplementedError
+    def __init__(self) -> None:
+        """Subclasses must implement there own `__init__` method."""
+        pass
+
+    @abstractmethod
+    def update_after_one_simulation_step(self):
+        """See subclass for docstring."""
+        pass
 
     @abstractmethod
     def update_after_one_agent_step(
         self,
-        timestep,
+        *,
+        mitigation_placed: bool,
+        movements: List[str],
+        movement: int,
+        interaction: int,
         agent_pos: List[int],
-        fire_map: np.ndarray,
-        interaction: bool,
-        **kwargs,
-    ):
-        """TODO Add docstring."""
-        raise NotImplementedError
+        agent_pos_is_empty_space: bool,
+    ) -> None:
+        """See subclass for docstring."""
+        pass
 
     @abstractmethod
     def update_after_one_simulation_step_and_reward(self):
@@ -75,16 +48,40 @@ class BaseAnalyticsTracker(ABC):
 
     @abstractmethod
     def update_after_one_episode(self, reward):
-        """TODO Add docstring."""
-        raise NotImplementedError
+        """See subclass for docstring."""
+        pass
 
 
 class ReactiveAnalyticsTracker(BaseAnalyticsTracker):
     """TODO add docstring"""
 
-    def __init__(self, sim_area, agent_speed, num_agents=1):
-        super().__init__(sim_area, agent_speed, num_agents)
+    def __init__(
+        self,
+        *,
+        sim: FireSimulation,
+        sim_data_partial: partial,
+        benchmark_sim: FireSimulation = None,
+    ) -> None:
+        """TODO Add summary line.
 
+        Arguments:
+            sim: The underlying `FireSimulation` object that contains the agent (s) that
+                are being trained. The agent (s) will place mitigation lines, and the
+                simulation will spread the fire. An episode terminates when the fire is
+                finished spreading.
+            sim_data_partial: A `functools.partial` object that defines the class that will
+                be used to monitor and track `self.sim`, and `self.benchmark_sim`, if the
+                optional `benchmark_sim` is provided. The user is expected to provide the
+                `agent_data_partial` keyword argument, along with a valid value.
+            benchmark_sim: A separate `FireSimulation` object, identical to
+                `sim` (after initialization). No mitigation lines will be placed in this
+                simulation, as it does not contain any agent (s).
+
+        Raises:
+            TypeError: If `sim_data_partial.keywords` does not contain a
+            `agent_data_partial` key with value of type `functools.partial`.
+
+        """
         ## VARIABLES TRACKED ACROSS ALL EPISODES
         # ---------------------
 
@@ -123,25 +120,43 @@ class ReactiveAnalyticsTracker(BaseAnalyticsTracker):
             sim_area, agent_speed, num_agents
         )
 
-    # run this update function after every action the agent takes
     def update_after_one_agent_step(
-        self, timestep, agent_pos: List[int], fire_map: np.ndarray, interaction: bool
-    ):
-        self.timestep = timestep
+        self,
+        *,
+        mitigation_placed: bool,
+        movements: List[str],
+        movement: int,
+        interaction: int,
+        agent_pos: List[int],
+        agent_pos_is_empty_space: bool,
+    ) -> None:
+        """Calls `self.sim_data.agent_tracker.update()`, if agents are in the sim.
 
+        This method is intended to be called directly after the
+        `_do_one_agent_step()` method defined in the `ReactiveHarness` class.
+
+        Arguments: 
+            mitigation_placed: A boolean indicating if the agent placed a mitigation line
+                during this timestep.
+            movements: A list of strings indicating the available movements for the agent.
+            movement: An integer indicating the index of the movement that the agent
+                selected.
+            interaction: An integer indicating the index of the interaction that the agent
+                selected.
+            agent_pos: A list of integers indicating the current position of the agent.
+            agent_pos_is_empty_space: A boolean indicating if the agent is currently in an
+                empty space.
+        """
         self.sim_tracker.agent_tracker.update(
             self.timestep, agent_pos, fire_map, interaction
         )
+        
+    def update_after_one_simulation_step(self):
+        """Calls `update()` on `self.sim_data` (`self.benchmark_sim_data`, if exists).
 
-    # run this update function after every sim_step within an episode within a simulation
-    def update_after_one_simulation_step(
-        self,
-        timestep,
-        fire_map: np.ndarray,
-        sim_active: bool,
-        bench_fire_map: np.ndarray,
-        benchsim_active: bool,
-    ):
+        This method is intended to be called directly after the
+        `_do_one_simulation_step()` method defined in the `ReactiveHarness` class.
+        """
         self.timestep = timestep
 
         # update the main simulation
@@ -173,8 +188,9 @@ class ReactiveAnalyticsTracker(BaseAnalyticsTracker):
         # reset the agent_tracker only after all of the rewards have been calculated for the sim_step
         self.sim_tracker.agent_tracker.reset_after_sim_update()
 
-    # run this update function at the end of an episode before the next episode
-    def update_after_one_episode(self, reward):
+    def update_after_one_episode(self, reward: float):
+        """TODO Add docstring."""
+        # run this update function at the end of an episode before the next episode
         # update the number of episodes
         self.episode_num += 1
 
@@ -208,6 +224,22 @@ class ReactiveAnalyticsTracker(BaseAnalyticsTracker):
 
 # metrics tracked after the simulation updates
 class FireSimulationMetricsTracker:
+    """FIXME: Docstring for FireSimulationMetricsTracker class."""
+
+    def __init__(
+        self,
+        sim: FireSimulation,
+        agent_data_partial: partial,
+        is_benchmark: bool = False,
+        num_agents: int = 1,
+    ):
+        """TODO Add docstring.
+
+        Arguments:
+            agent_data_partial: A `functools.partial` object that defines the class that
+                will be used to monitor and track agent (s) behavior within `self.sim`.
+
+        """
         # number of squares within the simulation
         self.sim_area = sim_area
 
@@ -265,8 +297,10 @@ class FireSimulationMetricsTracker:
 
         # ----------------------
 
-    # run this tracker update function after the agents actions and right after the simulation has updated
-    def update(self, timestep, fire_map: np.ndarray, sim_active: bool):
+    def update(self) -> None:
+        """TODO Add docstring."""
+        # run this tracker update function after the agents actions and right after the
+        # simulation has updated
         # track the current timestep
         self.timestep = timestep
 
@@ -326,8 +360,9 @@ class FireSimulationMetricsTracker:
 
         return
 
-    # reset all of the SimulationMetricsTracker object variables at the end of each episode
     def reset(self):
+        """TODO Add docstring."""
+        # reset the SimulationMetricsTracker object variables at the end of each episode
         self.active = True
 
         self.num_sim_steps: int = 0
@@ -360,9 +395,11 @@ class FireSimulationMetricsTracker:
         # reset the agent_tracker
         self.agent_tracker.reset_after_episode()
 
-
 class AgentMetricsTracker:
-    def __init__(self, sim_area):
+    """Monitors and tracks the behavior of a single agent within the simulation."""
+
+    def __init__(self, sim: FireSimulation):
+        """TODO: Docstring for __init__."""
         self.sim_area = sim_area
 
         # track the current timestep that the agent is operating within
@@ -392,10 +429,16 @@ class AgentMetricsTracker:
 
         # ----------------------
 
-    # update the AgentMetricsTracker object variables after each agent action
     def update(
-        self, timestep, agent_pos: List[int], fire_map: np.ndarray, interaction: bool
-    ):
+        self,
+        mitigation_placed: bool,
+        movements: List[str],
+        movement: int,
+        interaction: int,
+        agent_pos: List[int],
+        agent_pos_is_empty_space: bool,
+    ) -> None:
+        """Update the AgentMetricsTracker object variables after each agent action"""
         # track the current timestep
         self.timestep = timestep
 
@@ -419,7 +462,9 @@ class AgentMetricsTracker:
         self.agent_near_fire = self._nearby_fire(fire_map, agent_pos)
 
     # reset a set of the AgentMetricsTracker object variables at the end of each simulation update *after the reward has been calculated
-    def reset_after_sim_update(self):
+
+    def reset_after_one_simulation_step(self) -> None:
+        """Reset values that are tracked between each simulation step."""
         self.num_agent_actions = 0
 
         self.mitigation_placed = False
@@ -432,15 +477,15 @@ class AgentMetricsTracker:
 
         self.agent_near_fire = False
 
-    # reset the set of the AgentMetricsTracker object variables at the end of each episode
-    def reset_after_episode(self):
+    def reset(self):
+        """Reset the AgentMetricsTracker to initial values."""
         # reset the agent_trackers previous reset func
         self.agent_tracker.reset_after_sim_update()
 
         # reset the timesteps within the agent_tracker at the end of an episode]
         self.agent_tracker.timestep = 0
 
-    def _nearby_fire(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
+    def _agent_nearby_fire(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
         """Check if the agent is adjacent to a space that is currently burning.
 
         Returns:
