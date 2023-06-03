@@ -435,10 +435,9 @@ class AgentMetricsTracker:
     def reset_after_one_simulation_step(self) -> None:
         """Reset values that are tracked between each simulation step."""
         self.num_agent_actions = 0
-
-        self.mitigation_placed = False
-
-        self.new_mitigations = 0
+        # For debugging, and potentially, timestep intermediate reward calculation.
+        self.num_interactions_since_last_sim_step = 0
+        self.num_movements_since_last_sim_step = 0
 
         self.agent_is_burning = False
 
