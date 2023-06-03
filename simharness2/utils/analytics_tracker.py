@@ -138,31 +138,28 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
         This method is intended to be called directly after the
         `_do_one_simulation_step()` method defined in the `ReactiveHarness` class.
         """
-        self.timestep = timestep
+        self.sim_data.update()
 
-        # update the main simulation
-        self.sim_tracker.update(self.timestep, fire_map, sim_active)
+        if self.benchmark_sim_data:
+            self.benchmark_sim_data.update()
 
-        # update the benchmark simulation
-        self.benchsim_tracker.update(self.timestep, bench_fire_map, benchsim_active)
-
-        #Use this to update the self.bench_timesteps and the self.bench_damage
-        if benchsim_active == False and self.bench_estimated==False:
-            #if the benchsim has reached it's end, then use this to set the values of the variables
-            self.bench_timesteps = self.benchsim_tracker.timestep
-            self.bench_damage = self.sim_area - self.benchsim_tracker.num_undamaged
+        benchsim_active = self.benchmark_sim_data.active
+        # Use this to update the self.bench_timesteps and the self.bench_damage
+        if benchsim_active == False and self.bench_estimated == False:
+            # if the benchsim has reached it's end, then use this to set the values of the variables
+            self.bench_timesteps = self.benchmark_sim_data.num_sim_steps
+            sim_area = self.sim_data._sim.config.area.screen_size**2
+            self.bench_damage = sim_area - self.benchmark_sim_data.num_undamaged
             self.bench_estimated = True
 
-        #use this to initialize the self.bench_timesteps and the self.bench_damage if the bench_sim has not ended before the main_sim yet
-        #TODO make this more efficient or just have the benchsim run once before the agent makes any actions
-        elif self.bench_estimated==False:
+        # use this to initialize the self.bench_timesteps and the self.bench_damage if the bench_sim has not ended before the main_sim yet
+        # TODO make this more efficient or just have the benchsim run once before the agent makes any actions
+        elif self.bench_estimated == False:
+            if self.benchmark_sim_data.num_sim_steps > self.bench_timesteps:
+                self.bench_timesteps = self.benchmark_sim_data.num_sim_steps + 1
 
-            if self.benchsim_tracker.timestep > self.bench_timesteps:
-                self.bench_timesteps = self.benchsim_tracker.timestep + 1
-
-            if (self.sim_area - self.benchsim_tracker.num_undamaged) > self.bench_damage:
-                self.bench_damage = (self.sim_area - self.benchsim_tracker.num_undamaged) + 1
-
+            if (sim_area - self.benchmark_sim_data.num_undamaged) > self.bench_damage:
+                self.bench_damage = (sim_area - self.benchmark_sim_data.num_undamaged) + 1
 
     # run this reset function AFTER the final reward is calculated for a sim_step & after every sim_step within an episode within a simulation
     def update_after_one_simulation_step_and_reward(self):
