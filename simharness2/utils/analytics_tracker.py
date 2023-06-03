@@ -9,9 +9,11 @@ Base AnalyticsTracker for SimHarness and BaseReward
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 import numpy as np
+import math
+from functools import partial
+
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
-import math
 
 
 class RLAnalyticsTracker(ABC):
@@ -82,7 +84,6 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
             `agent_data_partial` key with value of type `functools.partial`.
 
         """
-
         # Store objects used to track simulation data within each episode in a run.
         try:
             self.sim_data: FireSimulationMetricsTracker = sim_data_partial(sim=sim)
@@ -110,7 +111,7 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
         This method is intended to be called directly after the
         `_do_one_agent_step()` method defined in the `ReactiveHarness` class.
 
-        Arguments: 
+        Arguments:
             mitigation_placed: A boolean indicating if the agent placed a mitigation line
                 during this timestep.
             movements: A list of strings indicating the available movements for the agent.
@@ -194,9 +195,6 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
         self.sim_tracker.reset()
         self.benchsim_tracker.reset()
 
-
-# ------------------------------------------------------------------------------------
-
     def reset(self):
         """TODO Add docstring."""
         # Define metrics that are tracked across all episodes in a run.
@@ -241,9 +239,13 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
 
             self.benchmark_sim_data.reset()
 
-# metrics tracked after the simulation updates
+
 class FireSimulationMetricsTracker:
-    """FIXME: Docstring for FireSimulationMetricsTracker class."""
+    """FIXME: Docstring for FireSimulationMetricsTracker class.
+
+    metrics tracked after the simulation updates
+
+    """
 
     def __init__(
         self,
@@ -333,33 +335,20 @@ class FireSimulationMetricsTracker:
         """TODO Add docstring."""
         # reset the SimulationMetricsTracker object variables at the end of each episode
         self.active = True
-
         self.num_sim_steps: int = 0
-
-
-        # ---------------------
-
         self.num_burned = 0
-
         self.num_new_burned = 0
-
         self.num_burning = 0
-
         self.num_new_burning = 0
-
         self.num_undamaged = 0
-
         self.num_new_damaged = 0
-
         self.num_damaged_per_step = [0]
 
-        # ----------------------
         # We do not need to track mitigation lines in the benchmark simulation.
         self.num_mitigations_total: int = 0 if not self.is_benchmark else None
 
         self.num_new_mitigations: int = 0 if not self.is_benchmark else None
 
-        # ----------------------
         # TODO: Indicate (maybe in docstring?) that `agent_tracker` is reset here.
         if self.agent_tracker:
             self.agent_tracker.reset()
@@ -428,8 +417,6 @@ class AgentMetricsTracker:
         # NOTE: We may want to penalize the agent for moving into a non-empty space.
         self.agent_pos_is_empty_space = agent_pos_is_empty_space
 
-    # reset a set of the AgentMetricsTracker object variables at the end of each simulation update *after the reward has been calculated
-
     def reset_after_one_simulation_step(self) -> None:
         """Reset values that are tracked between each simulation step."""
         self.num_agent_actions = 0
@@ -437,10 +424,9 @@ class AgentMetricsTracker:
         self.num_interactions_since_last_sim_step = 0
         self.num_movements_since_last_sim_step = 0
 
+        # Movement-specific attributes that can be utilized during reward calculation.
         self.agent_is_burning = False
-
         self.agent_in_burned_area = False
-
         self.agent_near_fire = False
         self.agent_pos_is_empty_space = False
 
