@@ -237,6 +237,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # update the tracker after the previous episode has ended
             # TODO: is this the best place to keep this tracker update
             self.tracker.update_after_one_episode(reward=reward)
+            self.tracker.reset()
 
         return self.state, reward, not self.sim.active, truncated, {}
 
