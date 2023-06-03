@@ -26,7 +26,7 @@ from ray.rllib.env.env_context import EnvContext
 from simharness2.rewards.base_reward import BaseReward
 from simfire.sim.simulation import FireSimulation
 from simfire.utils.log import create_logger
-from simharness2.utils.analytics_tracker import AnalyticsTracker
+from simharness2.utils.analytics_tracker import ReactiveAnalyticsTracker
 
 # TODO(afennelly) fix import path (relative to root)
 from .rl_harness import RLHarness
@@ -167,8 +167,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         )
         self._log_env_init()
 
-        # Instantiate the Tracker Object for the experiment
-        self.tracker = config.get("tracker")
+        # If provided, construct the class used to monitor this `ReactiveHarness` object.
+        self._setup_tracker(tracker_partial=config.get("tracker_partial"))
 
         # If provided, the object is used to perform reward calculation.
         self.reward_cls: BaseReward = config.get("reward_cls")
