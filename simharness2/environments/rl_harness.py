@@ -75,7 +75,7 @@ class RLHarness(gym.Env, ABC):
         normalized_attributes: List[str],
         deterministic: bool = False,
         benchmark_sim: FireSimulation = None,
-        action_space_type: spaces.Space = spaces.Discrete,
+        action_space_cls: spaces.Space = spaces.Discrete,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -168,8 +168,8 @@ class RLHarness(gym.Env, ABC):
             dtype=np.float32,
         )
 
-        action_shape = self._get_action_space_shape(space_type=action_space_type)
-        self.action_space = action_space_type(action_shape)
+        action_shape = self._get_action_space_shape(space_type=action_space_cls)
+        self.action_space = action_space_cls(action_shape)
 
     @no_type_check
     @abstractmethod
