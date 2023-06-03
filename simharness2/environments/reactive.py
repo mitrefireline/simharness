@@ -171,8 +171,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         self._setup_tracker(tracker_partial=config.get("tracker_partial"))
 
-        # If provided, the object is used to perform reward calculation.
-        self.reward_cls: BaseReward = config.get("reward_cls")
+        # If provided, construct the class used to perform reward calculation.
+        self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
     def step(
         self, action: np.ndarray

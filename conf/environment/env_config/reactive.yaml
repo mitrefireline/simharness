@@ -20,9 +20,8 @@ tracker_partial:
     agent_data_partial:
       _target_: simharness2.utils.analytics_tracker.AgentMetricsTracker
       _partial_: true
-reward_cls:
-  _target_: simharness2.rewards.base_reward.SimpleReward
-  tracker: ${..tracker}
+reward_cls: 
+  _target_: simharness2.rewards.base_reward.ComprehensiveReward
 # initial_agent_pos: null
 # randomize_initial_agent_pos: null
 benchmark_sim: ${.sim}
