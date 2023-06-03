@@ -463,7 +463,7 @@ class AgentMetricsTracker:
             agent.
         """
         nearby_locs = []
-        screen_size = math.sqrt(self.sim_area)
+        screen_size = math.sqrt(fire_map.shape[0])
         # Get all spaces surrounding agent - here we are setting 2 as the danger level distance in squares
         for i in range(agent_pos[0] - 1, agent_pos[0] + 2):
             for j in range(agent_pos[1] - 1, agent_pos[1] + 2):
