@@ -29,7 +29,7 @@ from simfire.utils.log import create_logger
 from simharness2.utils.analytics_tracker import ReactiveAnalyticsTracker
 
 # TODO(afennelly) fix import path (relative to root)
-from .rl_harness import RLHarness
+from simharness2.environments.rl_harness import RLHarness
 
 log = create_logger(__name__)
 
@@ -189,19 +189,18 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
-        # NOTE: We can also return (agent_moved, agent_interacted) as (bool, bool),
-        # and then call the `tracker.update_after_one_agent_step()` method (for clarity?)
-        interaction_str = self._do_one_agent_step(
-            action
-        )  # alternatively, self._step_agent(action)
+        # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
+        # NOTE: `self.movement`, `self.interaction` are updated in `_do_one_agent_step`.
+        self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
         if self.tracker:
-            # update the tracker after the agent action
             self.tracker.update_after_one_agent_step(
-                self.timesteps,
-                self.agent_pos,
-                self.sim.fire_map,
-                interaction_str != "none",
+                mitigation_placed=self.mitigation_placed,
+                movements=self.movements,
+                movement=self.movement,
+                interaction=self.interaction,
+                agent_pos=self.agent_pos,
+                agent_pos_is_empty_space=self.agent_pos_is_empty_space,
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -209,14 +208,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
 
         if sim_run and self.tracker:
-            # update the tracker after the simulation has been updated
-            self.tracker.update_after_one_simulation_step(
-                self.timesteps,
-                self.sim.fire_map,
-                self.sim.active,
-                self.benchmark_sim.fire_map,
-                self.benchmark_sim.active,
-            )
+            self.tracker.update_after_one_simulation_step()
 
         # Calculate the reward for the current timestep
         if self.reward_cls:
@@ -288,13 +280,14 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # TODO provide a descriptive error message.
             raise NotImplementedError
 
-    def _update_agent_position(self, movement_str: str) -> None:
+    def _update_agent_position(self) -> None:
         """Update the agent's position on the map by performing the provided movement."""
         # Store agent's current position in a temporary variable to avoid overwriting it.
         temp_agent_pos = self.agent_pos.copy()
         map_boundary = self.sim.config.area.screen_size - 1
 
         # Update the agent's position based on the provided movement.
+        movement_str = self.movements[self.movement]
         if movement_str == "up" and not self.agent_pos[0] == 0:
             temp_agent_pos[0] -= 1
         elif movement_str == "down" and not self.agent_pos[0] == map_boundary:
@@ -315,8 +308,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         point = [self.agent_pos[1], self.agent_pos[0], 0]
         self.sim.update_agent_positions([point])
 
-    def _is_empty_space(self) -> bool:
-        """Check if the space is empty."""
+    def _agent_pos_is_empty_space(self) -> bool:
+        """Check and store whether the space occupied by the agent is empty."""
         # FIXME Store the value that indicates whether space is empty or not
         #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
@@ -330,7 +323,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.sim.update_mitigation([mitigation_update])
 
     def _do_one_simulation_step(self) -> bool:
-        """Step the simulation forward one timestep, depending on the "agent's speed"."""
+        """Step the simulation forward one timestep, depending on `self.agent_speed`."""
         run_sim = self.timesteps % self.agent_speed == 0
         # The simulation WILL NOT be run every step, unless `self.agent_speed` == 1.
         if run_sim:
@@ -341,11 +334,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _run_simulation(self):
         """Run the simulation (s) for one timestep."""
-        if self._use_benchmark_sim:
-            # benchmark_sim_fire_map, benchmark_sim_active = self.benchmark_sim.run(1)
+        if self.benchmark_sim:
             self.benchmark_sim.run(1)
 
-        # sim_fire_map, sim_active = self.sim.run(1)
         self.sim.run(1)
 
     def _update_state(self):
