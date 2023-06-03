@@ -177,11 +177,11 @@ class ReactiveAnalyticsTracker(RLAnalyticsTracker):
         self.episodes_total += 1
 
         # get the total number of undamaged squares from the sim_tracker object
-        simulation_undamaged = self.sim_tracker.num_undamaged
+        sim_undamaged = self.sim_data.num_undamaged
 
-        # update the lowest_undamaged_overall if this value is lower
-        if simulation_undamaged < self.lowest_undamaged_overall:
-            self.lowest_undamaged_overall = simulation_undamaged
+        # Update the highest_undamaged_overall if episode value is higher.
+        if sim_undamaged > self.max_episode_unburned_squares:
+            self.max_episode_unburned_squares = sim_undamaged
 
         # get the total number of timesteps until the fire ended from the simtracker object
         simulation_timesteps = self.sim_tracker.num_timesteps
