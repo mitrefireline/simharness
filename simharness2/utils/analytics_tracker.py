@@ -323,51 +323,48 @@ class FireSimulationMetricsTracker:
         # track the current timestep
         self.num_sim_steps += 1
 
-        # update whether the simulation is active
-        self.active = sim_active
+        # update the simulation update counter
+        self.active = self._sim.active
 
-        # find the current number of burning and burned squares within the updated fire_map
-        burned_tmp = np.count_nonzero(fire_map == BurnStatus.BURNED)
-        burning_tmp = np.count_nonzero(fire_map == BurnStatus.BURNING)
+        # Calculate the number of currently burned (burning) squares in this timestep.
+        num_currently_burned = np.sum(self._sim.fire_map == BurnStatus.BURNED)
+        num_currently_burning = np.sum(self._sim.fire_map == BurnStatus.BURNING)
 
-        # Use the stored previous values of burning and burned to calculate the num_new_burning and num_new_burned squares in this timestep
-        self.num_new_burned = burned_tmp - self.num_burned
-        self.num_new_burning = burning_tmp - self.num_burning
+        # Calculate the number of newly burned (burning) squares in this timestep.
+        self.num_new_burned = num_currently_burned - self.num_burned
+        self.num_new_burning = num_currently_burning - self.num_burning
 
-        # set num_new_burning and num_new_burned to 0 if the are negative (indicating no new burned/burning squares)
+        # FIXME refactor into a separate method?
+        # Set values to 0 if they are negative (indicates no new burned/burning squares).
         if self.num_new_burning < 0:
             self.num_new_burning = 0
         if self.num_new_burned < 0:
             self.num_new_burned = 0
 
-        # Now we update the class values of burned and burning to match the updated simulation
-        self.num_burned = burned_tmp
-        self.num_burning = burning_tmp
+        self.num_burned = num_currently_burned
+        self.num_burning = num_currently_burning
 
-        # update the number of new mitigations from the agent_tracker.recent_mitigations
-        self.num_new_mitigations = self.agent_tracker.new_mitigations
+        # Update values for attributes tracking mitigation lines.
+        if self.agent_tracker:
+            self.num_new_mitigations = (
+                self.agent_tracker.num_interactions_since_last_sim_step
+            )
+            self.num_mitigations_total += self.num_new_mitigations
 
-        # update the total of the mitigation lines places from self.num_new_mitigations that was updated in the agent_updat func
-        self.num_mitigations = self.num_mitigations + self.num_new_mitigations
+        # Calculate the number of currently undamaged squares in this timestep.
+        # TODO: verify that `UNBURNED` is the correct `BurnStatus` to use here.
+        num_currently_undamaged = np.sum(self._sim.fire_map == BurnStatus.UNBURNED)
+        self.num_new_damaged = self.num_undamaged - num_currently_undamaged
 
-        # Calculate the number of undamaged squares in this updated simulation
-        num_undamaged_tmp = (
-            self.sim_area - self.num_burned - self.num_burning - self.num_mitigations
-        )
-
-        # Calulate the number of recently damaged squares based of the old stored number of undamaged squares
-        self.num_new_damaged = self.num_undamaged - num_undamaged_tmp
-
-        # set self.num_new_damaged = 0 if it is negative (though this really shouldn't happen)
+        # FIXME refactor into a separate method?
+        # Set values to 0 if they are negative (though this really shouldn't happen).
         if self.num_new_damaged < 0:
             self.num_new_damaged = 0
 
-        # update self.num_damaged_per_step with the new updated self.num_new_damaged
-        # self.num_damaged_per_step[self.timestep] = self.num_new_damaged
         self.num_damaged_per_step.append(self.num_new_damaged)
 
         # Now can update the self.num_undamaged with its new value
-        self.num_undamaged = num_undamaged_tmp
+        self.num_undamaged = num_currently_undamaged
 
         # Finally reset the agent_tracker object for the next timestep
         # TODO: Should this be moved elsewhere to make calculating the reward easier when using agent_metrics
