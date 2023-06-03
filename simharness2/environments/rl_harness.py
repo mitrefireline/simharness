@@ -95,14 +95,20 @@ class RLHarness(gym.Env, ABC):
         self.sim = sim
         self.benchmark_sim = benchmark_sim
         # Indicates (internally) whether a benchmark simulation should be used
-        self._use_benchmark_sim = True if benchmark_sim else False
+        # FIXME: I'm not sure if we need `_use_benchmark_sim`, since we can just check
+        # if `benchmark_sim` is None or not.
+        # self._use_benchmark_sim = True if benchmark_sim else False
         # TODO Create self._time_arg_passed_to_sim_run and set default value to 1. This
         # would allow the simulation to be run for an arbitrary number of timesteps.
 
+        # TODO: use more apt name, ex: `available_movements`, `possible_movements`.
         self.movements = copy.deepcopy(movements)
+        # TODO: use more apt name, ex: `available_interactions`, `possible_interactions`.
         self.interactions = copy.deepcopy(interactions)
         self.attributes = attributes
+        # TODO: Maybe use `attributes_to_normalize` over `normalized_attributes`?
         self.normalized_attributes = normalized_attributes
+        # FIXME: remove `deterministic` from the constructor; externally randomize env.
         self.deterministic = deterministic
 
         if not set(self.normalized_attributes).issubset(self.attributes):
