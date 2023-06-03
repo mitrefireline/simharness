@@ -259,62 +259,18 @@ class FireSimulationMetricsTracker:
                 will be used to monitor and track agent (s) behavior within `self.sim`.
 
         """
-        # number of squares within the simulation
-        self.sim_area = sim_area
+        self._sim = sim
+        # Indicates whether this object will track a `benchmark` simulation.
+        self.is_benchmark = is_benchmark
+        self.agent_tracker: AgentMetricsTracker = None
 
-        # store the speed of the agent
-        self.agent_speed = agent_speed
+        # NOTE: In the MARL case, we can use a dictionary of AgentMetricsTracker objects,
+        # where the key is the agent ID. This would replace the `agent_tracker` below.
+        if not self.is_benchmark:
+            # Agents only exist in the main simulation.
+            self.agent_tracker = agent_data_partial(self._sim)
 
-        # store the number of agents
-        self.num_agents = num_agents
-
-        # whether the simulation is active during this sim_step
-        self.active = True
-
-        # number of simulation updates
-        self.num_sim_updates = 0
-
-        # current operating timestep
-        self.timestep = 0
-
-        # ---------------------
-
-        # number of burned squares during this sim_step
-        self.num_burned = 0
-
-        # number of new burned squares during this sim_step
-        self.num_new_burned = 0
-
-        # number of burning squares during this sim_step
-        self.num_burning = 0
-
-        # number of new burning squares during this sim_step
-        self.num_new_burning = 0
-
-        # number of undamaged squares during the last sim_step
-        self.num_undamaged = 0
-
-        # number of squares damaged (burned + burning + mitigations) during the last sim_step
-        self.num_new_damaged = 0
-
-        # TODO decide how to initialize array; for debugging, just use a list.
-        # array that tracks the number of new damaged squares at each simulation sim_step
-        self.num_damaged_per_step = []
-
-        # ----------------------
-
-        # number of total mitigations placed during the simulation
-        self.num_mitigations = 0
-
-        # number of new mitigations placed during the recent sim_step
-        self.num_new_mitigations = 0
-
-        # ----------------------
-
-        # create an agent tracker object for the simulation's agent
-        self.agent_tracker = AgentMetricsTracker(self.sim_area)
-
-        # ----------------------
+        self.reset()
 
     def update(self) -> None:
         """TODO Add docstring."""
