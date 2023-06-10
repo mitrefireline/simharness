@@ -129,19 +129,11 @@ class RLHarness(gym.Env, ABC):
         #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
         self.sim_agent_id = 3 + len(self.interactions) + 1
 
-        if not set(self.interactions).issubset(list(sim_actions.keys())):
+        if not set(self.interactions[1:]).issubset(list(sim_actions.keys())):
             raise AssertionError(
                 f"All interactions ({str(self.interactions)}) must be "
                 f"in the simulator's actions ({str(list(sim_actions.keys()))})!"
             )
-
-        # NOTE: In the RLHARNESS section in the config file (s) it says "NONE movement
-        # and interaction is added by default at position 0 for both", which is referring
-        # to the insertion below (for `self.movements` and `self.interactions`).
-        # TODO(afennelly) add note in docs wrt the below insertion of "none".
-        # NOTE: The insertion of "none" MUST happen AFTER the above usage check!
-        self.movements.insert(0, "none")  # "don't move", "stay put", etc.
-        self.interactions.insert(0, "none")  # "don't interact", "do nothing", etc.
 
         # FIXME review purpose of sim_nonsim conversions + add brief comment
         self._separate_sim_nonsim(sim_attributes)

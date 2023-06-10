@@ -3,8 +3,8 @@ sim:
   config:
     _target_: simfire.utils.config.Config
     config_dict: ${simulation.train}
-movements: [up, down, left, right]
-interactions: [fireline]
+movements: [none, up, down, left, right]
+interactions: [none, fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speed: 9
