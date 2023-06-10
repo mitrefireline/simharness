@@ -141,6 +141,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
         self.agent_speed: int = config.get("agent_speed")
+        # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
         self.agent_pos: List[int]
         # FIXME: Default value (ie. [15, 15]) should be set in the config file.
         self.initial_agent_pos: List[int] = config.get("initial_agent_pos", [15, 15])
@@ -308,6 +309,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         elif movement_str == "right" and not self.agent_pos[1] == map_boundary:
             temp_agent_pos[1] += 1
         else:
+            # FIXME: We are assuming that the agent will never move out of bounds, but
+            # there is no guarantee that this is true. Need to handle this case!!
             # TODO should we provide a more descriptive error message here?
             raise ValueError(f"Invalid movement string provided: {movement_str}.")
 
@@ -316,6 +319,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
+        # NOTE: Elements of `point` should follow (column, row, agent_id) convention.
         point = [self.agent_pos[1], self.agent_pos[0], 0]
         self.sim.update_agent_positions([point])
 
@@ -325,13 +329,15 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
         self.agent_pos_is_empty_space = (
-            self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
+            self.state[self.agent_pos[1], self.agent_pos[0], fire_map_idx] == 0
         )
 
     def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""
         # Perform interaction on new space
         sim_interaction = self.harness_to_sim[self.interaction]
+        # NOTE: Elements of `mitigation_update` should follow (column, row, agent_id)
+        # convention.
         mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
         self.sim.update_mitigation([mitigation_update])
         # Store indicator that a mitigation was placed
@@ -359,7 +365,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Copy the fire map from the simulation so we don't overwrite it.
         fire_map = np.copy(self.sim.fire_map)
         # Update the fire map with the numeric identifier for the agent.
-        fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+        fire_map[self.agent_pos[1], self.agent_pos[0]] = self.sim_agent_id
         # Modify the state to contain the updated fire map
         fire_map_idx = self.attributes.index("fire_map")
         self.state[..., fire_map_idx] = fire_map
@@ -483,8 +489,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # NOTE: We assume the single-agent case here, so agent ID == 0.
         point = [self.agent_pos[1], self.agent_pos[0], 0]
         self.sim.update_agent_positions([point])
-        # update the benchmark simulation - Not sure if actually needed but can't hurt
-        self.benchmark_sim.update_agent_positions([point])
 
         # NOTE: `self.num_burned` is not currently used in the reward calculation.
         # self.num_burned = 0 FIXME include once we modularize the reward function
@@ -521,10 +525,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         )
 
         # Place the agent on the fire map using the agent ID.
-        nonsim_data["fire_map"][self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+        nonsim_data["fire_map"][self.agent_pos[1]][self.agent_pos[0]] = self.sim_agent_id
         # FIXME the below line has no dependence on `nonsim_data`; needs to be moved.
         # FIXME Why are we placing a fireline at the agents position here?
-        self.sim.update_mitigation([(self.agent_pos[1], self.agent_pos[0], 3)])
+        # self.sim.update_mitigation([(self.agent_pos[1], self.agent_pos[0], 3)])
 
         return nonsim_data
 

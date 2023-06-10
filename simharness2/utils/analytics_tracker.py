@@ -470,14 +470,14 @@ class AgentMetricsTracker:
 
     def _agent_is_burning(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
         # return true if the agent is in a burning square
-        if (fire_map[agent_pos[0]][agent_pos[1]]) == BurnStatus.BURNING:
+        if (fire_map[agent_pos[1], agent_pos[0]]) == BurnStatus.BURNING:
             return True
 
         return False
 
     def _agent_in_burned_area(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
         # return true if the agent is in a burning square
-        if (fire_map[agent_pos[0]][agent_pos[1]]) == BurnStatus.BURNED:
+        if (fire_map[agent_pos[1], agent_pos[0]]) == BurnStatus.BURNED:
             return True
 
         return False
