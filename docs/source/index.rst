@@ -21,14 +21,14 @@ Development
 
 .. Hidden TOCs
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Getting Started with SimHarness
    :hidden:
 
    getting-started
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Key Concepts
    :hidden:
 
