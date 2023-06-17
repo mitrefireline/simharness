@@ -49,14 +49,6 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
         run_config=air.RunConfig(
             name=cfg.runtime.name or None,
             local_dir=cfg.runtime.local_dir,
-            # callbacks=[
-            #     AimLoggerCallback(
-            #         repo="/home/jovyan/aim",
-            #         experiment="aim_test",
-            #         system_tracking_interval=None,
-            #         log_system_params=False,
-            #     )
-            # ],
             stop={**cfg.stop_conditions},
             callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
             failure_config=None,
