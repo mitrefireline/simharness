@@ -18,18 +18,18 @@ class BaseReward(ABC):
         """TODO Add constructor docstring."""
         # reference to the tracker object within the environment
         self.tracker = tracker
+        # helper variable indicating the total number of squares in the simulation map
+        self._sim_area = self.tracker.sim_data._sim.config.area.screen_size**2
 
     @abstractmethod
-    def get_reward(self, sim_run: bool) -> float:
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add docstring."""
-        raise NotImplementedError
+        pass
 
     @abstractmethod
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add docstring."""
-        raise NotImplementedError
-
-    # ---------------------
+        pass
 
 
 class SimpleReward(BaseReward):
@@ -51,18 +51,13 @@ class SimpleReward(BaseReward):
         ## set the simplereward to be the number of new_damaged squares in the main simulation
         new_damaged = self.tracker.sim_data.num_new_damaged
 
-        # total = self.simulation.config.area.screen_size**2
-
-        # get the total area from the sim_tracker
-        total = self.tracker.sim_data.sim_area
-
-        reward = -(new_damaged / total) * 100
+        reward = -(new_damaged / self._sim_area) * 100
 
         # update self.latest_reward and then return the reward
         self.latest_reward = reward
         return reward
 
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
         # Basic Intermediate reward is 0
         return 0.0
@@ -73,13 +68,13 @@ class BenchmarkReward(BaseReward):
         """TODO Add constructor docstring."""
         super().__init__(tracker)
 
-    def get_reward(self, sim_run: bool) -> float:
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
 
         # if Simulation was not run this timestep, return intermediate reward
         if not sim_run:
             # intermediate reward calculation used
-            return self.get_timestep_intermediate_reward()
+            return self.get_timestep_intermediate_reward(timestep)
 
         ## This Reward will compare the number of new recently damaged squares in the main sim and within the bench sim
         ##       to determine the performance/reward of the agent
@@ -92,14 +87,12 @@ class BenchmarkReward(BaseReward):
         if self.tracker.benchsim_tracker.active == False:
             # setting arbitrary maximum possible burning from the benchsim to be half of the total area
             # in general, it is good for the main sim to last longer than the benchsim so this should hopefully yield positive rewards
-            new_damaged_benchsim = (self.tracker.benchsim_tracker.sim_area) // 2
+            new_damaged_benchsim = (self._sim_area) // 2
 
         # define the number of squares saved by the agent as the difference between the benchsim and the mainsim
         timestep_number_squares_saved = new_damaged_benchsim - new_damaged_mainsim
 
-        total = self.tracker.sim_tracker.sim_area
-
-        reward = ((timestep_number_squares_saved) / total) * 100.0
+        reward = ((timestep_number_squares_saved) / self._sim_area) * 100.0
 
         # TODO add larger negative reward if agent gets close to fire
 
@@ -109,7 +102,7 @@ class BenchmarkReward(BaseReward):
         self.latest_reward = reward
         return reward
 
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
 
         # TODO add small negative reward if the agent places mitigation within an already burned area
@@ -133,13 +126,13 @@ class ComprehensiveReward(BaseReward):
         """TODO Add constructor docstring."""
         super().__init__(tracker)
 
-    def get_reward(self, sim_run: bool) -> float:
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
 
         # if Simulation was not run this timestep, return intermediate reward
         if not sim_run:
             # intermediate reward calculation used
-            return self.get_timestep_intermediate_reward()
+            return self.get_timestep_intermediate_reward(timestep)
 
         ## This Reward will compare the number of new recently damaged squares in the main sim and within the bench sim
         ##       to determine the performance/reward of the agent
@@ -169,7 +162,7 @@ class ComprehensiveReward(BaseReward):
             and self.tracker.sim_tracker.active == False
         ):
             # update the value of the undamaged benchsim to be that of the bench simulation if it reached it's end
-            undamaged_benchsim = self.tracker.sim_area - self.tracker.bench_damage
+            undamaged_benchsim = self._sim_area - self.tracker.bench_damage
 
             timestep_number_squares_saved = undamaged_mainsim - undamaged_benchsim
 
@@ -179,10 +172,10 @@ class ComprehensiveReward(BaseReward):
                     self.tracker.bench_timesteps - self.tracker.timestep
                 )
 
-            # this new reward works out well for both of the above cases
-            #   For Case 1., this reward will yield a large negative reward
-            #   For Case 2., this reward will yield a large positive reward
-            reward = ((timestep_number_squares_saved) / total) * 100.0
+        # this new reward works out well for both of the above cases
+        #   For Case 1., this reward will yield a large negative reward
+        #   For Case 2., this reward will yield a large positive reward
+        reward = ((timestep_number_squares_saved) / self._sim_area) * 100.0
 
         ## AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
         # use static reward so RL easily learns what causes this reward
@@ -197,7 +190,7 @@ class ComprehensiveReward(BaseReward):
         self.latest_reward = reward
         return reward
 
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
 
         # start with the intermediate reward just being the same as the previously calculated reward
