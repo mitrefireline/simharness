@@ -131,7 +131,7 @@ class RLHarness(gym.Env, ABC):
 
         if not set(self.interactions[1:]).issubset(list(sim_actions.keys())):
             raise AssertionError(
-                f"All interactions ({str(self.interactions)}) must be "
+                f"All interactions ({str(self.interactions[1:])}) must be "
                 f"in the simulator's actions ({str(list(sim_actions.keys()))})!"
             )
 
