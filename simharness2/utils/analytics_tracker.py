@@ -49,13 +49,28 @@ class BestEpisodePerformance:
 class RLHarnessData(ABC):
     """Base class with several built in methods."""
 
-    @abstractmethod
-    def __init__(self) -> None:
-        """Subclasses must implement there own `__init__` method."""
-        pass
+    def __init__(
+        self,
+        *,
+        sim: FireSimulation,
+        sim_data_partial: partial,
+        benchmark_sim: FireSimulation = None,
+    ) -> None:
+        """TODO: Add docstring."""
+        # Store objects used to track simulation data within each episode in a run.
+        try:
+            self.sim_data: FireSimulationData = sim_data_partial(sim=sim)
+            if benchmark_sim:
+                self.benchmark_sim_data: FireSimulationData = sim_data_partial(
+                    sim=benchmark_sim, is_benchmark=True
+                )
+            else:
+                self.benchmark_sim_data = None
+        except TypeError as e:
+            raise e
 
     @abstractmethod
-    def update_after_one_simulation_step(self):
+    def update_after_one_simulation_step(self, *, timestep: int) -> None:
         """See subclass for docstring."""
         pass
 
@@ -63,28 +78,28 @@ class RLHarnessData(ABC):
     def update_after_one_agent_step(
         self,
         *,
-        mitigation_placed: bool,
-        movements: List[str],
+        timestep: int,
         movement: int,
         interaction: int,
         agent_pos: List[int],
-        agent_pos_is_empty_space: bool,
+    ) -> None:
+        """See subclass for docstring."""
+        pass
+
+
+    @abstractmethod
+    def update_after_one_harness_step(
+        self, sim_run: bool, terminated: bool, reward: float, *, timestep: int
     ) -> None:
         """See subclass for docstring."""
         pass
 
     @abstractmethod
-    def update_after_one_simulation_step_and_reward(self):
-        """TODO Add docstring."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def update_after_one_episode(self, reward):
+    def reset(self):
         """See subclass for docstring."""
         pass
 
-
-class ReactiveHarnessData(RLAnalyticsTracker):
+class ReactiveHarnessData(RLHarnessData):
     """TODO add docstring"""
 
     def __init__(
@@ -114,15 +129,9 @@ class ReactiveHarnessData(RLAnalyticsTracker):
             `agent_data_partial` key with value of type `functools.partial`.
 
         """
-        # Store objects used to track simulation data within each episode in a run.
-        try:
-            self.sim_data: FireSimulationMetricsTracker = sim_data_partial(sim=sim)
-            if benchmark_sim:
-                self.benchmark_sim_data: FireSimulationMetricsTracker = sim_data_partial(
-                    sim=benchmark_sim, is_benchmark=True
-                )
-        except TypeError as e:
-            raise e
+        super().__init__(
+            sim=sim, sim_data_partial=sim_data_partial, benchmark_sim=benchmark_sim
+        )
 
         self.reset()
 
