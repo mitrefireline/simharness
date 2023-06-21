@@ -54,7 +54,7 @@ class RLAnalyticsTracker(ABC):
         pass
 
 
-class ReactiveAnalyticsTracker(RLAnalyticsTracker):
+class ReactiveHarnessData(RLAnalyticsTracker):
     """TODO add docstring"""
 
     def __init__(

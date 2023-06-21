@@ -9,13 +9,13 @@ Used if the tracker object is housed within the reward_class
 from abc import ABC, abstractmethod
 from numpy import ndarray
 from typing import List
-from ..utils.analytics_tracker import AnalyticsTracker
+from simharness2.utils.analytics_tracker import ReactiveHarnessData
 
 
 class BaseReward(ABC):
     """Abstract Class for Reward_Class template with the update functions implemented"""
 
-    def __init__(self, tracker: AnalyticsTracker):
+    def __init__(self, tracker: ReactiveHarnessData):
         """TODO Add constructor docstring."""
         # reference to the tracker object within the environment
         self.tracker = tracker
@@ -34,7 +34,7 @@ class BaseReward(ABC):
 
 
 class SimpleReward(BaseReward):
-    def __init__(self, tracker: AnalyticsTracker):
+    def __init__(self, tracker: ReactiveHarnessData):
         """TODO Add constructor docstring."""
         super().__init__(tracker)
 
@@ -69,7 +69,7 @@ class SimpleReward(BaseReward):
 
 
 class BenchmarkReward(BaseReward):
-    def __init__(self, tracker: AnalyticsTracker):
+    def __init__(self, tracker: ReactiveHarnessData):
         """TODO Add constructor docstring."""
         super().__init__(tracker)
 
@@ -129,8 +129,8 @@ class BenchmarkReward(BaseReward):
 # Reward Function that mirrors Dhanuj's complex_reward from last year and takes into account agent location to the fire while also
 #   inducing a positive reward structure where the agent is rewarded for undamaged squares in the simulation - this reward function is task agnostic
 class ComprehensiveReward(BaseReward):
-    def __init__(self, tracker: AnalyticsTracker):
-        """TODO Add constructor docstring."""
+    def __init__(self, tracker: ReactiveHarnessData):
+    def __init__(
         super().__init__(tracker)
 
     def get_reward(self, sim_run: bool) -> float:

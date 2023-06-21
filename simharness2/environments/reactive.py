@@ -26,7 +26,7 @@ from ray.rllib.env.env_context import EnvContext
 from simharness2.rewards.base_reward import BaseReward
 from simfire.sim.simulation import FireSimulation
 from simfire.utils.log import create_logger
-from simharness2.utils.analytics_tracker import ReactiveAnalyticsTracker
+from simharness2.utils.analytics_tracker import ReactiveHarnessData
 
 from simharness2.environments.rl_harness import RLHarness
 
@@ -596,7 +596,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             `sim_data_partial` key with value of type `functools.partial`.
 
         """
-        self.tracker: ReactiveAnalyticsTracker
+        self.tracker: ReactiveHarnessData
         if tracker_partial:
             try:
                 self.tracker = tracker_partial(
