@@ -14,7 +14,7 @@ tracker_partial:
   _partial_: true
   # Defines the class that will be used to monitor and track `FireSimulation`.
   sim_data_partial:
-    _target_: simharness2.utils.analytics_tracker.FireSimulationMetricsTracker
+    _target_: simharness2.utils.analytics_tracker.FireSimulationData
     _partial_: true
     # Defines the class that will be used to monitor and track agent behavior.
     agent_data_partial:
