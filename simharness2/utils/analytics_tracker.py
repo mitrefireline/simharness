@@ -274,13 +274,13 @@ class FireSimulationMetricsTracker:
         self._sim = sim
         # Indicates whether this object will track a `benchmark` simulation.
         self.is_benchmark = is_benchmark
-        self.agent_tracker: AgentMetricsTracker = None
+        self.agent_data: AgentMetricsTracker = None
 
         # NOTE: In the MARL case, we can use a dictionary of AgentMetricsTracker objects,
-        # where the key is the agent ID. This would replace the `agent_tracker` below.
+        # where the key is the agent ID. This would replace the `agent_data` below.
         if not self.is_benchmark:
             # Agents only exist in the main simulation.
-            self.agent_tracker = agent_data_partial(self._sim)
+            self.agent_data = agent_data_partial(sim=self._sim)
 
         self.reset()
 
@@ -313,9 +313,9 @@ class FireSimulationMetricsTracker:
         self.num_burning = num_currently_burning
 
         # Update values for attributes tracking mitigation lines.
-        if self.agent_tracker:
+        if self.agent_data:
             self.num_new_mitigations = (
-                self.agent_tracker.num_interactions_since_last_sim_step
+                self.agent_data.num_interactions_since_last_sim_step
             )
             self.num_mitigations_total += self.num_new_mitigations
 
@@ -334,10 +334,10 @@ class FireSimulationMetricsTracker:
         # Now can update the self.num_undamaged with its new value
         self.num_undamaged = num_currently_undamaged
 
-        # Finally reset the agent_tracker object for the next timestep
+        # Finally reset the agent_data object for the next timestep
         # TODO: Should this be moved elsewhere to make calculating the reward easier when using agent_metrics
         # This is currently moved into the larger AnalyticsTracker class
-        # self.agent_tracker.reset()
+        # self.agent_data.reset()
 
         return
 
@@ -359,9 +359,9 @@ class FireSimulationMetricsTracker:
 
         self.num_new_mitigations: int = 0 if not self.is_benchmark else None
 
-        # TODO: Indicate (maybe in docstring?) that `agent_tracker` is reset here.
-        if self.agent_tracker:
-            self.agent_tracker.reset()
+        # TODO: Indicate (maybe in docstring?) that `agent_data` is reset here.
+        if self.agent_data:
+            self.agent_data.reset()
 
 class AgentMetricsTracker:
     """Monitors and tracks the behavior of a single agent within the simulation."""
@@ -442,7 +442,7 @@ class AgentMetricsTracker:
 
     def reset(self):
         """Reset the AgentMetricsTracker to initial values."""
-        # reset the agent_trackers previous reset func
+        # reset the agent_datas previous reset func
         self.reset_after_one_simulation_step()
 
         # Attributes used to store the agent's behavior across a single episode.
