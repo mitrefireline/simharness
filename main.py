@@ -48,6 +48,8 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
         # TODO add `tune_config` argument with `tune.TuneConfig`
         run_config=air.RunConfig(
             name=cfg.runtime.name or None,
+            # FIXME: `local_dir` has been deprecated, see:
+            # https://github.com/ray-project/ray/pull/33463
             local_dir=cfg.runtime.local_dir,
             stop={**cfg.stop_conditions},
             callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
