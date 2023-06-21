@@ -180,8 +180,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # After every agent action, store the respective movement and interaction
         # FIXME: any ideas on "better" names? we can prepend `prev_`, or `curr_`?
-        self.movement: int = -1
-        self.interaction: int = -1
+        self.latest_movement: int = -1
+        self.latest_interaction: int = -1
         # If the square the agent is on is "empty", this is set to True.
         self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
         # If the agent places a mitigation, this is set to True.
@@ -196,10 +196,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         if self.tracker:
             self.tracker.update_after_one_agent_step(
-                mitigation_placed=self.mitigation_placed,
-                movements=self.movements,
-                movement=self.movement,
-                interaction=self.interaction,
+                movement=self.latest_movement,
+                interaction=self.latest_interaction,
                 agent_pos=self.agent_pos,
                 agent_pos_is_empty_space=self.agent_pos_is_empty_space,
             )
@@ -261,12 +259,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             action: An ndarray provided by the agent to update the environment state.
         """
         # Parse the movement and interaction from the action, and store them.
-        # TODO We can set `self.movement` and `self.interaction` inside `_parse_action`?
-        # But, would that make things less clear? Maybe rename `_parse_action` if so.
-        self.movement, self.interaction = self._parse_action(action)
+        self.latest_movement, self.latest_interaction = self._parse_action(action)
 
         # Update agent location on map
-        if self.movements[self.movement] != "none":
+        if self.movements[self.latest_movement] != "none":
             # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
             self._update_agent_position()
 
@@ -275,7 +271,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._agent_pos_is_empty_space()
 
         # Interact with the environment
-        interact = self.interactions[self.interaction] != "none"
+        interact = self.interactions[self.latest_interaction] != "none"
         if self.agent_pos_is_empty_space and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
@@ -299,7 +295,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         map_boundary = self.sim.config.area.screen_size - 1
 
         # Update the agent's position based on the provided movement.
-        movement_str = self.movements[self.movement]
+        movement_str = self.movements[self.latest_movement]
         if movement_str == "up" and not self.agent_pos[0] == 0:
             temp_agent_pos[0] -= 1
         elif movement_str == "down" and not self.agent_pos[0] == map_boundary:
@@ -335,7 +331,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""
         # Perform interaction on new space
-        sim_interaction = self.harness_to_sim[self.interaction]
+        sim_interaction = self.harness_to_sim[self.latest_interaction]
         # NOTE: Elements of `mitigation_update` should follow (column, row, agent_id)
         # convention.
         mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
