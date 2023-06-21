@@ -24,7 +24,9 @@ cli:
   # Specify the run mode. Supported options: train, tune, view
   mode: ??? # Force command-line override
   # Specify the root directory used to save data for the experiment.
-  data_dir: /nfs/lslab2/fireline/simharness
+  # TODO: Ensure any values that use `data_dir` are properly updated to use
+  # /nfs/lslab2/fireline/simharness
+  data_dir: /nfs/lslab2/fireline
 algo:
   name: DQN
   # The path (str) to the checkpoint directory to use.
