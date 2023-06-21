@@ -7,13 +7,16 @@ Base AnalyticsTracker for SimHarness and BaseReward
 
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import List
+from dataclasses import dataclass
 import numpy as np
 import math
 from functools import partial
+import logging
 
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
+from simharness2.utils.simulation_data import FireSimulationData
 
 
 @dataclass
