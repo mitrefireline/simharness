@@ -46,7 +46,7 @@ class BestEpisodePerformance:
         self.max_unburned_rescaled = self.max_unburned / self.sim_area
 
 
-class RLAnalyticsTracker(ABC):
+class RLHarnessData(ABC):
     """Base class with several built in methods."""
 
     @abstractmethod
