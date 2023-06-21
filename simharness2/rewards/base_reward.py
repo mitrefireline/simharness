@@ -19,6 +19,8 @@ class BaseReward(ABC):
         """TODO Add constructor docstring."""
         # reference to the tracker object within the environment
         self.tracker = tracker
+        # helper variable indicating the total number of squares in the simulation map
+        self._sim_area = self.tracker.sim_data._sim.config.area.screen_size**2
 
     @abstractmethod
     def get_reward(self, timestep: int, sim_run: bool) -> float:
@@ -54,7 +56,7 @@ class SimpleReward(BaseReward):
         # get the total area from the sim_tracker
         total = self.tracker.sim_tracker.sim_area
 
-        reward = -(new_damaged / total) * 100
+        reward = -(new_damaged / self._sim_area) * 100
 
         # update self.latest_reward and then return the reward
         self.latest_reward = reward
@@ -90,14 +92,12 @@ class BenchmarkReward(BaseReward):
         if self.tracker.benchsim_tracker.active == False:
             # setting arbitrary maximum possible burning from the benchsim to be half of the total area
             # in general, it is good for the main sim to last longer than the benchsim so this should hopefully yield positive rewards
-            new_damaged_benchsim = (self.tracker.benchsim_tracker.sim_area) // 2
+            new_damaged_benchsim = (self._sim_area) // 2
 
         # define the number of squares saved by the agent as the difference between the benchsim and the mainsim
         timestep_number_squares_saved = new_damaged_benchsim - new_damaged_mainsim
 
-        total = self.tracker.sim_tracker.sim_area
-
-        reward = ((timestep_number_squares_saved) / total) * 100.0
+        reward = ((timestep_number_squares_saved) / self._sim_area) * 100.0
 
         # TODO add larger negative reward if agent gets close to fire
 
@@ -167,7 +167,7 @@ class ComprehensiveReward(BaseReward):
         if self.tracker.benchsim_tracker.active == True and self.tracker.sim_tracker.active == False:
 
             #update the value of the undamaged benchsim to be that of the bench simulation if it reached it's end
-            undamaged_benchsim = (self.tracker.sim_area - self.tracker.bench_damage)
+            undamaged_benchsim = self._sim_area - self.tracker.bench_damage
 
             timestep_number_squares_saved = undamaged_mainsim - undamaged_benchsim
 
@@ -175,11 +175,10 @@ class ComprehensiveReward(BaseReward):
             if self.tracker.bench_timesteps > self.tracker.timestep:
                 timestep_number_squares_saved = timestep_number_squares_saved * (self.tracker.bench_timesteps - self.tracker.timestep)
 
-            #this new reward works out well for both of the above cases
-            #   For Case 1., this reward will yield a large negative reward
-            #   For Case 2., this reward will yield a large positive reward
-            reward = ((timestep_number_squares_saved) / total) * 100.0
-
+        # this new reward works out well for both of the above cases
+        #   For Case 1., this reward will yield a large negative reward
+        #   For Case 2., this reward will yield a large positive reward
+        reward = ((timestep_number_squares_saved) / self._sim_area) * self.fixed_reward
 
         ## AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
         # use static reward so RL easily learns what causes this reward
