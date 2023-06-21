@@ -18,8 +18,10 @@ tracker_partial:
     _partial_: true
     # Defines the class that will be used to monitor and track agent behavior.
     agent_data_partial:
-      _target_: simharness2.utils.analytics_tracker.AgentMetricsTracker
+      _target_: simharness2.utils.analytics_tracker.AgentData
       _partial_: true
+      movement_types: ${....movements}
+      interaction_types: ${....interactions}
 reward_cls: 
   _target_: simharness2.rewards.base_reward.ComprehensiveReward
 initial_agent_pos: [15, 15]
