@@ -72,6 +72,8 @@ class RLHarnessData(ABC):
         except TypeError as e:
             raise e
 
+        self.best_episode_performance: BestEpisodePerformance = None
+
     @abstractmethod
     def update_after_one_simulation_step(self, *, timestep: int) -> None:
         """See subclass for docstring."""
