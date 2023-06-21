@@ -150,58 +150,50 @@ class ReactiveHarnessData(RLHarnessData):
     def update_after_one_agent_step(
         self,
         *,
-        mitigation_placed: bool,
-        movements: List[str],
+        timestep: int,
         movement: int,
         interaction: int,
         agent_pos: List[int],
-        agent_pos_is_empty_space: bool,
     ) -> None:
-        """Calls `self.sim_data.agent_tracker.update()`, if agents are in the sim.
+        """Updates `self.sim_data.agent_data`, if agents are in the sim.
 
-        This method is intended to be called directly after the
-        `_do_one_agent_step()` method defined in the `ReactiveHarness` class.
+        This method is intended to be called directly after the call to
+        `ReactiveHarness._do_one_agent_step()` (within `ReactiveHarness.step()`).
 
         Arguments:
-            mitigation_placed: A boolean indicating if the agent placed a mitigation line
-                during this timestep.
-            movements: A list of strings indicating the available movements for the agent.
-            movement: An integer indicating the index of the movement that the agent
-                selected.
-            interaction: An integer indicating the index of the interaction that the agent
-                selected.
+            timestep: An integer indicating the current timestep of the episode.
+            movement: An integer indicating the index of the latest movement that the
+                agent selected.
+            interaction: An integer indicating the index of the latest interaction that
+                the agent selected.
             agent_pos: A list of integers indicating the current position of the agent.
-            agent_pos_is_empty_space: A boolean indicating if the agent is currently in an
-                empty space.
         """
-        if self.sim_data.agent_tracker:
-            self.sim_data.agent_tracker.update(
-                mitigation_placed=mitigation_placed,
-                movements=movements,
-                movement=movement,
-                interaction=interaction,
-                agent_pos=agent_pos,
-                agent_pos_is_empty_space=agent_pos_is_empty_space,
-            )
+        if self.sim_data.agent_data:
+            self.sim_data.agent_data.update(timestep, movement, interaction, agent_pos)
 
-    def update_after_one_simulation_step(self):
-        """Calls `update()` on `self.sim_data` (`self.benchmark_sim_data`, if exists).
+    def update_after_one_simulation_step(self, *, timestep: int) -> None:
+        """Updates `self.sim_data` (and `self.benchmark_sim_data`, if exists).
 
-        This method is intended to be called directly after the
-        `_do_one_simulation_step()` method defined in the `ReactiveHarness` class.
+        This method is intended to be called directly after the call to
+        `ReactiveHarness._do_one_simulation_step()` (within `ReactiveHarness.step()`).
+
+        Arguments:
+            timestep: An integer indicating the current timestep of the episode.
         """
-        self.sim_data.update()
+        self.sim_data.update(timestep)
 
         if self.benchmark_sim_data:
-            self.benchmark_sim_data.update()
+            self.benchmark_sim_data.update(timestep)
 
+        sim_area = self.sim_data._sim.fire_map.size
+        # FIXME mention in docstring that this logic is performed. need to condense!!
         benchsim_active = self.benchmark_sim_data.active
+        benchsim_undamaged = self.benchmark_sim_data.sim_df.iloc[-1]["unburned_total"]
         # Use this to update the self.bench_timesteps and the self.bench_damage
         if benchsim_active == False and self.bench_estimated == False:
             # if the benchsim has reached it's end, then use this to set the values of the variables
             self.bench_timesteps = self.benchmark_sim_data.num_sim_steps
-            sim_area = self.sim_data._sim.config.area.screen_size**2
-            self.bench_damage = sim_area - self.benchmark_sim_data.num_undamaged
+            self.bench_damage = sim_area - benchsim_undamaged
             self.bench_estimated = True
 
         # use this to initialize the self.bench_timesteps and the self.bench_damage if the bench_sim has not ended before the main_sim yet
@@ -210,84 +202,51 @@ class ReactiveHarnessData(RLHarnessData):
             if self.benchmark_sim_data.num_sim_steps > self.bench_timesteps:
                 self.bench_timesteps = self.benchmark_sim_data.num_sim_steps + 1
 
-            if (sim_area - self.benchmark_sim_data.num_undamaged) > self.bench_damage:
-                self.bench_damage = (sim_area - self.benchmark_sim_data.num_undamaged) + 1
+            if sim_area - benchsim_undamaged > self.bench_damage:
+                self.bench_damage = sim_area - benchsim_undamaged + 1
 
-    # run this reset function AFTER the final reward is calculated for a sim_step & after every sim_step within an episode within a simulation
-    def update_after_one_simulation_step_and_reward(self):
-        # reset the agent_tracker only after all of the rewards have been calculated for the sim_step
-        if self.sim_data.agent_tracker:
-            self.sim_data.agent_tracker.reset_after_sim_update()
+    def update_after_one_harness_step(
+        self, sim_run: bool, terminated: bool, reward: float, *, timestep: int
+    ) -> None:
+        # Reset any attributes that monitor agent behavior between each simulation step.
+        if sim_run and self.sim_data.agent_data:
+            self.sim_data.agent_data.reset_after_one_simulation_step()
 
-    def update_after_one_episode(self, reward: float):
-        """TODO Add docstring."""
-        # run this update function at the end of an episode before the next episode
-        # update the number of episodes
-        self.episodes_total += 1
+        # Once episode has terminated, check if episode performance is the best so far.
+        if terminated:
+            self.episodes_total += 1
+            log = logging.getLogger(__name__)
+            # log.info(f"Episode {self.episodes_total} has terminated.")
 
-        # get the total number of undamaged squares from the sim_tracker object
-        sim_undamaged = self.sim_data.num_undamaged
+            sim_df = self.sim_data.sim_df
+            current_unburned = (
+                0 if len(sim_df) == 0 else sim_df.iloc[-1]["unburned_total"]
+            )
+            update_best_episode_performance = True
+            if self.best_episode_performance:
+                max_unburned = self.best_episode_performance.max_unburned
+                if current_unburned <= max_unburned:
+                    update_best_episode_performance = False
 
-        # Update the highest_undamaged_overall if episode value is higher.
-        if sim_undamaged > self.max_episode_unburned_squares:
-            self.max_episode_unburned_squares = sim_undamaged
-
-        # Update the lowest total timesteps used to stop fire if episode value is lower.
-        if self.sim_data.num_sim_steps < self.min_episode_sim_steps:
-            self.min_episode_sim_steps = self.sim_data.num_sim_steps
-
-        # update the latest_reward tracker
-        self.latest_reward = reward
-
-        # reset the timestep tracker
-        self.timestep = 0
-
-        # Finally reset the tracker objects for the sim and the benchsim
-        self.sim_tracker.reset()
-        self.benchsim_tracker.reset()
+            if update_best_episode_performance:
+                self.best_episode_performance = BestEpisodePerformance(
+                    max_unburned=current_unburned,
+                    sim_area=self.sim_data._sim.fire_map.size,
+                    num_sim_steps=self.sim_data.num_sim_steps,
+                    episode=self.episodes_total,
+                    reward=reward,
+                )
 
     def reset(self):
-        """TODO Add docstring."""
-        # Define metrics that are tracked across all episodes in a run.
-        # Highest number of undamaged squares achieved during a single-episode across the
-        # course of a trial.
-        # FIXME currently, this doesn't seem to be used for any reward calculations?
-        self.max_episode_unburned_squares = -1
+        """Resets attributes that track data within each episode.
 
-        # lowest number of timesteps used to stop fire
-        # FIXME currently, this doesn't seem to be used for any reward calculations?
-        # FIXME better default value?
-        self.min_episode_sim_steps = 9999
+        This method is intended to be called within after the call to
+        `ReactiveHarness._do_one_agent_step()` (within `ReactiveHarness.step()`).
 
-        # Stores the current episode
-        # NOTE: ray tracks this via `ray.tune.result.EPISODES_TOTAL`
-        self.episodes_total = 0
-
-        # Track the current timestep of the episode that we are in
-        # Incremented after `update...agent_step` and `update...simulation_step`.
-        # FIXME use better variable name: `timesteps_total` or `timesteps_this_episode`?
-        # NOTE: ray tracks this via `ray.tune.result.TIMESTEPS_TOTAL`
-        # self.timestep = 0
-
-        # Track the latest episode reward
-        # TODO is this the reward for the latest timestep or the latest episode?
-        self.latest_reward = 0.0
-
+        """
         self.sim_data.reset()
 
         if self.benchmark_sim_data:
-            # Track the avg BenchSim timesteps
-            self.bench_timesteps = 0
-            # self.min_episode_benchmark_sim_steps = -1
-
-            # Track the avg BenchSim damage total
-            self.bench_damage = 0
-            # self.max_episode_benchmark_unburned_squares = -1
-
-            # FIXME what is `bench_estimated` trying to represent?
-            # Bool to determine if the bench metrics were intialized by the bench sim, or an estimation from the main sim
-            self.bench_estimated = True
-
             self.benchmark_sim_data.reset()
 
 
