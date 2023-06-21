@@ -28,7 +28,6 @@ from simfire.sim.simulation import FireSimulation
 from simfire.utils.log import create_logger
 from simharness2.utils.analytics_tracker import ReactiveAnalyticsTracker
 
-# TODO(afennelly) fix import path (relative to root)
 from simharness2.environments.rl_harness import RLHarness
 
 log = create_logger(__name__)
@@ -109,6 +108,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Total number of (remote) workers in the set. 0 if only a local worker exists.
         self.num_workers = config.num_workers
 
+        # FIXME: Perform env setup depending on if the env is used for eval/train.
         # Indicates whether the environment was created for evaluation purposes.
         self._is_eval_env = config.get("is_evaluation_env", False)
         eval_duration = config.get("evaluation_duration")

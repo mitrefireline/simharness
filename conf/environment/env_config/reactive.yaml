@@ -9,7 +9,7 @@ attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speed: 9
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
-tracker_partial: 
+tracker_partial:
   _target_: simharness2.utils.analytics_tracker.ReactiveAnalyticsTracker
   _partial_: true
   # Defines the class that will be used to monitor and track `FireSimulation`.
