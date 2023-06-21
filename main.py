@@ -135,7 +135,7 @@ def main(cfg: DictConfig):
     log.warning(f"Configuration files for this job can be found at {outdir}")
 
     # assume for now that operational fires are the default
-    operational_fires = get_default_operational_fires(cfg)
+    # operational_fires = get_default_operational_fires(cfg)
 
     model_available = False
     if cfg.algo.checkpoint_path:
@@ -154,9 +154,9 @@ def main(cfg: DictConfig):
             env_settings = instantiate(cfg.environment, _convert_="partial")
             eval_settings = instantiate(cfg.evaluation, _convert_="partial")
             # Inject operational fires into the evaluation settings
-            eval_settings["evaluation_config"]["env_config"].update(
-                {"scenarios": operational_fires}
-            )
+            # eval_settings["evaluation_config"]["env_config"].update(
+            #     {"scenarios": operational_fires}
+            # )
             # TODO: Move (both) NOTE below to docs and remove from code
             # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
             # Prepare exploration options for the algorithm
