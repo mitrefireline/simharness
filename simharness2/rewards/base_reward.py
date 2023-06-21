@@ -38,7 +38,7 @@ class SimpleReward(BaseReward):
         """TODO Add constructor docstring."""
         super().__init__(tracker)
 
-    def get_reward(self, sim_run: bool) -> float:
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
 
         # if Simulation was not run this timestep, return intermediate reward
@@ -62,7 +62,7 @@ class SimpleReward(BaseReward):
         self.latest_reward = reward
         return reward
 
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
         # Basic Intermediate reward is 0
         return 0.0
@@ -73,13 +73,13 @@ class BenchmarkReward(BaseReward):
         """TODO Add constructor docstring."""
         super().__init__(tracker)
 
-    def get_reward(self, sim_run: bool) -> float:
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
 
         # if Simulation was not run this timestep, return intermediate reward
         if not sim_run:
             # intermediate reward calculation used
-            return self.get_timestep_intermediate_reward()
+            return self.get_timestep_intermediate_reward(timestep)
 
         ## This Reward will compare the number of new recently damaged squares in the main sim and within the bench sim
         ##       to determine the performance/reward of the agent
@@ -107,7 +107,7 @@ class BenchmarkReward(BaseReward):
         self.latest_reward = reward
         return reward
 
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
 
         # TODO add small negative reward if the agent places mitigation within an already burned area
@@ -131,13 +131,13 @@ class ComprehensiveReward(BaseReward):
     def __init__(
         super().__init__(tracker)
 
-    def get_reward(self, sim_run: bool) -> float:
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
 
         # if Simulation was not run this timestep, return intermediate reward
         if not sim_run:
             # intermediate reward calculation used
-            return self.get_timestep_intermediate_reward()
+            return self.get_timestep_intermediate_reward(timestep)
 
         ## This Reward will compare the number of new recently damaged squares in the main sim and within the bench sim
         ##       to determine the performance/reward of the agent
@@ -194,7 +194,7 @@ class ComprehensiveReward(BaseReward):
         self.latest_reward = reward
         return reward
 
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
 
         # start with the intermediate reward just being the same as the previously calculated reward
