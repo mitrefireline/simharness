@@ -414,6 +414,7 @@ class AgentMetricsTracker:
         # NOTE: Attribute (s) useful for debugging; may be removed later.
         if mitigation_placed:
             self.num_interactions_since_last_sim_step += 1
+            self.mitigation_placed = True
         if movements[movement] != "none":
             self.num_movements_since_last_sim_step += 1
 
