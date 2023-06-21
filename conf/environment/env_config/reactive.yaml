@@ -24,7 +24,11 @@ tracker_partial:
       interaction_types: ${....interactions}
 reward_cls: 
   _target_: simharness2.rewards.base_reward.ComprehensiveReward
-initial_agent_pos: [15, 15]
+reward_cls_partial:
+  _target_: simharness2.rewards.base_reward.ComprehensiveReward
+  _partial_: true
+  fixed_reward: 100
+  static_penalty: 50
 randomize_initial_agent_pos: false
 benchmark_sim: ${.sim}
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)

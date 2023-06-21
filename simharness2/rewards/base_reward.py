@@ -49,7 +49,7 @@ class SimpleReward(BaseReward):
         # Use the data stored in the tracker object to calculate this timesteps reward
 
         ## set the simplereward to be the number of new_damaged squares in the main simulation
-        new_damaged = self.tracker.sim_tracker.num_new_damaged
+        new_damaged = self.tracker.sim_data.num_new_damaged
 
         # total = self.simulation.config.area.screen_size**2
 
@@ -84,12 +84,12 @@ class BenchmarkReward(BaseReward):
         ## This Reward will compare the number of new recently damaged squares in the main sim and within the bench sim
         ##       to determine the performance/reward of the agent
 
-        new_damaged_mainsim = self.tracker.sim_tracker.num_new_damaged
+        new_damaged_mainsim = self.tracker.sim_data.num_new_damaged
 
-        new_damaged_benchsim = self.tracker.benchsim_tracker.num_new_damaged
+        new_damaged_benchsim = self.tracker.benchmark_sim_data.num_new_damaged
 
         # write in the edge case for if the benchsim is not active, but the main sim is still active
-        if self.tracker.benchsim_tracker.active == False:
+        if self.tracker.benchmark_sim_data.active == False:
             # setting arbitrary maximum possible burning from the benchsim to be half of the total area
             # in general, it is good for the main sim to last longer than the benchsim so this should hopefully yield positive rewards
             new_damaged_benchsim = (self._sim_area) // 2
@@ -116,7 +116,7 @@ class BenchmarkReward(BaseReward):
         inter_reward = self.latest_reward
 
         # add a slight reward to the agent for placing a mitigation
-        if self.tracker.sim_tracker.agent_tracker.mitigation_placed == True:
+        if self.tracker.sim_data.agent_data.mitigation_placed == True:
             inter_reward += 1
 
         # update self.latest_reward and then return the intermediate reward
@@ -124,39 +124,68 @@ class BenchmarkReward(BaseReward):
         return inter_reward
 
 
-# Reward Function that mirrors Dhanuj's complex_reward from last year and takes into account agent location to the fire while also
-#   inducing a positive reward structure where the agent is rewarded for undamaged squares in the simulation - this reward function is task agnostic
 class ComprehensiveReward(BaseReward):
-    def __init__(self, tracker: ReactiveHarnessData):
     def __init__(
+        self,
+        *,
+        tracker: ReactiveHarnessData,  # FIXME: rename to `harness_data`
+        fixed_reward: float,
+        static_penalty: float,
+    ):
+        """Induces a postive reward structure using the number of undamaged squares.
+
+        The method used for reward calculation is intended to mirror Dhanuj's
+        `complex_reward` from FY22, where the agent is rewarded using the difference in
+        the number of `BurnStatus.UNBURNED` tiles between the main and benchmark
+        simulations. This reward structure is intended to be task agnostic, and makes an
+        effort to penalize the agent for unsafe proximity to the fire (`static_penalty`).
+
+        Attributes:
+            tracker: The `ReactiveHarnessData` object that houses the data used to
+                calculate the reward.
+            fixed_reward: The fixed reward that is scaled by the number of squares saved
+                by the agent.
+            static_penalty: The fixed penalty that is applied to the agent if it is
+                within a certain distance of the fire.
+        """
+        self.fixed_reward = fixed_reward
+        self.static_penalty = static_penalty
         super().__init__(tracker)
 
     def get_reward(self, timestep: int, sim_run: bool) -> float:
-        """TODO Add function docstring."""
+        """Rewards the agent for `saving` squares from the fire wrt the benchmark sim.
 
-        # if Simulation was not run this timestep, return intermediate reward
+        A constant scalar reward, `self.fixed_reward`, is scaled by the number of squares
+        "saved" by the agent, which equates to the difference in the number of
+        `BurnStatus.UNBURNED` tiles between the main `FireSimulation.fire_map` and the
+        benchmark `FireSimulation.fire_map`.
+
+        Arguments:
+            timestep: The current timestep in the episode.
+            sim_run: Whether or not the simulation was run this timestep.
+
+        Returns:
+            (Fixed reward * number of squares saved) - (penalty for being near fire)
+        """
         if not sim_run:
-            # intermediate reward calculation used
             return self.get_timestep_intermediate_reward(timestep)
 
         ## This Reward will compare the number of new recently damaged squares in the main sim and within the bench sim
-        ##       to determine the performance/reward of the agent
 
-        undamaged_mainsim = self.tracker.sim_tracker.num_undamaged
-
-        undamaged_benchsim = self.tracker.benchsim_tracker.num_undamaged
-
-        # if the benchsim is no longer active, but the main simulation is still active, 
+        # Get the number of undamaged squares in the main and benchmark simulations
+        # FIXME: should we index with `-1` or `timestep - 1`?
+        # NOTE: Convert to int to avoid "overflow in scalar subtract"(cols are np.uint16 !!)
+        undamaged_mainsim = self.tracker.sim_data.sim_df.iloc[-1][
+            "unburned_total"
+        ].astype("int")
+        undamaged_benchsim = self.tracker.benchmark_sim_data.sim_df.iloc[-1][
+            "unburned_total"
+        ].astype("int")
+        # if the benchsim is no longer active, but the main simulation is still active,
         #   then it is okay to use the last value of the num_undamaged from the benchsim as assumadley our main_sim agent will be rewarded for sustaining the fire longer
-
 
         # define the number of squares saved by the agent as the difference between the benchsim and the mainsim
         timestep_number_squares_saved = undamaged_mainsim - undamaged_benchsim
-
-        total = self.tracker.sim_tracker.sim_area
-
-        reward = ((timestep_number_squares_saved) / total) * 100.0
-
 
         ## If MAIN SIMULATION ENDS FASTER THAN BENCH SIMULATION
         #   there are either two possibilities
@@ -164,16 +193,20 @@ class ComprehensiveReward(BaseReward):
         #           - In which case the agent should be heavily penalized
         #   2. The agent's actions ended the fire faster and saved more squares (The most ideal Situation)
         #           - In which case the agent should be heavily rewarded
-        if self.tracker.benchsim_tracker.active == True and self.tracker.sim_tracker.active == False:
-
-            #update the value of the undamaged benchsim to be that of the bench simulation if it reached it's end
+        if (
+            self.tracker.benchmark_sim_data.active == True
+            and self.tracker.sim_data.active == False
+        ):
+            # update the value of the undamaged benchsim to be that of the bench simulation if it reached it's end
             undamaged_benchsim = self._sim_area - self.tracker.bench_damage
 
             timestep_number_squares_saved = undamaged_mainsim - undamaged_benchsim
 
-            #multiply this by the number of timesteps that the main_sim is faster than the bench sim
-            if self.tracker.bench_timesteps > self.tracker.timestep:
-                timestep_number_squares_saved = timestep_number_squares_saved * (self.tracker.bench_timesteps - self.tracker.timestep)
+            # multiply this by the number of timesteps that the main_sim is faster than the bench sim
+            if self.tracker.bench_timesteps > self.tracker.sim_data.num_sim_steps:
+                timestep_number_squares_saved = timestep_number_squares_saved * (
+                    self.tracker.bench_timesteps - self.tracker.sim_data.num_sim_steps
+                )
 
         # this new reward works out well for both of the above cases
         #   For Case 1., this reward will yield a large negative reward
@@ -183,10 +216,9 @@ class ComprehensiveReward(BaseReward):
         ## AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
         # use static reward so RL easily learns what causes this reward
         # TODO: determine best amount for this reward
-        if self.tracker.sim_tracker.agent_tracker.agent_near_fire == True:
-            #set the reward to be -50 
-            reward = -50
-
+        if self.tracker.sim_data.agent_data.agent_df.iloc[1]["near_fire"]:
+            # set the reward to be -1.0 * static_penalty
+            reward = -self.static_penalty
 
         # TODO add very large negative reward if agent steps into fire (or end the simulation)
 
@@ -198,12 +230,15 @@ class ComprehensiveReward(BaseReward):
         """TODO Add function docstring."""
 
         # start with the intermediate reward just being the same as the previously calculated reward
-        inter_reward = self.latest_reward
+        inter_reward = self.tracker.latest_reward
 
         # add a slight reward to the agent for placing a mitigation not in a burned area
-        if self.tracker.sim_tracker.agent_tracker.mitigation_placed == True and self.tracker.sim_tracker.agent_tracker.agent_in_burned_area == False:
+        # FIXME: should we index with `-1` or `timestep - 1`?
+        if self.tracker.sim_data.agent_data.agent_df.iloc[-1][
+            ["interaction", "near_fire"]
+        ].tolist() != ["none", True]:
             inter_reward += 1
 
         # update self.latest_reward and then return the intermediate reward
-        self.latest_reward = inter_reward
+        # self.latest_reward = inter_reward
         return inter_reward
