@@ -132,8 +132,20 @@ class ReactiveHarnessData(RLHarnessData):
         super().__init__(
             sim=sim, sim_data_partial=sim_data_partial, benchmark_sim=benchmark_sim
         )
+        # Define attributes that are needed/accessed within `ComprehensiveReward` class.
+        # TODO: Address where these attributes should be stored, see
+        # https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2/-/merge_requests/6#note_1504742
+        if self.benchmark_sim_data:
+            self.bench_timesteps: int = 0
+            self.bench_damage: int = 0
+            self.bench_estimated: bool = False
 
-        self.reset()
+        # Track the latest episode reward
+        # TODO is this the reward for the latest timestep or the latest episode?
+        # FIXME: Decide how and where this attribute is/should be used.
+        self.latest_reward = 0.0
+
+        self.episodes_total = 0
 
     def update_after_one_agent_step(
         self,
