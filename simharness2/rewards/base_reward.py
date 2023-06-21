@@ -21,16 +21,14 @@ class BaseReward(ABC):
         self.tracker = tracker
 
     @abstractmethod
-    def get_reward(self, sim_run: bool) -> float:
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add docstring."""
-        raise NotImplementedError
+        pass
 
     @abstractmethod
-    def get_timestep_intermediate_reward(self) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add docstring."""
-        raise NotImplementedError
-
-    # ---------------------
+        pass
 
 
 class SimpleReward(BaseReward):
