@@ -25,12 +25,13 @@ from ray.rllib.env.env_context import EnvContext
 
 from simharness2.rewards.base_reward import BaseReward
 from simfire.sim.simulation import FireSimulation
+from simfire.enums import BurnStatus, GameStatus
 from simfire.utils.log import create_logger
 from simharness2.utils.analytics_tracker import ReactiveHarnessData
 
 from simharness2.environments.rl_harness import RLHarness
 
-log = create_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -91,12 +92,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.log = logging.getLogger(__name__)
         # Indicates that environment information should be logged at various points.
         self._debug_mode = config.get("debug_mode", False)
-        self._debug_duration = config.get("debug_duration", 1)
+        self._debug_duration = config.get("debug_duration", 1)  # unit == episodes
         self._episodes_debugged = 0
         self.log.debug(f"Initializing environment {hex(id(self))}")
 
         # Indicator variable to determine if environment has ever been reset.
-        self._has_reset = False
+        self._has_reset = False  # FIXME do we need this still?
         # When there are multiple workers created, this uniquely identifies the worker
         # the env is created in. 0 for local worker, >0 for remote workers.
         self.worker_idx = config.worker_index
@@ -178,7 +179,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
-        # After every agent action, store the respective movement and interaction
+        # After every agent action, store the movement and interaction that were taken.
         # FIXME: any ideas on "better" names? we can prepend `prev_`, or `curr_`?
         self.latest_movement: int = -1
         self.latest_interaction: int = -1
@@ -191,15 +192,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
-        # NOTE: `self.movement`, `self.interaction` are updated in `_do_one_agent_step`.
+        self.timesteps += 1  # increment BEFORE method logic is performed (convention).
+
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
         if self.tracker:
             self.tracker.update_after_one_agent_step(
+                timestep=self.timesteps,
                 movement=self.latest_movement,
                 interaction=self.latest_interaction,
                 agent_pos=self.agent_pos,
-                agent_pos_is_empty_space=self.agent_pos_is_empty_space,
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -207,44 +209,36 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
 
         if sim_run and self.tracker:
-            self.tracker.update_after_one_simulation_step()
+            self.tracker.update_after_one_simulation_step(timestep=self.timesteps)
 
-        # Calculate the reward for the current timestep
-        if self.reward_cls:
-            reward = self.reward_cls.get_reward(sim_run)
-            # update the tracker to reset the agent if sim_run = True
-            if sim_run:
-                self.tracker.update_after_one_simulation_step_and_reward()
-        else:
-            fire_map_idx = self.attributes.index("fire_map")
-            reward = self._calculate_reward(self.state[..., fire_map_idx], sim_run)
-
-        # TODO account for below updates in the reward_cls.calculate_reward() method
-        # "End of episode" reward
-        if not self.sim.active:
-            reward += 10
-        # if self._nearby_fire():
-        #     reward -= 2.0
-
-        # Convention: increment the timestep AFTER all method logic is performed.
-        self.timesteps += 1
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
         truncated = False
+        # FIXME `fire_status` is set in `FireSimulation.__init__()`, while `active` is
+        # set in `FireSimulation.run()`, so attribute DNE prior to first call to `run()`.
+        terminated = self.sim.fire_status == GameStatus.QUIT
 
-        if self.sim.active == False:
-            # update the tracker after the previous episode has ended
-            # TODO: is this the best place to keep this tracker update
-            self.tracker.update_after_one_episode(reward=reward)
-            self.tracker.reset()
+        # Calculate the reward for the current timestep
+        # TODO pass `terminated` into `get_reward` method
+        reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
-        return self.state, reward, not self.sim.active, truncated, {}
+        # TODO account for below updates in the reward_cls.calculate_reward() method
+        # "End of episode" reward
+        if terminated:
+            reward += 10
+
+        if self.tracker:
+            self.tracker.update_after_one_harness_step(
+                sim_run, terminated, reward, timestep=self.timesteps
+            )
+
+        return self.state, reward, terminated, truncated, {}
 
     def _do_one_agent_step(self, action: np.ndarray) -> None:
         """Move the agent and interact with the environment.
 
-        Within this method, the movement and interaction that the agent will
-        take are stored in `self.movement` and `self.interaction`, respectively. If this
+        Within this method, the movement and interaction that the agent takes are stored
+        in `self.latest_movement` and `self.latest_interaction`, respectively. If this
         movement is not "none", then the agent's position on the map is updated and
         stored in `self.agent_pos`.
 
@@ -268,7 +262,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Check if there was an interaction already done on this space
         # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
-        self._agent_pos_is_empty_space()
+        self._agent_pos_is_empty_space()  # FIXME do we still need this??
 
         # Interact with the environment
         interact = self.interactions[self.latest_interaction] != "none"
@@ -320,12 +314,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.sim.update_agent_positions([point])
 
     def _agent_pos_is_empty_space(self) -> bool:
-        """Check and store whether the space occupied by the agent is empty."""
+        """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
         # FIXME Store the value that indicates whether space is empty or not
         #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
         self.agent_pos_is_empty_space = (
-            self.state[self.agent_pos[1], self.agent_pos[0], fire_map_idx] == 0
+            self.state[self.agent_pos[1], self.agent_pos[0], fire_map_idx]
+            == BurnStatus.UNBURNED
         )
 
     def _update_mitigation(self) -> None:
@@ -373,6 +368,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             nearby_fire: A boolean indicating if there is a burning space adjacent to the
               agent.
         """
+        # TODO: This method MUST be tested to ensure it returns the correct boolean!!
         nearby_locs = []
         screen_size = self.sim.config.area.screen_size
         # Get all spaces surrounding agent
@@ -390,6 +386,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                     nearby_locs.append((i, j))
 
         for i, j in nearby_locs:
+            # FIXME This is incorrect indexing of `self.state` (we use channels-last).
             if self.state[self.attributes.index("fire_map")][i][j] == 1:
                 return True
 
@@ -454,6 +451,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.benchmark_sim:
             # reset benchmark simulation
             self.benchmark_sim.reset()
+
+        # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
+        if self.tracker:
+            self.tracker.reset()
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
