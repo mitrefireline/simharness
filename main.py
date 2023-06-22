@@ -13,6 +13,7 @@ Typical usage example:
 import logging
 import os
 from importlib import import_module
+from typing import Any, Dict, Tuple
 
 import gymnasium as gym
 import hydra
@@ -41,7 +42,16 @@ OmegaConf.register_new_resolver("square", lambda x: x**2)
 logger = logging.getLogger(__name__)
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
-    """FIXME: Docstring for train_with_tune."""
+    """Train the
+
+    Args:
+        algo_cfg (AlgorithmConfig): [description]
+        cfg (DictConfig): [description]
+
+    Returns:
+        ResultDict: [description]
+    """
+    
     # automated run with Tune and grid search and TensorBoard
     tuner = tune.Tuner(
         cfg.algo.name,
@@ -63,27 +73,34 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     return results
 
 
-def train(algo: Algorithm, cfg: DictConfig):
-    """FIXME: Docstring for train."""
+def train(algo: Algorithm, cfg: DictConfig) -> None:
+    """Train the given algorithm within RLlib.
+
+    Args:
+        algo (Algorithm): Algorithm to train with.
+        cfg (DictConfig): Hydra config with all required parameters for training.
+    """
+    
     stop_cond = cfg.stop_conditions
     # Run manual training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
         logger.info(f"Training iteration {i}")
         result = algo.train()
-        logger.info(pretty_print(result))
+        logger.info(f'{pretty_print(result)}\n')
 
         if i % cfg.checkpoint.frequency == 0:
             ckpt_path = algo.save()
-            logger.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
+            log_str = f"A checkpoint has been created inside directory: {ckpt_path}.\n"
+            logger.info(log_str)
 
         if (
             result["timesteps_total"] >= stop_cond.timesteps_total
             or result["episode_reward_mean"] >= stop_cond.episode_reward_mean
         ):
-            logger.info(f"Training stopped short at iteration {i}")
+            logger.info(f"Training stopped short at iteration {i}.\n")
             ts = result["timesteps_total"]
             mean_rew = result["episode_reward_mean"]
-            logger.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}")
+            logger.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
             break
 
     model_path = algo.save()
@@ -91,7 +108,22 @@ def train(algo: Algorithm, cfg: DictConfig):
     algo.stop()
 
 
-def _instantiate_config(cfg: DictConfig):
+def _instantiate_config(
+    cfg: DictConfig
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    """Instantiate the algorithm config used to build the RLlib training algorithm.
+
+    Args:
+        cfg (DictConfig): Hydra config with all required parameters.
+
+    Returns:
+        Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        env_settings: Parameters needed for instantiating the environment
+        eval_settings: Parameters needed for running the evaluation code.
+        debug_settings: Settings needed for debugging.
+        exploration_cfg: RLlib exploration configurations.
+    """
+    
     # Instantiate objects based on the provided settings
     # NOTE: We are instantiating to a NEW object on purpose; otherwise a
     # `TypeError` will be raised when attempting to log the cfg to Aim.
@@ -133,7 +165,15 @@ def _instantiate_config(cfg: DictConfig):
     
     return env_settings, eval_settings, debug_settings, exploration_cfg
 
-def build_algo(cfg: DictConfig):
+def build_algo(cfg: DictConfig) -> Algorithm:
+    """Build the algorithm config and object for training an RLlib model.
+
+    Args:
+        cfg (DictConfig): Hydra config with all required parameters.
+
+    Returns:
+        Algorithm: Algorithm to train with.
+    """
     
     env_settings, eval_settings, debug_settings, explor_cfg = _instantiate_config(cfg)
 
@@ -158,8 +198,13 @@ def build_algo(cfg: DictConfig):
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
-def main(cfg: DictConfig):
-    """FIXME: Docstring for main."""
+def main(cfg: DictConfig) -> None:
+    """Main entry-point for training a SimHarness model with RLlib.
+
+    Args:
+        cfg (DictConfig): Hydra config with all required parameters for training.
+    """
+    
     # Start the Ray runtime
     ray.init(num_gpus=0, num_cpus=8)
     # Fetch logger, which is configured in `conf/hydra/job_logging`
