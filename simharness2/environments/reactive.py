@@ -24,10 +24,9 @@ from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
 
 from simharness2.rewards.base_reward import BaseReward
-from simfire.sim.simulation import FireSimulation
 from simfire.enums import BurnStatus, GameStatus
 from simfire.utils.log import create_logger
-from simharness2.utils.analytics_tracker import ReactiveHarnessData
+from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
 
 from simharness2.environments.rl_harness import RLHarness
 
@@ -174,7 +173,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._set_agent_pos_for_episode_start()
 
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
-        self._setup_tracker(tracker_partial=config.get("tracker_partial"))
+        self._setup_harness_analytics(harness_analytics_partial=config.get("harness_analytics_partial"))
 
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
@@ -196,8 +195,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
-        if self.tracker:
-            self.tracker.update_after_one_agent_step(
+        if self.harness_analytics:
+            self.harness_analytics.update_after_one_agent_step(
                 timestep=self.timesteps,
                 movement=self.latest_movement,
                 interaction=self.latest_interaction,
@@ -208,8 +207,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # indicate how to calculate the reward for the current timestep.
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
 
-        if sim_run and self.tracker:
-            self.tracker.update_after_one_simulation_step(timestep=self.timesteps)
+        if sim_run and self.harness_analytics:
+            self.harness_analytics.update_after_one_simulation_step(timestep=self.timesteps)
 
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
@@ -227,8 +226,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if terminated:
             reward += 10
 
-        if self.tracker:
-            self.tracker.update_after_one_harness_step(
+        if self.harness_analytics:
+            self.harness_analytics.update_after_one_harness_step(
                 sim_run, terminated, reward, timestep=self.timesteps
             )
 
@@ -453,8 +452,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self.benchmark_sim.reset()
 
         # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
-        if self.tracker:
-            self.tracker.reset()
+        if self.harness_analytics:
+            self.harness_analytics.reset()
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -579,36 +578,36 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Increment the number of episodes that have been debugged.
         self._episodes_debugged += 1
 
-    def _setup_tracker(self, tracker_partial: partial) -> None:
-        """Instantiates the tracker used to monitor this `ReactiveHarness` object.
+    def _setup_harness_analytics(self, harness_analytics_partial: partial) -> None:
+        """Instantiates the harness_analytics used to monitor this `ReactiveHarness` object.
 
         Arguments:
-            tracker_partial: A `functools.partial` object that indicates the top-level
+            harness_analytics_partial: A `functools.partial` object that indicates the top-level
                 class that will be used to monitor the `ReactiveHarness` object. The user
                 is expected to provide the `sim_data_partial` keyword argument, along
                 with a valid value.
 
         Raises:
-            TypeError: If `tracker_partial.keywords` does not contain a
+            TypeError: If `harness_analytics_partial.keywords` does not contain a
             `sim_data_partial` key with value of type `functools.partial`.
 
         """
-        self.tracker: ReactiveHarnessData
-        if tracker_partial:
+        self.harness_analytics: ReactiveHarnessData
+        if harness_analytics_partial:
             try:
-                self.tracker = tracker_partial(
+                self.harness_analytics = harness_analytics_partial(
                     sim=self.sim, benchmark_sim=self.benchmark_sim
                 )
             except TypeError as e:
                 raise e
         else:
-            self.tracker = None
+            self.harness_analytics = None
 
     def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
         """Instantiates the reward class used to perform reward calculation each episode.
 
-        This method must be called AFTER `self._setup_tracker()`, as the reward class
-        requires `self.tracker` to be passed as an argument to its constructor.
+        This method must be called AFTER `self._setup_harness_analytics()`, as the reward class
+        requires `self.harness_analytics` to be passed as an argument to its constructor.
 
         Arguments:
             reward_cls_partial: A `functools.partial` object that indicates the reward
@@ -616,16 +615,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 in an episode.
 
         Raises:
-            TypeError: If `tracker_partial.keywords` does not contain a
+            TypeError: If `harness_analytics_partial.keywords` does not contain a
                 `sim_data_partial` key with value of type `functools.partial`.
-            AttributeError: If `self` does not have a `tracker` attribute. See the above
+            AttributeError: If `self` does not have a `harness_analytics` attribute. See the above
                 message for more details.
 
         """
         self.reward_cls: BaseReward
         if reward_cls_partial:
             try:
-                self.reward_cls = reward_cls_partial(tracker=self.tracker)
+                self.reward_cls = reward_cls_partial(harness_analytics=self.harness_analytics)
             except TypeError as e:
                 raise e
             except AttributeError as e:
