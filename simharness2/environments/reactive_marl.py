@@ -92,7 +92,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Store agent position parameters for use in `step()`, `reset()`, etc.
         self.agent_pos: List[List[int]] = [None] * self.num_agents
-        default_pos_list = [[15, 15], [15, 15], [15, 15], [15, 15]]
+        default_pos_list = [[15, 15]] * self.num_agents
         self.initial_agent_pos = config.get("initial_agent_pos", default_pos_list)
         self.randomize_initial_agent_pos = config.get(
             "randomize_initial_agent_pos", [False] * self.num_agents
@@ -408,32 +408,9 @@ class MARLReactiveDiscreteHarness(MARLReactiveHarness):  # noqa: D205,D212,D415
     option for no movement and no interaction.
     """
 
-    def __init__(
-        self,
-        simulation: Simulation,
-        movements: List[str],
-        interactions: List[str],
-        attributes: List[str],
-        normalized_attributes: List[str],
-        agent_speeds: List[int],
-        deterministic: bool = False,
-        initial_agent_pos: List[List[int]] = [[15, 15]],
-        randomize_initial_agent_pos: List[bool] = [False],
-        num_agents: int = 1
-    ) -> None:
+    def __init__(self, config: EnvContext) -> None:
         """See ReactiveHarness (parent/base class)."""
-        super().__init__(
-            simulation,
-            movements,
-            interactions,
-            attributes,
-            normalized_attributes,
-            agent_speeds,
-            deterministic,
-            initial_agent_pos,
-            randomize_initial_agent_pos,
-            num_agents
-        )
+        super().__init__(config)
         self.spec = EnvSpec(
             id="MARLReactiveDiscreteHarness",
             entry_point="simharness2.environments.reactive:MARLReactiveDiscreteHarness",

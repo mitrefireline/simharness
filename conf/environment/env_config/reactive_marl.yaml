@@ -8,7 +8,7 @@ interactions: [fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speeds: [1,1,1,1]
-deterministic: False
+deterministic: True
 initial_agent_pos: [[15, 15], [15, 15], [15, 15], [15, 15]]
 randomize_initial_agent_pos: [True, True, True, True]
 num_agents: 4

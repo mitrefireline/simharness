@@ -98,15 +98,13 @@ def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
 def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
     """FIXME: Docstring for view."""
     log.info("Collecting gifs of trained model...")
-    env_name = cfg.evaluation.evaluation_config.env
-
-    env_cfg = OmegaConf.to_container(cfg.environment.env_config)
-    env_cfg.update({"simulation": view_sim})
-
-    env = gym.make(env_name, **env_cfg)
+    from ray.rllib.env.env_context import EnvContext
+    env_settings = EnvContext(instantiate(cfg.environment, _convert_="partial")['env_config'], 0)
+    
+    from simharness2.environments.reactive_marl import MARLReactiveDiscreteHarness
+    env = MARLReactiveDiscreteHarness(env_settings)
 
     for _ in range(1):
-        env.simulation.rendering = True
         obs, _ = env.reset()
         done = False
 
@@ -133,9 +131,6 @@ def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Lo
         print(f"Final Reward: {total_reward}")
 
         #head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
-        save_dir = "/home/atapley/simharness2/gifs/" #os.path.join(head_path, "gifs", checkpoint_dir)
-        env.simulation.save_gif(save_dir)
-        env.simulation.rendering = False
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -154,8 +149,68 @@ def main(cfg: DictConfig):
     model_available = False
     if cfg.algo.checkpoint_path:
         log.info(f"Creating an algorithm instance from {cfg.algo.checkpoint_path}")
+        
+         # Instantiate objects based on the provided settings
+        # TODO: Move this to a utility function (ie `instantiate_from_config`)?
+        # NOTE: We are instantiating to a NEW object on purpose; otherwise a
+        # `TypeError` will be raised when attempting to log the cfg to Aim.
+        env_settings = instantiate(cfg.environment, _convert_="partial")
+        eval_settings = instantiate(cfg.evaluation, _convert_="partial")
+        # Inject operational fires into the evaluation settings
+        eval_settings["evaluation_config"]["env_config"].update(
+            {"scenarios": operational_fires}
+        )
+        # TODO: Move (both) NOTE below to docs and remove from code
+        # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
+        # Prepare exploration options for the algorithm
+        explore = cfg.exploration.explore
+        exploration_cfg = OmegaConf.to_container(cfg.exploration.exploration_config)
+
+        # Prepare debugging settings
+        # If no `type` is given, tune's `UnifiedLogger` is used as follows:
+        # DEFAULT_LOGGERS = (JsonLogger, CSVLogger, TBXLogger)
+        # `UnifiedLogger(config, self._logdir, loggers=DEFAULT_LOGGERS)`
+        # - The `logger_config` defined below is used here:
+        # https://github.com/ray-project/ray/blob/863928c4f13b66465399d63e01df3c446b4536d9/rllib/algorithms/algorithm.py#L423
+        # - The `Trainable._create_logger` method can be found here:
+        # https://github.com/ray-project/ray/blob/8d2dc9a3997482100034b60568b06aad7fd9fc59/python/ray/tune/trainable/trainable.py#L1067
+        debug_settings = OmegaConf.to_container(cfg.debugging)
+        # TODO make options passed to `logger_config` configurable from the CLI
+        debug_settings.update(
+            {
+                "logger_config": {
+                    "type": tune.logger.TBXLogger,
+                    "logdir": cfg.runtime.local_dir,
+                }
+            }
+        )
+        # Register the environment with Ray
+        # TODO: Move this to a function (ie `register_env`)?
+        # NOTE: Assume that same environment cls is used for training and evaluation.
+        env_module, env_cls = cfg.environment.env.rsplit(".", 1)
+        env_cls = getattr(import_module(env_module), env_cls)
+        register_env(cfg.environment.env, lambda config: env_cls(config))
+
+        # Build the `AlgorithmConfig` object using the provided settings.
+        algo_cfg = (
+            get_trainable_cls(cfg.algo.name)
+            .get_default_config()
+            .training(**cfg.training)
+            .environment(**env_settings)
+            .framework(**cfg.framework)
+            .rollouts(**cfg.rollouts)
+            .evaluation(**eval_settings)
+            .exploration(explore=explore, exploration_config=exploration_cfg)
+            .resources(**cfg.resources)
+            .debugging(**debug_settings)
+            .callbacks(SetEnvSeedsCallback)
+        )
+        
+        algo = algo_cfg.build()
+            
         # TODO raise error if checkpoint_path is not a valid path
-        algo = Algorithm.from_checkpoint(cfg.algo.checkpoint_path)
+        #algo = Algorithm.from_checkpoint(cfg.algo.checkpoint_path)
+        algo.restore(checkpoint_path=cfg.algo.checkpoint_path)
         model_available = True
 
     if cfg.cli.mode == "train" or cfg.cli.mode == "tune":
@@ -231,7 +286,7 @@ def main(cfg: DictConfig):
         
         sim_path = cfg.evaluation.evaluation_config.env_config.simulation
         sim = instantiate(sim_path, _convert_="partial")
-        view(algo, cfg, sim)
+        view(algo, cfg, sim, log)
     else:
         raise ValueError(f"Invalid mode: {cfg.cli.mode}")
 
