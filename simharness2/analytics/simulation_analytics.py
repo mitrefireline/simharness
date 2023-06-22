@@ -189,7 +189,7 @@ class FireSimulationAnalytics(SimulationAnalytics):
         }
         # Insert columns that are only applicable to the main simulation.
         if not self.is_benchmark:
-            self.df_dtypes(
+            self.df_cols.extend(
                 [
                     "agent_interactions",
                     "agent_movements",
@@ -210,7 +210,6 @@ class FireSimulationAnalytics(SimulationAnalytics):
     def update(self, timestep: int) -> None:
         """TODO Add docstring."""
         # NOTE: We can also get sim_steps with self._sim.elapsed_steps
-        self.num_sim_steps += 1
         self.active = self.sim.active
 
         # Add the current timestep's data to the dataframe.
@@ -236,11 +235,13 @@ class FireSimulationAnalytics(SimulationAnalytics):
                 ]
             )
 
-        sim_data_dict = dict(zip(self.dfs, sim_data))
+        sim_data_dict = dict(zip(self.df_cols, sim_data))
         timestep_df = (
             pd.DataFrame(sim_data_dict).astype(self.df_dtypes).set_index(self.df_index)
         )
         self.df = pd.concat([self.df, timestep_df])
+
+        self.num_sim_steps += 1 # increment AFTER method logic is performed (convention).
 
     def reset(self):
         """Reset the attributes of `FireSimulationData` to initial values."""

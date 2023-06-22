@@ -222,7 +222,7 @@ class ComprehensiveReward(BaseReward):
         ## AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
         # use static reward so RL easily learns what causes this reward
         # TODO: determine best amount for this reward
-        if self.harness_analytics.sim_analytics.agent_analytics.df.iloc[1]["near_fire"]:
+        if self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1]["near_fire"]:
             # set the reward to be -1.0 * static_penalty
             reward = -self.static_penalty
 

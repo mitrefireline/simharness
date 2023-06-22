@@ -132,7 +132,7 @@ def main(cfg: DictConfig):
     # Fetch logger, which is configured in `conf/hydra/job_logging`
     log = logging.getLogger(__name__)
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
-    log.warning(f"Configuration files for this job can be found at {outdir}")
+    log.info(f"Configuration files for this job can be found at {outdir}")
 
     # assume for now that operational fires are the default
     # operational_fires = get_default_operational_fires(cfg)
@@ -201,6 +201,7 @@ def main(cfg: DictConfig):
                 .resources(**cfg.resources)
                 .debugging(**debug_settings)
                 .callbacks(SetEnvSeedsCallback)
+                .fault_tolerance(**cfg.fault_tolerance)
             )
 
             if cfg.cli.mode == "tune":

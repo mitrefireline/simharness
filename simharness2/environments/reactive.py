@@ -25,8 +25,7 @@ from ray.rllib.env.env_context import EnvContext
 
 from simharness2.rewards.base_reward import BaseReward
 from simfire.enums import BurnStatus, GameStatus
-from simfire.utils.log import create_logger
-from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
+from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 
 from simharness2.environments.rl_harness import RLHarness
 
@@ -173,7 +172,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._set_agent_pos_for_episode_start()
 
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
-        self._setup_harness_analytics(harness_analytics_partial=config.get("harness_analytics_partial"))
+        self._setup_harness_analytics(
+            harness_analytics_partial=config.get("harness_analytics_partial")
+        )
 
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
@@ -191,8 +192,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
-        self.timesteps += 1  # increment BEFORE method logic is performed (convention).
-
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
         if self.harness_analytics:
@@ -208,14 +207,21 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
 
         if sim_run and self.harness_analytics:
-            self.harness_analytics.update_after_one_simulation_step(timestep=self.timesteps)
+            self.harness_analytics.update_after_one_simulation_step(
+                timestep=self.timesteps
+            )
 
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
         truncated = False
         # FIXME `fire_status` is set in `FireSimulation.__init__()`, while `active` is
         # set in `FireSimulation.run()`, so attribute DNE prior to first call to `run()`.
-        terminated = self.sim.fire_status == GameStatus.QUIT
+        # terminated = self.sim.fire_status == GameStatus.QUIT
+        # The simulation has not yet been run via `run()`
+        if self.sim.elapsed_steps == 0:
+            terminated = False
+        else:
+            terminated = not self.sim.active
 
         # Calculate the reward for the current timestep
         # TODO pass `terminated` into `get_reward` method
@@ -592,7 +598,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             `sim_data_partial` key with value of type `functools.partial`.
 
         """
-        self.harness_analytics: ReactiveHarnessData
+        self.harness_analytics: ReactiveHarnessAnalytics
         if harness_analytics_partial:
             try:
                 self.harness_analytics = harness_analytics_partial(
@@ -624,7 +630,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.reward_cls: BaseReward
         if reward_cls_partial:
             try:
-                self.reward_cls = reward_cls_partial(harness_analytics=self.harness_analytics)
+                self.reward_cls = reward_cls_partial(
+                    harness_analytics=self.harness_analytics
+                )
             except TypeError as e:
                 raise e
             except AttributeError as e:
