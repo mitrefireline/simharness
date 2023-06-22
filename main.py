@@ -38,6 +38,7 @@ OmegaConf.register_new_resolver("operational_screen_size", lambda x: int((x / 64
 OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
 OmegaConf.register_new_resolver("square", lambda x: x**2)
 
+logger = logging.getLogger(__name__)
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     """FIXME: Docstring for train_with_tune."""
@@ -62,31 +63,31 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     return results
 
 
-def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
+def train(algo: Algorithm, cfg: DictConfig):
     """FIXME: Docstring for train."""
     stop_cond = cfg.stop_conditions
     # Run manual training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
-        log.info(f"Training iteration {i}")
+        logger.info(f"Training iteration {i}")
         result = algo.train()
-        log.info(pretty_print(result))
+        logger.info(pretty_print(result))
 
         if i % cfg.checkpoint.frequency == 0:
             ckpt_path = algo.save()
-            log.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
+            logger.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
 
         if (
             result["timesteps_total"] >= stop_cond.timesteps_total
             or result["episode_reward_mean"] >= stop_cond.episode_reward_mean
         ):
-            log.info(f"Training stopped short at iteration {i}")
+            logger.info(f"Training stopped short at iteration {i}")
             ts = result["timesteps_total"]
             mean_rew = result["episode_reward_mean"]
-            log.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}")
+            logger.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}")
             break
 
     model_path = algo.save()
-    log.info(f"The final model has been saved inside directory: {model_path}.")
+    logger.info(f"The final model has been saved inside directory: {model_path}.")
     algo.stop()
 
 
@@ -162,9 +163,8 @@ def main(cfg: DictConfig):
     # Start the Ray runtime
     ray.init(num_gpus=0, num_cpus=8)
     # Fetch logger, which is configured in `conf/hydra/job_logging`
-    log = logging.getLogger(__name__)
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
-    log.warning(f"Configuration files for this job can be found at {outdir}")
+    logger.warning(f"Configuration files for this job can be found at {outdir}")
 
     # assume for now that operational fires are the default
     # operational_fires = get_default_operational_fires(cfg)
@@ -173,17 +173,17 @@ def main(cfg: DictConfig):
 
     if cfg.algo.checkpoint_path:
         ckpt_path = cfg.algo.checkpoint_path
-        log.info(f"Creating an algorithm instance from {ckpt_path}")
+        logger.info(f"Creating an algorithm instance from {ckpt_path}")
         
         assert os.path.isfile(ckpt_path), f'{ckpt_path} is not a valid file path.'
         algo.restore(checkpoint_path=ckpt_path)
 
     if cfg.cli.mode == "train":
-        log.info(f"Training model on {cfg.environment.env}")
-        train(algo, cfg, log)
+        logger.info(f"Training model on {cfg.environment.env}")
+        train(algo, cfg)
         
     if cfg.cli.mode == "tune":
-        log.info(f"Tuning model on {cfg.environment.env}")
+        logger.info(f"Tuning model on {cfg.environment.env}")
         train_with_tune(algo_cfg, cfg)
 
     ray.shutdown()
