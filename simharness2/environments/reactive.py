@@ -168,6 +168,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             action_space_cls=action_space_partial.func,
         )
         self._log_env_init()
+        
+        # Set the agent's initial position on the map
+        self._set_agent_pos_for_episode_start()
 
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()

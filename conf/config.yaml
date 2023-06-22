@@ -30,7 +30,7 @@ cli:
 algo:
   name: DQN
   # The path (str) to the checkpoint directory to use.
-  checkpoint_path: null
+  checkpoint_path: NULL #/home/atapley/experiments/2023-04-28_23-00-53/checkpoint_000261
 # Specify configuration used to create the ray.air.RunConfig object
 runtime:
   # Name of the training run (directory name)
@@ -40,11 +40,11 @@ runtime:
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
-  checkpoint_frequency: 20
+  frequency: 250
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 1000000
+  training_iteration: 500
   timesteps_total: 2000000000
   # episodes_total: 1000000
   episode_reward_mean: 10000000
