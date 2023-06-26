@@ -237,6 +237,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 sim_run, terminated, reward, timestep=self.timesteps
             )
 
+        self.timesteps += 1  # increment AFTER method logic is performed (convention).
+
         return self.state, reward, terminated, truncated, {}
 
     def _do_one_agent_step(self, action: np.ndarray) -> None:
