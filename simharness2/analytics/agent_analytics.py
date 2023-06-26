@@ -242,7 +242,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
             [self.movement_types[movement]],
             [self.interaction_types[interaction]],
             [self.agent_near_fire(fire_map, agent_pos)],
-            [BurnStatus(fire_map[agent_pos[1], agent_pos[0]]).name],
+            [BurnStatus(fire_map[agent_pos[0], agent_pos[1]]).name],
             [agent_pos[1]],
             [agent_pos[0]],
         ]
