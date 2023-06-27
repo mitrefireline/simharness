@@ -145,24 +145,21 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             )
         
         self._log_env_init()
-        
-        # If provided, construct the class used to perform reward calculation.
-        self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
         # --- MARL SPECIFIC ---
-        # FIXME DEFAULTS (set these in the cfg)
         default_num_agents = 1
-        default_agent_speeds = [1] * default_num_agents
-        default_pos_list = [[15, 15], [15, 15], [15, 15], [15, 15]]
-        default_randomize_init = [False] * self.num_agents
-        
-        # Store parameters relevant to the agents; for use in `step()`, `reset()`, etc.
         self.num_agents = config.get("num_agents", default_num_agents)
+        
+        # FIXME DEFAULTS (set these in the cfg)
+        default_agent_speeds = [1] * default_num_agents
         self.agent_speeds: int = config.get("agent_speeds", default_agent_speeds)
         
         # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
         self.agent_pos: List[List[int]] = [None] * self.num_agents
+        default_pos_list = [[15, 15], [15, 15], [15, 15], [15, 15]]
         self.initial_agent_pos: List[int] = config.get("initial_agent_pos", default_pos_list)
+        
+        default_randomize_init = [False] * self.num_agents
         self.randomize_initial_agent_pos = config.get(
             "randomize_initial_agent_pos", default_randomize_init
         )
@@ -184,6 +181,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         # FIXME Move into RLHarness
         self._setup_harness_analytics(harness_analytics_partial=config.get("harness_analytics_partial"))
+        
+        # If provided, construct the class used to perform reward calculation.
+        self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
     def step(
         self, actions: Dict[str, np.ndarray]
@@ -540,7 +540,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def render(self):  # noqa
         self.sim.rendering = True
 
-    def _check_start_pos(self, start_pos: List[int, int]) -> bool:
+    def _check_start_pos(self, start_pos: Tuple[int, int]) -> bool:
         # Check that value is in the correct range
         if (start_pos[0] < 0 or 
             start_pos[0] >= self.sim.config.area.screen_size or 
@@ -549,8 +549,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             
             return False
         
-        if start_pos in self.agent_pos:
-            return False
+        for pos in self.agent_pos:
+            if np.array_equal(pos, start_pos):
+                return False
         
         return True
     

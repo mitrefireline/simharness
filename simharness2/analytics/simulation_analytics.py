@@ -12,7 +12,7 @@ import pandas as pd
 
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
-from simharness2.analytics.agent_analytics import AgentAnalytics, AgentMetricsTracker
+from simharness2.analytics.agent_analytics import AgentAnalytics
 
 
 class SimulationAnalytics(ABC):
