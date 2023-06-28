@@ -9,10 +9,7 @@ defaults:
 # either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
 # qualified classpath to an Env class, ie. "ray.rllib.examples.env.random_env.RandomEnv".
 env: ${environment.env}
-<<<<<<< HEAD
-=======
 
 # Arguments dict passed to the env creator as an `EnvContext` object
 # NOTE: Any arguments that are also specified in `reactive.yaml` will be overridden.
 env_config: ${environment.env_config}
->>>>>>> origin/15-modular-reward-config-and-analysis-data-extraction

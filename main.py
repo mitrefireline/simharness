@@ -100,7 +100,7 @@ def main(cfg: DictConfig):
     log.info(f"Configuration files for this job can be found at {outdir}")
 
     # assume for now that operational fires are the default
-    # operational_fires = get_default_operational_fires(cfg)
+    operational_fires = get_default_operational_fires(cfg)
 
     model_available = False
     if cfg.algo.checkpoint_path:
