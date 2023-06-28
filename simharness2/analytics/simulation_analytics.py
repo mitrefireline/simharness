@@ -189,7 +189,7 @@ class FireSimulationAnalytics(SimulationAnalytics):
         }
         # Insert columns that are only applicable to the main simulation.
         if not self.is_benchmark:
-            self.df_dtypes(
+            self.df_cols.extend(
                 [
                     "agent_interactions",
                     "agent_movements",

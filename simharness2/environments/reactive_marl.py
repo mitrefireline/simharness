@@ -198,14 +198,14 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         for agent_id_num in range(self.num_agents):
             agent_id = f"agent_{agent_id_num}"
-            self._do_one_agent_step(agent_id_num, actions[agent_id])  # alternatively, self._step_agent(action)
+            movement, interaction = self._do_one_agent_step(agent_id_num, actions[agent_id])  # alternatively, self._step_agent(action)
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_agent_step(
                 timestep=self.timesteps,
-                movement=self.latest_movement,
-                interaction=self.latest_interaction,
-                agent_pos=self.agent_pos,
+                movement=movement,
+                interaction=interaction,
+                agent_pos=self.agent_pos[agent_id_num],
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -292,6 +292,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if is_empty_space and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation(agent_id_num, interaction_id)
+        
+        return movement_id, interaction_id
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
         """Parse the action into movement and interaction."""
@@ -382,7 +384,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Update the fire map with the numeric identifier for the agent.
         for agent_id in range(self.num_agents):
             agent_pos = self.agent_pos[agent_id]
-            fire_map[agent_pos[1], agent_pos[0]] = self.sim_agent_id + self.agent_id
+            fire_map[agent_pos[1], agent_pos[0]] = self.sim_agent_id + agent_id
         # Modify the state to contain the updated fire map
         fire_map_idx = self.attributes.index("fire_map")
         self.state[..., fire_map_idx] = fire_map
@@ -502,8 +504,13 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self._log_env_reset()
         self._has_reset = True
+        
+        obs, infos = {}, {}
+        for id_num in range(self.num_agents):
+            obs[f"agent_{id_num}"] = self.state
+            infos[f"agent_{id_num}"] = {}
 
-        return self.state, {}
+        return obs, infos
 
     def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:  # noqa
         nonsim_min_maxes = ordered_dict()

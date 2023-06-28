@@ -93,6 +93,9 @@ class RLHarness(MultiAgentEnv, ABC):
         # NOTE: The caller is responsible for creating the `FireSimulation` object (s),
         # and if a `benchmark_sim` is provided, it should be a separate object, identical to
         # `sim` (after initialization), but will not receive any mitigations.
+        
+        super().__init__()
+        
         self.sim = sim
         self.benchmark_sim = benchmark_sim
         # Indicates (internally) whether a benchmark simulation should be used
