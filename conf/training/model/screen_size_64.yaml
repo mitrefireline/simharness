@@ -1,0 +1,8 @@
+# Initial input size (by assumption): [64, 64, 6]
+conv_filters: [
+  [16, [2, 2], 2],
+  # new in_size: [64, 64, 16]
+  [32, [4, 4], 4],
+  # new in_size: [16, 16, 128]
+  [256, [16, 16], 1] # -> (padding == 0)
+]
