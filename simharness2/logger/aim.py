@@ -1,6 +1,7 @@
 """Module for using AIM with simharness2."""
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from functools import partial
 
 import numpy as np
 from hydra.utils import instantiate
@@ -235,37 +236,6 @@ class AimLoggerCallback(LoggerCallback):
             # run[k] = v
         # run["cfg"] = self._cfg
 
-    def _log_evaluation_config(self, run: Run, cfg: DictConfig):
-        """Log the evaluation config to Aim as `Run Params`."""
-        eval_cfg_settings = instantiate(cfg.evaluation_config)
-
-        if "simulation" in eval_cfg_settings.env_config.keys():
-            sim_obj = eval_cfg_settings.env_config.simulation
-            # Intention: create a (dotpath) string representation of `sim_obj`.
-            if not isinstance(sim_obj, str):
-                sim_obj = ".".join(
-                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
-                )
-            eval_cfg_settings.env_config.simulation = sim_obj
-
-        cfg.evaluation_config = eval_cfg_settings
-        run["evaluation"] = cfg
-
-    def _log_environment_config(self, run: Run, cfg: DictConfig):
-        """Log the environment config to Aim as `Run Params`."""
-        env_settings = instantiate(cfg)
-
-        if "simulation" in env_settings.env_config.keys():
-            sim_obj = env_settings.env_config.simulation
-            # Intention: create a (dotpath) string representation of `sim_obj`.
-            if not isinstance(sim_obj, str):
-                sim_obj = ".".join(
-                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
-                )
-            env_settings.env_config.simulation = sim_obj
-
-        run["environment"] = env_settings
-
     def _log_simulation_config(self, run: Run, cfg: DictConfig):
         """Log the simulation config to Aim as `Run Params`."""
         # NOTE: Both `train` and `eval` configs are logged, even if they are the same. In
@@ -294,3 +264,76 @@ class AimLoggerCallback(LoggerCallback):
 
         # train_set = set(train_cfg_flat.items())
         # eval_set = set(eval_cfg_flat.items())
+
+    def _log_environment_config(self, run: Run, cfg: DictConfig):
+        """Log the environment config to Aim as `Run Params`."""
+        env_cfg = instantiate(cfg)
+
+        if env_cfg.env_config.get("sim"):
+            sim_obj = env_cfg.env_config.sim
+            # Intention: create a (dotpath) string representation of `sim_obj`.
+            if not isinstance(sim_obj, str):
+                sim_obj = ".".join(
+                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
+                )
+            env_cfg.env_config.sim = sim_obj
+
+        # NOTE: If-else here because `benchmark_sim` is an optional argument.
+        if env_cfg.env_config.get("benchmark_sim"):
+            # If not None, then assume `benchmark_sim` uses SAME class as `sim`.
+            env_cfg.env_config.benchmark_sim = sim_obj
+        else:
+            env_cfg.env_config.benchmark_sim = None
+
+        if env_cfg.env_config.get("action_space_type"):
+            # Intention: create a (dotpath) string representation of `action_space_type`.
+            action_space_type = env_cfg.env_config.action_space_type
+            if isinstance(action_space_type, partial):
+                action_space_type = action_space_type.func
+            if not isinstance(action_space_type, str):
+                action_space_type = ".".join(
+                    [
+                        action_space_type.__module__,
+                        action_space_type.__name__,
+                    ]
+                )
+            env_cfg.env_config.action_space_type = action_space_type
+
+        run["environment"] = env_cfg
+
+    def _log_evaluation_config(self, run: Run, cfg: DictConfig):
+        """Log the evaluation config to Aim as `Run Params`."""
+        eval_cfg_settings = instantiate(cfg.evaluation_config)
+
+        if eval_cfg_settings.env_config.get("sim"):
+            sim_obj = eval_cfg_settings.env_config.sim
+            # Intention: create a (dotpath) string representation of `sim_obj`.
+            if not isinstance(sim_obj, str):
+                sim_obj = ".".join(
+                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
+                )
+            eval_cfg_settings.env_config.sim = sim_obj
+
+        # NOTE: If-else here because `benchmark_sim` is an optional argument.
+        if eval_cfg_settings.env_config.get("benchmark_sim"):
+            # If not None, then assume `benchmark_sim` uses SAME class as `sim`.
+            eval_cfg_settings.env_config.benchmark_sim = sim_obj
+        else:
+            eval_cfg_settings.env_config.benchmark_sim = None
+
+        if eval_cfg_settings.env_config.get("action_space_type"):
+            # Intention: create a (dotpath) string representation of `action_space_type`.
+            action_space_type = eval_cfg_settings.env_config.action_space_type
+            if isinstance(action_space_type, partial):
+                action_space_type = action_space_type.func
+            if not isinstance(action_space_type, str):
+                action_space_type = ".".join(
+                    [
+                        action_space_type.__module__,
+                        action_space_type.__name__,
+                    ]
+                )
+            eval_cfg_settings.env_config.action_space_type = action_space_type
+
+        cfg.evaluation_config = eval_cfg_settings
+        run["evaluation"] = cfg

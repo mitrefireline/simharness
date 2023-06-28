@@ -80,7 +80,7 @@ test-pages:
   extends: .pages
   needs: []
   artifacts:
-    expose_as: 'HTML Documentation'
+    expose_as: "HTML Documentation"
     paths:
       - public/
     expire_in: 1 week
@@ -95,8 +95,8 @@ pages:
   artifacts:
     paths:
       - public
-  only:
-    - main
+  # only:
+  #   - main
 
 #########
 # Build #

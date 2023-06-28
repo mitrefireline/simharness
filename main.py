@@ -36,6 +36,7 @@ os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
 OmegaConf.register_new_resolver("operational_screen_size", lambda x: int((x / 64) * 1920))
 OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
+OmegaConf.register_new_resolver("square", lambda x: x**2)
 
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
@@ -47,15 +48,9 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
         # TODO add `tune_config` argument with `tune.TuneConfig`
         run_config=air.RunConfig(
             name=cfg.runtime.name or None,
+            # FIXME: `local_dir` has been deprecated, see:
+            # https://github.com/ray-project/ray/pull/33463
             local_dir=cfg.runtime.local_dir,
-            # callbacks=[
-            #     AimLoggerCallback(
-            #         repo="/home/jovyan/aim",
-            #         experiment="aim_test",
-            #         system_tracking_interval=None,
-            #         log_system_params=False,
-            #     )
-            # ],
             stop={**cfg.stop_conditions},
             callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
             failure_config=None,
@@ -94,45 +89,6 @@ def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
     log.info(f"The final model has been saved inside directory: {model_path}.")
     algo.stop()
 
-
-def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
-    """FIXME: Docstring for view."""
-    log.info("Collecting gifs of trained model...")
-    from ray.rllib.env.env_context import EnvContext
-    env_settings = EnvContext(instantiate(cfg.environment, _convert_="partial")['env_config'], 0)
-    
-    from simharness2.environments.reactive_marl import MARLReactiveDiscreteHarness
-    env = MARLReactiveDiscreteHarness(env_settings)
-
-    for _ in range(1):
-        obs, _ = env.reset()
-        done = False
-
-        fire_loc = env.simulation.fire_manager.init_pos
-        agent_pos = env.agent_pos  # type: ignore
-        info = f"Agent Start Location: {agent_pos}, Fire Start Location: {fire_loc}"
-
-        total_reward = 0.0
-        while not done:
-            action = {}
-            for agent_id, agent_obs in obs.items():
-                action[agent_id] = algo.compute_single_action(agent_obs)
-            # action = algo.compute_single_action(obs)
-
-            obs, reward, terminated, truncated, info = env.step(action)
-            total_reward += sum(reward.values())
-            
-            if isinstance(truncated, bool):
-                done = True
-            #done = truncated['__all__'] or terminated['__all__']
-        # info = info + f", Final Reward: {total_reward}"
-        # log.info(info)
-        
-        print(f"Final Reward: {total_reward}")
-
-        #head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
-
-
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     """FIXME: Docstring for main."""
@@ -141,10 +97,10 @@ def main(cfg: DictConfig):
     # Fetch logger, which is configured in `conf/hydra/job_logging`
     log = logging.getLogger(__name__)
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
-    log.warning(f"Configuration files for this job can be found at {outdir}")
+    log.info(f"Configuration files for this job can be found at {outdir}")
 
     # assume for now that operational fires are the default
-    operational_fires = get_default_operational_fires(cfg)
+    # operational_fires = get_default_operational_fires(cfg)
 
     model_available = False
     if cfg.algo.checkpoint_path:
@@ -223,9 +179,9 @@ def main(cfg: DictConfig):
             env_settings = instantiate(cfg.environment, _convert_="partial")
             eval_settings = instantiate(cfg.evaluation, _convert_="partial")
             # Inject operational fires into the evaluation settings
-            eval_settings["evaluation_config"]["env_config"].update(
-                {"scenarios": operational_fires}
-            )
+            # eval_settings["evaluation_config"]["env_config"].update(
+            #     {"scenarios": operational_fires}
+            # )
             # TODO: Move (both) NOTE below to docs and remove from code
             # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
             # Prepare exploration options for the algorithm
@@ -270,6 +226,7 @@ def main(cfg: DictConfig):
                 .resources(**cfg.resources)
                 .debugging(**debug_settings)
                 .callbacks(SetEnvSeedsCallback)
+                .fault_tolerance(**cfg.fault_tolerance)
             )
             
             algo = algo_cfg.build()
