@@ -1,0 +1,17 @@
+version: 1
+formatters:
+  simple:
+    # Below format is from: ray._private.ray_constants.LOGGER_FORMAT
+    format: "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s"
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    stream: ext://sys.stdout
+
+root:
+  # Use the log level specified for the Ray job
+  level: ${debugging.log_level}
+  handlers: [console]
+
+disable_existing_loggers: false

@@ -1,0 +1,1 @@
+dir: ${cli.data_dir}/simharness/experiments/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}

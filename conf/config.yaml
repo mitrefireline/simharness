@@ -8,7 +8,7 @@ defaults:
   - exploration: default
   # - debugging: default
   - resources: default
-  - hydra: group_by_day-time
+  - hydra: default
   - _self_
 
 # Specify configuration pass to the `AimLoggerCallback`
