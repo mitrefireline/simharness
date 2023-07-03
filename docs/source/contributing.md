@@ -96,31 +96,36 @@ labels help quickly identify what an issue is about and allow for issues to be f
 The following label groups are available and should be used for **every** issue created.
 
 **Priority**
-    - `High`: Requires immediate attention and should be completed before anything else.
-    - `Medium-High`: Not an immediate priority but is blocking the work of others.
-    - `Medium`: Not blocking the work of others, but is an important issue.
-    - `Low`: Not necessary and mainly quality-of-life or nice-to-have additions.
+
+- `High`: Requires immediate attention and should be completed before anything else.
+- `Medium-High`: Not an immediate priority but is blocking the work of others.
+- `Medium`: Not blocking the work of others, but is an important issue.
+- `Low`: Not necessary and mainly quality-of-life or nice-to-have additions.
 
 **Project**
-    - `FireLine Management`
-    - `JANUS`
-    - `SimFire`
-    - `SimHarness`
-    - `V&V`
+
+- `FireLine Management`
+- `JANUS`
+- `SimFire`
+- `SimHarness`
+- `V&V`
 
 **Scoping**
-    - `Deliverable`: Should be completed by the end of the sprint.
-    - `Stretch`: Would be nice to have by the end of th sprint, if possible.
-    - `Next Sprint`: Can be worked on if everything else is completed prior.
+
+- `Deliverable`: Should be completed by the end of the sprint.
+- `Stretch`: Would be nice to have by the end of th sprint, if possible.
+- `Next Sprint`: Can be worked on if everything else is completed prior.
 
 **Stage**
-    - See [Workflow Stages](#workflow-stages) for more information.
+
+- See [Workflow Stages](#workflow-stages) for more information.
 
 **Type**
-    - `Feature`: New feature additions.
-    - `Bug`: Bug within the current codebase.
-    - `Experimentation`: Running experiments on the current codebase.
-    - `Research`: Researching a topic - no development involved.
+
+- `Feature`: New feature additions.
+- `Bug`: Bug within the current codebase.
+- `Experimentation`: Running experiments on the current codebase.
+- `Research`: Researching a topic - no development involved.
 
 ### Creating Merge Requests
 
