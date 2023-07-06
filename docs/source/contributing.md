@@ -89,6 +89,22 @@ Make sure your feature branches are always up to date with the current state of
 `dev`, and make sure to **rebase** these changes each time something gets merged
 into `dev`.
 
+#### How to Rebase
+
+Follow these steps to rebase `dev` into your feature branch during development.
+
+1. `git checkout dev`
+2. `git fetch`
+3. `git pull --ff-only`
+4. `git checkout <FEATURE_BRANCH>`
+    - You may need to commit or stash your changes before rebasing.
+5. `git rebase origin dev`
+6. Fix conflicts appropriately (if needed)
+    - Run `git rebase --continue` after fixing conflicts
+7. `git push -f`
+    - This force pushes your changes to your remote branch. If you have multiple
+        people working on this same branch, this could ruin their work.
+
 ### Creating Issues
 
 Issues outline new features, bugs, or updates that document the changes to the overall
