@@ -17,9 +17,10 @@ follow that process and will provide some tools to make local development easier
 This process should be followed for every issue that is created for SimHarness.
 
 1. Create a new issue by following [Issue Creation Process](#creating-issues).
-    - Make sure the labels invlude the appropriate [labels](#labels)!
+    - Make sure the labels include the appropriate [labels](#labels)!
 2. Create a new MR from the new issue by following [MR Creation Process](#creating-merge-requests).
 3. Develop the MR following the [Workflow Stages Process](#workflow-stages).
+    - Make sure to rebase changes from dev following the [Rebase Process](#rebasing-and-merging).
 4. Complete a [code review](#code-reviews) for your MR.
     - Get approvals according to [Protect Branches](#protected-branches).
 5. Merge the approved branch into `dev` using [Merging Process](#merge-process).
@@ -67,6 +68,26 @@ issue can be placed on-hold due to blockers or a change in priority, for example
 As you work through the worlflow process, **make sure** to move your issue accordingly.
 This helps all members identify what is currently being worked on, what has been
 completed, and what _needs_ to be completed by the end of the sprint.
+
+### Rebasing and Merging
+
+Rebasing and merging are very similar processes for combining work from two separate
+branches. However, rebasing is typically considered the _cleaner_ option as it will
+re-write the commit history to move the feature branch to the end of the target branch
+as opposed to incoporating a separate merge commit each time.
+
+For our use case, we want to rebase when adding commits from a lower branch but merge
+when adding commits from a higher branch. For example:
+
+Two people are working on `feature1` and `feature2` separately. `feature1` finishes
+before `feature2`. As `feature1` is a higher branch than `dev`, we will **merge**
+`feature1` into `dev`. Since `dev` has now changed, `feature2` branch needs to be 
+updated. As `dev` is a lower branch than `feature2`, we will **rebase** `dev` into 
+`feature2`. Once `feature2` is complete, we now **merge** `feature2` into `dev`.
+
+Make sure your feature branches are always up to date with the current state of
+`dev`, and make sure to **rebase** these changes each time something gets merged
+into `dev`.
 
 ### Creating Issues
 
@@ -176,7 +197,7 @@ The pipeline stages can be tested locally as well to ensure that they are passed
 remote side (explained in [Using Pre-commit](#using-pre-commit)).
 
 
-#### Using Pre-commit (**Highly Recommended**)
+### Using Pre-commit (**Highly Recommended**)
 
 If you'd like, you can install [pre-commit](https://pre-commit.com/) to run linting and 
 code-formatting before you are able to commit. This will ensure that you pass this 
@@ -198,7 +219,7 @@ Pre-commit can also be run manually on all files without having to commit.
 pre-commit run --all-files
 ```
 
-## Running Unit Tests
+### Running Unit Tests
 
 There are also unit tests that need to be passed, and to make sure you are passing those
  locally (before pushing to your remote branch and running the pipeline) you can run the
