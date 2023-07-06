@@ -146,6 +146,7 @@ The following label groups are available and should be used for **every** issue 
 - `Feature`: New feature additions.
 - `Bug`: Bug within the current codebase.
 - `Experimentation`: Running experiments on the current codebase.
+- `Enhancement`: Enhancing current features.
 - `Research`: Researching a topic - no development involved.
 
 ### Creating Merge Requests
