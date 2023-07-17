@@ -1,12 +1,9 @@
-import os
 import logging
-from math import log10
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
 # from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
-from ray.rllib.env.env_context import EnvContext
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
@@ -65,7 +62,7 @@ class SetEnvSeedsCallback(DefaultCallbacks):
         #     log.warn("EPISODE_HISTORY IS EMPTY")
         pass
 
-    # TODO: Can maybe use this callback to inspect/debug/verify environment parallelization
+    # TODO: Can maybe use this callback to inspect/debug/verify env parallelization
     # def on_sub_environment_created()
     def on_episode_created(
         self,
@@ -134,7 +131,8 @@ class SetEnvSeedsCallback(DefaultCallbacks):
             base_env.vector_env.envs[env_index].agent_pos = agent_pos
 
         # TODO find out what attribute of `episode` gives the iteration
-        # if in_evaluation and log10(episode_iter).is_integer() and log10(episode_iter) > 0:
+        # if in_evaluation and log10(episode_iter).is_integer()
+        #   and log10(episode_iter) > 0:
         # if in_evaluation:
         # base_env.vector_env.envs[env_index].simulation = FireSimulation(
         #     Config(_SIMULATION_VIEW_EVAL_CONFIG_FILE)
@@ -250,7 +248,7 @@ class SetEnvSeedsCallback(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        log = logging.getLogger(__name__)
+        # log = logging.getLogger(__name__)
         in_evaluation = worker.policy_config["in_evaluation"]
         if in_evaluation:
             env = base_env.vector_env.envs[env_index]

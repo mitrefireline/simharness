@@ -15,5 +15,5 @@ kubectl exec $HEAD_POD -- bash -c "if ! tmux has-session -t grafana &> /dev/null
     then tmux new -s grafana -d; fi"
 # Start grafana-server on the head node from within the grafana tmux session
 kubectl exec $HEAD_POD -- bash -c "tmux send -t grafana.0 \
-    'cd /home/ray/grafana-9.4.7 && \ 
+    'cd /home/ray/grafana-9.4.7 && \
     ./bin/grafana-server --config /home/ray/grafana.ini web' Enter"
