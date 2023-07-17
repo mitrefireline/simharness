@@ -1,0 +1,10 @@
+training:
+  lr:
+    type: loguniform
+    values: [0.0001, 0.01]
+  gamma:
+    type: uniform
+    values: [0.5, 0.9]
+  train_batch_size: 64
+    type: choice
+    values: [16, 32, 64, 128]
