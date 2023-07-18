@@ -22,6 +22,8 @@ from ray.rllib.env.env_context import EnvContext
 
 from simharness2.rewards.base_reward import BaseReward
 from simfire.enums import BurnStatus
+from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
+
 from simharness2.environments.rl_harness import RLHarness
 
 logger = logging.getLogger(__name__)
@@ -163,6 +165,11 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
+        # If provided, construct the class used to monitor this `ReactiveHarness` object.
+        self._setup_harness_analytics(
+            harness_analytics_partial=config.get("harness_analytics_partial")
+        )
+
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
@@ -181,9 +188,22 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
+        if self.harness_analytics:
+            self.harness_analytics.update_after_one_agent_step(
+                timestep=self.timesteps,
+                movement=self.latest_movement,
+                interaction=self.latest_interaction,
+                agent_pos=self.agent_pos,
+            )
+
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
         # indicate how to calculate the reward for the current timestep.
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
+
+        if sim_run and self.harness_analytics:
+            self.harness_analytics.update_after_one_simulation_step(
+                timestep=self.timesteps
+            )
 
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
@@ -197,16 +217,19 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         else:
             terminated = not self.sim.active
 
-        reward = 0.0
-        if sim_run:
-            fire_map_idx = self.attributes.index("fire_map")
-            reward += self._calculate_reward(self.state[..., fire_map_idx])
+        # Calculate the reward for the current timestep
+        # TODO pass `terminated` into `get_reward` method
+        reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
+        # TODO account for below updates in the reward_cls.calculate_reward() method
+        # "End of episode" reward
         if terminated:
             reward += 10
 
-        # if self._nearby_fire():
-        #     reward -= 2.0
+        if self.harness_analytics:
+            self.harness_analytics.update_after_one_harness_step(
+                sim_run, terminated, reward, timestep=self.timesteps
+            )
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
@@ -374,6 +397,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # reset benchmark simulation
             self.benchmark_sim.reset()
 
+        # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
+        if self.harness_analytics:
+            self.harness_analytics.reset()
+
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
@@ -493,6 +520,31 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Increment the number of episodes that have been debugged.
         self._episodes_debugged += 1
+
+    def _setup_harness_analytics(self, harness_analytics_partial: partial) -> None:
+        """Instantiates the harness_analytics used to monitor this `ReactiveHarness` object.
+
+        Arguments:
+            harness_analytics_partial: A `functools.partial` object that indicates the top-level
+                class that will be used to monitor the `ReactiveHarness` object. The user
+                is expected to provide the `sim_data_partial` keyword argument, along
+                with a valid value.
+
+        Raises:
+            TypeError: If `harness_analytics_partial.keywords` does not contain a
+            `sim_data_partial` key with value of type `functools.partial`.
+
+        """
+        self.harness_analytics: ReactiveHarnessAnalytics
+        if harness_analytics_partial:
+            try:
+                self.harness_analytics = harness_analytics_partial(
+                    sim=self.sim, benchmark_sim=self.benchmark_sim
+                )
+            except TypeError as e:
+                raise e
+        else:
+            self.harness_analytics = None
 
     def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
         """Instantiates the reward class used to perform reward calculation each episode.
