@@ -13,7 +13,7 @@ defaults:
 
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
-  run_hash: null 
+  run_hash: null
   repo: ${cli.data_dir}/aim
   experiment: debug
   system_tracking_interval: null

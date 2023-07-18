@@ -28,9 +28,9 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from simfire.sim.simulation import Simulation  # noqa: F401
 
+from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 from simharness2.logger.aim import AimLoggerCallback
 from simharness2.utils.evaluation_fires import get_default_operational_fires
-from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files

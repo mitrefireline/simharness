@@ -91,7 +91,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # When there are multiple workers created, this uniquely identifies the worker
         # the env is created in. 0 for local worker, >0 for remote workers.
         self.worker_idx = config.worker_index
-        # When there are multiple envs per worker, this uniquely identifies the env index
+        # When there are multiple envs per worker,
+        # this uniquely identifies the env index
         # within the worker. Starts from 0.
         self.vector_idx = config.vector_index
         # Whether individual sub-envs (in a vectorized env) are @ray.remote actors.
@@ -105,10 +106,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.num_workers != 0:
             if eval_duration and not (eval_duration / self.num_workers).is_integer():
                 raise ValueError(
-                    f"The `evaluation_duration` ({eval_duration}) must be evenly divisible "
-                    f"by the `num_workers` ({self.num_workers}.)"
+                    f"The `evaluation_duration` ({eval_duration}) must be evenly "
+                    f"divisible by the `num_workers` ({self.num_workers}.)"
                 )
-            # Indicates how many rounds of evaluation will be run using this environment.
+            # Indicates how many rounds of eval will be run using this environment.
             self._total_eval_rounds = (
                 eval_duration / self.num_workers if eval_duration else 0
             )
@@ -391,7 +392,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _log_env_init(self):
         """Log information about the environment that is being initialized."""
-
         if self._is_eval_env:
             i, j = self.worker_idx, self.vector_idx
             self.log.warning(

@@ -6,7 +6,7 @@ display:
   fire_size: 2
   control_line_size: 2
   agent_size: 4
-  rescale_size: 256 
+  rescale_size: 256
 
 simulation:
   update_rate: 1
@@ -21,7 +21,7 @@ simulation:
 
 mitigation:
   ros_attenuation: False
- 
+
 operational:
   seed: 1
   latitude: 33.032762267449314
@@ -61,11 +61,11 @@ fire:
   fire_initial_position:
     type: static  # ${simulation.fire_initial_position.type}
     static:
-      position: 
+      position:
         _target_: builtins.tuple
         # NOTE: This will initialize the fire at the center of the screen
         _args_: [[
-          "${calculate_half:${simulation.train.area.screen_size}}", 
+          "${calculate_half:${simulation.train.area.screen_size}}",
           "${calculate_half:${simulation.train.area.screen_size}}"
         ]]
     random:
@@ -75,7 +75,7 @@ fire:
 environment:
   moisture: 0.03
 
-wind: 
+wind:
   function: simple  # ${simulation.wind.function}
   cfd:
     time_to_train: 1000
