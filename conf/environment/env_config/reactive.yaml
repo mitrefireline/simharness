@@ -8,6 +8,25 @@ interactions: [none, fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speed: 9
+# Defines the class that will be used to monitor and track `ReactiveHarness`.
+harness_analytics_partial:
+  _target_: simharness2.analytics.harness_analytics.ReactiveHarnessAnalytics
+  _partial_: true
+  # Defines the class that will be used to monitor and track `FireSimulation`.
+  sim_analytics_partial:
+    _target_: simharness2.analytics.simulation_analytics.FireSimulationAnalytics
+    _partial_: true
+    # Defines the class that will be used to monitor and track agent behavior.
+    agent_analytics_partial:
+      _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
+      _partial_: true
+      movement_types: ${....movements}
+      interaction_types: ${....interactions}
+reward_cls_partial:
+  _target_: simharness2.rewards.base_reward.ComprehensiveReward
+  _partial_: true
+  fixed_reward: 100
+  static_penalty: 50
 initial_agent_pos: [50, 50]
 randomize_initial_agent_pos: false
 benchmark_sim: ${.sim}
