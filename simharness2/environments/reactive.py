@@ -150,15 +150,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             )
 
         super().__init__(
-            config.get("sim"),
-            config.get("movements"),
-            config.get("interactions"),
-            config.get("attributes"),
-            config.get("normalized_attributes"),
-            config.get("deterministic"),
-            benchmark_sim=config.get("benchmark_sim"),
+            sim=config.get("sim"),
+            movements=config.get("movements"),
+            interactions=config.get("interactions"),
+            attributes=config.get("attributes"),
+            normalized_attributes=config.get("normalized_attributes"),
             action_space_cls=action_space_partial.func,
+            deterministic=config.get("deterministic"),
+            benchmark_sim=config.get("benchmark_sim"),
         )
+
         self._log_env_init()
 
         # Set the agent's initial position on the map

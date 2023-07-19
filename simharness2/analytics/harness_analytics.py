@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
-from typing import List
+from typing import List, Optional
 
 from simfire.sim.simulation import FireSimulation
 
@@ -33,7 +33,7 @@ class RLHarnessAnalytics(ABC):
         except TypeError as e:
             raise e
 
-        self.best_episode_performance: BestEpisodePerformance
+        self.best_episode_performance: Optional[BestEpisodePerformance] = None
 
     @abstractmethod
     def update_after_one_simulation_step(self, *, timestep: int) -> None:

@@ -5,7 +5,7 @@ the module.
 """
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -60,7 +60,7 @@ class SimulationAnalytics(ABC):
         self.sim = sim
         # Indicates whether this object will track a `benchmark` simulation.
         self.is_benchmark = is_benchmark
-        self.agent_analytics: ReactiveAgentAnalytics
+        self.agent_analytics: Optional[ReactiveAgentAnalytics] = None
 
         if not self.is_benchmark:
             # Agents only exist in the main simulation.
