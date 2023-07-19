@@ -16,13 +16,14 @@ from collections import OrderedDict as ordered_dict
 from enum import IntEnum
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Optional,
     OrderedDict,
     Tuple,
-    no_type_check,
     Union,
+    no_type_check,
 )
 
 import gymnasium as gym
@@ -73,9 +74,9 @@ class RLHarness(gym.Env, ABC):
         interactions: List[str],
         attributes: List[str],
         normalized_attributes: List[str],
+        action_space_cls: Callable,
         deterministic: bool = False,
         benchmark_sim: FireSimulation = None,
-        action_space_cls: spaces.Space = spaces.Discrete,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -90,8 +91,8 @@ class RLHarness(gym.Env, ABC):
         serves as a base class that each environment will inherit from.
         """
         # NOTE: The caller is responsible for creating the `FireSimulation` object (s),
-        # and if a `benchmark_sim` is provided, it should be a separate object, identical to
-        # `sim` (after initialization), but will not receive any mitigations.
+        # and if a `benchmark_sim` is provided, it should be a separate object, identical
+        # to `sim` (after initialization), but will not receive any mitigations.
         self.sim = sim
         self.benchmark_sim = benchmark_sim
         # Indicates (internally) whether a benchmark simulation should be used
@@ -376,8 +377,17 @@ class RLHarness(gym.Env, ABC):
     def _get_action_space_shape(
         self, space_type: spaces.Space
     ) -> Union[int, np.ndarray, List]:
-        """Get the shape of the action space, dependent on the action space type."""
+        """Get the shape of the action space, dependent on the action space type.
 
+        Args:
+            space_type (spaces.Space): [description]
+
+        Raises:
+            NotImplementedError: [description]
+
+        Returns:
+            Union[int, np.ndarray, List]: [description]
+        """
         if space_type is spaces.Discrete:
             return len(self.movements) * len(self.interactions)
         elif space_type is spaces.MultiDiscrete:

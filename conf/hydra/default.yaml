@@ -3,5 +3,5 @@ defaults:
   - override job_logging: stdout_only
 
 output_subdir: hydra_output
-job: 
+job:
   chdir: False

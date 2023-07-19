@@ -1,4 +1,6 @@
-from typing import List, Dict
+"""Utility file for the analytics classes."""
+from typing import Dict, List
+
 from pandas import DataFrame
 
 

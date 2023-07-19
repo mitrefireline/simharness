@@ -12,19 +12,18 @@ Typical usage example:
 """
 import logging
 from collections import OrderedDict as ordered_dict
-from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 from functools import partial
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
-
-from simharness2.rewards.base_reward import BaseReward
 from simfire.enums import BurnStatus
-from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 
+from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
+from simharness2.rewards.base_reward import BaseReward
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +107,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.num_workers != 0:
             if eval_duration and not (eval_duration / self.num_workers).is_integer():
                 raise ValueError(
-                    f"The `evaluation_duration` ({eval_duration}) must be evenly divisible "
-                    f"by the `num_workers` ({self.num_workers}.)"
+                    f"The `evaluation_duration` ({eval_duration}) must be evenly "
+                    f"divisible by the `num_workers` ({self.num_workers}.)"
                 )
             # Indicates how many rounds of evaluation will be run using this environment.
             self._total_eval_rounds = (
@@ -489,7 +488,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _log_env_init(self):
         """Log information about the environment that is being initialized."""
-
         if self._is_eval_env:
             i, j = self.worker_idx, self.vector_idx
             logger.warning(f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}")
@@ -522,13 +520,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._episodes_debugged += 1
 
     def _setup_harness_analytics(self, harness_analytics_partial: partial) -> None:
-        """Instantiates the harness_analytics used to monitor this `ReactiveHarness` object.
+        """Instantiates the harness_analytics used to monitor this object.
 
         Arguments:
-            harness_analytics_partial: A `functools.partial` object that indicates the top-level
-                class that will be used to monitor the `ReactiveHarness` object. The user
-                is expected to provide the `sim_data_partial` keyword argument, along
-                with a valid value.
+            harness_analytics_partial: A `functools.partial` object that indicates the
+            top-level class that will be used to monitor the `ReactiveHarness` object.
+            The user is expected to provide the `sim_data_partial` keyword argument,
+            along with a valid value.
 
         Raises:
             TypeError: If `harness_analytics_partial.keywords` does not contain a
@@ -549,8 +547,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
         """Instantiates the reward class used to perform reward calculation each episode.
 
-        This method must be called AFTER `self._setup_harness_analytics()`, as the reward class
-        requires `self.harness_analytics` to be passed as an argument to its constructor.
+        This method must be called AFTER `self._setup_harness_analytics()`, as the reward
+        class requires `self.harness_analytics` to be passed as an argument to its
+        constructor.
 
         Arguments:
             reward_cls_partial: A `functools.partial` object that indicates the reward
@@ -560,8 +559,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         Raises:
             TypeError: If `harness_analytics_partial.keywords` does not contain a
                 `sim_data_partial` key with value of type `functools.partial`.
-            AttributeError: If `self` does not have a `harness_analytics` attribute. See the above
-                message for more details.
+            AttributeError: If `self` does not have a `harness_analytics` attribute. See
+            the above message for more details.
 
         """
         self.reward_cls: BaseReward
