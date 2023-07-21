@@ -9,6 +9,7 @@ defaults:
   # - debugging: default
   - resources: default
   - hydra: group_by_day-time
+  tunables: default
   - _self_
 
 # Specify configuration pass to the `AimLoggerCallback`
@@ -50,3 +51,6 @@ debugging:
   log_level: WARN
   log_sys_usage: True
   seed: 2000
+  logger_config:
+    type: null
+    logdir: ${runtime.local_dir}
