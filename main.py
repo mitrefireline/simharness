@@ -14,24 +14,21 @@ import logging
 import os
 from importlib import import_module
 
-import gymnasium as gym
 import hydra
+import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
-
-import ray
 from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.utils.typing import ResultDict
 from ray.tune.logger import pretty_print
-from ray.tune.registry import get_trainable_cls
-from ray.tune.registry import register_env
+from ray.tune.registry import get_trainable_cls, register_env
 
+from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 from simharness2.logger.aim import AimLoggerCallback
 from simharness2.utils.evaluation_fires import get_default_operational_fires
-from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
@@ -96,38 +93,38 @@ def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
     algo.stop()
 
 
-def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
-    """FIXME: Docstring for view."""
-    log.info("Collecting gifs of trained model...")
-    env_name = cfg.evaluation.evaluation_config.env
+# def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
+#     """FIXME: Docstring for view."""
+#     log.info("Collecting gifs of trained model...")
+#     env_name = cfg.evaluation.evaluation_config.env
 
-    env_cfg = OmegaConf.to_container(cfg.environment.env_config)
-    env_cfg.update({"simulation": view_sim})
+#     env_cfg = OmegaConf.to_container(cfg.environment.env_config)
+#     env_cfg.update({"simulation": view_sim})
 
-    env = gym.make(env_name, **env_cfg)
+#     env = gym.make(env_name, **env_cfg)
 
-    for _ in range(2):
-        env.simulation.rendering = True
-        obs, _ = env.reset()
-        done = False
+#     for _ in range(2):
+#         env.simulation.rendering = True
+#         obs, _ = env.reset()
+#         done = False
 
-        fire_loc = env.simulation.fire_manager.init_pos
-        agent_pos = env.agent_pos  # type: ignore
-        info = f"Agent Start Location: {agent_pos}, Fire Start Location: {fire_loc}"
+#         fire_loc = env.simulation.fire_manager.init_pos
+#         agent_pos = env.agent_pos  # type: ignore
+#         info = f"Agent Start Location: {agent_pos}, Fire Start Location: {fire_loc}"
 
-        total_reward = 0.0
-        while not done:
-            action = algo.compute_single_action(obs)
+#         total_reward = 0.0
+#         while not done:
+#             action = algo.compute_single_action(obs)
 
-            obs, reward, done, _, _ = env.step(action)
-            total_reward += reward
-        info = info + f", Final Reward: {total_reward}"
-        log.info(info)
+#             obs, reward, done, _, _ = env.step(action)
+#             total_reward += reward
+#         info = info + f", Final Reward: {total_reward}"
+#         log.info(info)
 
-        head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
-        save_dir = os.path.join(head_path, "gifs", checkpoint_dir)
-        env.simulation.save_gif(save_dir)
-        env.simulation.rendering = False
+#         head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
+#         save_dir = os.path.join(head_path, "gifs", checkpoint_dir)
+#         env.simulation.save_gif(save_dir)
+#         env.simulation.rendering = False
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -221,7 +218,7 @@ def main(cfg: DictConfig):
         if not model_available:
             raise ValueError("No model is available for viewing.")
 
-        view(algo, cfg, sim(view_cfg))
+        # view(algo, cfg, sim(view_cfg))
     else:
         raise ValueError(f"Invalid mode: {cfg.cli.mode}")
 

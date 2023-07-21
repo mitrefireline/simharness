@@ -1,13 +1,11 @@
-from typing import List, Tuple, Union, Any, Optional
 import logging
+from typing import Any, List, Tuple
 
 import numpy as np
-from omegaconf import DictConfig
 from hydra.utils import instantiate
-
-from simfire.utils.config import Config
+from omegaconf import DictConfig
 from simfire.sim.simulation import FireSimulation
-
+from simfire.utils.config import Config
 
 # class EvaluationFireScenarios:
 #     """FIXME: Class docstring for EvaluationFireScenarios."""
@@ -44,7 +42,8 @@ from simfire.sim.simulation import FireSimulation
 # ) -> List[Tuple[float, float]]:
 #     """FIXME: Docstring for prepare_operational_locations."""
 #     if not operational_locations and not operational_seeds:
-#         raise ValueError("Must specify either operational_locations or operational_seeds")
+#         raise ValueError("Must specify either operational_locations"\
+#           or operational_seeds")
 #     elif operational_locations and operational_seeds:
 #         raise ValueError(
 #             "Cannot specify both operational_locations and operational_seeds"
@@ -77,7 +76,7 @@ def get_default_operational_fires(
     rng, seed = np_random(seed)
     op_location_seeds = rng.integers(low=1, high=1000, size=num_locations, dtype=int)
 
-    sim = instantiate(cfg.environment.env_config.simulation)
+    sim = instantiate(cfg.environment.env_config.sim)
     sim_yaml_data = sim.config.yaml_data
     del sim
 
@@ -127,7 +126,7 @@ def get_default_operational_fires(
 
 
 def np_random(seed: int) -> Tuple[np.random.Generator, Any]:
-    """Generates a random number generator from the seed and returns the Generator and seed.
+    """Generates an RNG from the seed and returns the Generator and seed.
 
     Args:
         seed: The seed used to create the generator

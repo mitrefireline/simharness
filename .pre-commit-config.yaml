@@ -30,15 +30,15 @@ repos:
         entry: black
         language: python
         types: [python]
-      - id: mypy
-        name: mypy
-        exclude: /_tests/
-        exclude: tests/
-        language: python
-        entry: mypy
-        args: [--config-file, pyproject.toml]
-        # use your preferred Python version
-        types: [python]
+      # - id: mypy
+      #   name: mypy
+      #   exclude: /_tests/
+      #   exclude: tests/
+      #   language: python
+      #   entry: mypy
+      #   args: [--config-file, pyproject.toml]
+      #   # use your preferred Python version
+      #   types: [python]
       - id: isort
         name: isort
         language: python

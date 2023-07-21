@@ -1,12 +1,17 @@
+"""TODO."""
 import logging
-import os
-import json
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import numpy as np
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from ray.tune.logger.logger import LoggerCallback
-from ray.tune.result import TIME_TOTAL_S, TIMESTEPS_TOTAL, TRAINING_ITERATION
+from ray.tune.result import (
+    EPISODES_TOTAL,
+    TIME_TOTAL_S,
+    TIMESTEPS_TOTAL,
+    TRAINING_ITERATION,
+)
 from ray.tune.utils import flatten_dict
 from ray.util.annotations import PublicAPI
 
@@ -90,7 +95,7 @@ class AimLoggerCallback(LoggerCallback):
         Returns:
             Run: The created aim run for a specific trial.
         """
-        experiment_dir = trial.local_experiment_path
+        experiment_dir = trial.local_dir
         run = Run(
             repo=self._repo_path or experiment_dir,
             **self._aim_run_kwargs,
@@ -108,6 +113,11 @@ class AimLoggerCallback(LoggerCallback):
         return run
 
     def log_trial_start(self, trial: "Trial"):
+        """TODO.
+
+        Args:
+            trial (Trial): [description]
+        """
         if trial in self._trial_to_run:
             # Cleanup an existing run if the trial has been restarted
             self._trial_to_run[trial].close()
@@ -119,6 +129,13 @@ class AimLoggerCallback(LoggerCallback):
             self._log_trial_hparams(trial)
 
     def log_trial_result(self, iteration: int, trial: "Trial", result: Dict):
+        """TODO.
+
+        Args:
+            iteration (int): [description]
+            trial (Trial): [description]
+            result (Dict): [description]
+        """
         tmp_result = result.copy()
 
         step = result.get(TIMESTEPS_TOTAL, None) or result[TRAINING_ITERATION]
@@ -159,10 +176,21 @@ class AimLoggerCallback(LoggerCallback):
                 valid_result[attr] = value
 
     def log_trial_end(self, trial: "Trial", failed: bool = False):
+        """TODO.
+
+        Args:
+            trial (Trial): [description]
+            failed (bool, optional): [description]. Defaults to False.
+        """
         trial_run = self._trial_to_run.pop(trial)
         trial_run.close()
 
     def _log_trial_hparams(self, trial: "Trial"):
+        """TODO.
+
+        Args:
+            trial (Trial): [description]
+        """
         params = flatten_dict(trial.evaluated_params, delimiter="/")
         flat_params = flatten_dict(params)
 
@@ -184,8 +212,7 @@ class AimLoggerCallback(LoggerCallback):
         }
         if removed:
             logger.info(
-                "Removed the following hyperparameter values when "
-                "logging to aim: %s",
+                "Removed the following hyperparameter values when " "logging to aim: %s",
                 str(removed),
             )
 
