@@ -13,7 +13,7 @@
 (Where in the code do you see this feature being added to?)
 
 ## Reminders
-- This is the **BUG** template - select a more appropriate template if available
+- This is the **FEATURE** template - select a more appropriate template if available
 - Add necessary labels
     - `Project` Defaults to `SimHarness`
     - `Stage`: Defaults to `To-Do`
