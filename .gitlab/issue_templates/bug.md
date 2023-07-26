@@ -36,5 +36,5 @@
 - Move to appropriate "Stage" (`To-Do`, or `In-Progress`)
 - Update your `dev` branch before creating a new branch for this issue
 
-/label ~"Project::SimHarness" ~"Stage::To-Do" ~"Priority::Medium-High" ~"Scoping::Deliverable" ~"Type::Bug" ~"Simharness::v2.0"
+/label ~"Project::SimHarness" ~"Stage::To-Do" ~"Priority::Medium-High" ~"Scoping::Deliverable" ~"Type::Bug" ~"SimHarness::v2.0"
 /assign me
