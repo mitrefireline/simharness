@@ -212,8 +212,9 @@ class FireSimulationAnalytics(SimulationAnalytics):
 
     def update(self, timestep: int) -> None:
         """TODO Add docstring."""
-        # NOTE: We can also get sim_steps with self._sim.elapsed_steps
-        self.active = self.sim.active
+        # Only access `active` attribute if the sim has been updated at least once.
+        if self.sim.elapsed_steps != 0:
+            self.active = self.sim.active
 
         # Add the current timestep's data to the dataframe.
         # TODO: Is there a better alternative to this df build approach?

@@ -182,6 +182,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If the agent places a mitigation, this is set to True.
         self.mitigation_placed: bool = False
 
+    def set_trial_results_path(self, path: str) -> None:
+        """Set the path to the directory where (tune) trial results will be stored."""
+        self._trial_results_path = path
+
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa

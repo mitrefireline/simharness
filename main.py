@@ -27,6 +27,7 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 
 from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
+from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
 from simharness2.utils.evaluation_fires import get_default_operational_fires
 
@@ -203,7 +204,7 @@ def main(cfg: DictConfig):
                 .exploration(explore=explore, exploration_config=exploration_cfg)
                 .resources(**cfg.resources)
                 .debugging(**debug_settings)
-                .callbacks(SetEnvSeedsCallback)
+                .callbacks(RenderEnv)
             )
 
             if cfg.cli.mode == "tune":
