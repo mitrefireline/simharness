@@ -54,72 +54,6 @@ class RenderEnv(DefaultCallbacks):
             lambda w: w.foreach_env(lambda env: env.set_trial_results_path(logdir)),
             local_worker=False,
         )
-        # worker.set_global_vars.remote({"trial_results_path": logdir})
-        # worker.foreach_env.remote(lambda env: env.set_trial_results_path(logdir))
-        # algorithm.workers.foreach_env(lambda env: env.set_trial_results_path(logdir))
-        # algorithm.workers.foreach_worker(
-        #     lambda w: w.foreach_env.remote(
-        #         lambda env: env.set_trial_results_path(logdir)
-        #     ),
-        #     # lambda w: w.set_global_vars({"trial_results_path": algorithm.logdir}),
-        #     local_worker=False,
-        # )
-        # self.trial_results_path = [algorithm.logdir]
-
-    def on_episode_start(
-        self,
-        *,
-        worker: "RolloutWorker",
-        base_env: BaseEnv,
-        policies: Dict[PolicyID, Policy],
-        episode: Union[Episode, EpisodeV2],
-        env_index: Optional[int] = None,
-        **kwargs,
-    ) -> None:
-        """Callback run right after an Episode has started.
-        This method gets called after the Episode(V2)'s respective sub-environment's
-        (usually a gym.Env) `reset()` is called by RLlib.
-        1) Episode(V2) created: Triggers callback `on_episode_created`.
-        2) Respective sub-environment (gym.Env) is `reset()`.
-        3) Episode(V2) starts: This callback fires.
-        4) Stepping through sub-environment/episode commences.
-        Args:
-            worker: Reference to the current rollout worker.
-            base_env: BaseEnv running the episode. The underlying
-                sub environment objects can be retrieved by calling
-                `base_env.get_sub_environments()`.
-            policies: Mapping of policy id to policy objects. In single
-                agent mode there will only be a single "default" policy.
-            episode: Episode object which contains the episode's
-                state. You can use the `episode.user_data` dict to store
-                temporary data, and `episode.custom_metrics` to store custom
-                metrics for the episode.
-            env_index: The index of the sub-environment that started the episode
-                (within the vector of sub-environments of the BaseEnv).
-            kwargs: Forward compatibility placeholder.
-        """
-        in_evaluation = worker.policy_config["in_evaluation"]
-        env = base_env.vector_env.envs[env_index]
-        if hasattr(env, "_trial_results_path"):
-            # trial_results_path = (
-            #     worker.trial_results_path
-            #     if hasattr(worker, "trial_results_path")
-            #     else "BUG"
-            # )
-            # logger.warning("trial_results_path: %s", trial_results_path)
-            # logger.warning("global_vars_dict: %s", worker.get_global_vars.remote())
-            logger.warning("env._trial_results_path: %s", env._trial_results_path)
-        headless = base_env.vector_env.envs[env_index].sim.config.simulation.headless
-        # Try to set the environment to rendering mode
-        # FIXME remove elif statement??
-        if not headless and in_evaluation:
-            logger.warn(f"headless: {headless}; in_evaluation: {in_evaluation}")
-            os.environ["SDL_VIDEODRIVER"] = "dummy"
-            # sim == `FireSimulation`
-            # Activate rendering mode
-            base_env.vector_env.envs[env_index].sim.rendering = True
-        elif in_evaluation:
-            logger.debug(f"IN EVAL, BUT HEADLESS IS {headless}")
 
     def on_episode_end(
         self,
@@ -173,16 +107,16 @@ class RenderEnv(DefaultCallbacks):
             logger.warning(f"ATTEMPTING TO SAVE GIF TO {save_path}")
             if hasattr(base_env.vector_env.envs[vector_idx].sim, "_game"):
                 base_env.vector_env.envs[vector_idx].sim.save_gif(save_path)
-            else: 
+            else:
                 logger.warning("SIM object does NOT have _game attr.")
             # Save the gif_path so that we can write image to aim server, if desired
             # NOTE: `save_path` is a list after the above, so do element access for now
             episode.media.update({id: save_path})
             # sim.save_spread_graph(save_dir)
-            # attempting to avoid memory leaks, etc.
-            # del base_env.vector_env.envs[env_index].simulation
-            # Disable pygame and deactivate rendering mode
             sim_data = base_env.vector_env.envs[vector_idx].sim.config.yaml_data
+            # attempting to avoid memory leaks, etc.
+            del base_env.vector_env.envs[env_index].sim
+            # Disable pygame and deactivate rendering mode
             sim_data["simulation"]["headless"] = True
             base_env.vector_env.envs[vector_idx].sim = FireSimulation(
                 Config(config_dict=sim_data)
@@ -261,3 +195,6 @@ def _prepare_env_for_rendering(base_env: BaseEnv, env_ctx: EnvContext):
     # Instantiate new simulation object with updated parameters
     del base_env.sim
     base_env.sim = FireSimulation(Config(config_dict=sim_data))
+    # Set simulation to rendering mode
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    base_env.sim.rendering = True
