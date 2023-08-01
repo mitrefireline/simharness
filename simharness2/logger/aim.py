@@ -1,7 +1,6 @@
-"""Module for using AIM with simharness2."""
+"""TODO."""
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
-from functools import partial
 
 import numpy as np
 from hydra.utils import instantiate
@@ -96,7 +95,7 @@ class AimLoggerCallback(LoggerCallback):
         Returns:
             Run: The created aim run for a specific trial.
         """
-        experiment_dir = trial.local_experiment_path
+        experiment_dir = trial.local_dir
         run = Run(
             repo=self._repo_path or experiment_dir,
             **self._aim_run_kwargs,
@@ -114,10 +113,10 @@ class AimLoggerCallback(LoggerCallback):
         return run
 
     def log_trial_start(self, trial: "Trial"):
-        """Execute on trial start.
+        """TODO.
 
         Args:
-            trial: The Tune trial that aim will track as a Run.
+            trial (Trial): [description]
         """
         if trial in self._trial_to_run:
             # Cleanup an existing run if the trial has been restarted
@@ -130,12 +129,12 @@ class AimLoggerCallback(LoggerCallback):
             self._log_trial_hparams(trial)
 
     def log_trial_result(self, iteration: int, trial: "Trial", result: Dict):
-        """Log a result.
+        """TODO.
 
         Args:
-            iteration: The iteration number
-            trial: The Tune trial that aim will track as a Run.
-            result: Dictionary containing key:value information to log
+            iteration (int): [description]
+            trial (Trial): [description]
+            result (Dict): [description]
         """
         tmp_result = result.copy()
 
@@ -177,20 +176,20 @@ class AimLoggerCallback(LoggerCallback):
                 valid_result[attr] = value
 
     def log_trial_end(self, trial: "Trial", failed: bool = False):
-        """Execute on trial end.
+        """TODO.
 
         Args:
-            trial: The Tune trial that aim will track as a Run.
-            failed: Flag indicating whether or not the trial failed
+            trial (Trial): [description]
+            failed (bool, optional): [description]. Defaults to False.
         """
         trial_run = self._trial_to_run.pop(trial)
         trial_run.close()
 
     def _log_trial_hparams(self, trial: "Trial"):
-        """Log Hyperparameters.
+        """TODO.
 
         Args:
-            trial: The Tune trial that aim will track as a Run.
+            trial (Trial): [description]
         """
         params = flatten_dict(trial.evaluated_params, delimiter="/")
         flat_params = flatten_dict(params)
@@ -236,6 +235,37 @@ class AimLoggerCallback(LoggerCallback):
             # run[k] = v
         # run["cfg"] = self._cfg
 
+    def _log_evaluation_config(self, run: Run, cfg: DictConfig):
+        """Log the evaluation config to Aim as `Run Params`."""
+        eval_cfg_settings = instantiate(cfg.evaluation_config)
+
+        if "simulation" in eval_cfg_settings.env_config.keys():
+            sim_obj = eval_cfg_settings.env_config.simulation
+            # Intention: create a (dotpath) string representation of `sim_obj`.
+            if not isinstance(sim_obj, str):
+                sim_obj = ".".join(
+                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
+                )
+            eval_cfg_settings.env_config.simulation = sim_obj
+
+        cfg.evaluation_config = eval_cfg_settings
+        run["evaluation"] = cfg
+
+    def _log_environment_config(self, run: Run, cfg: DictConfig):
+        """Log the environment config to Aim as `Run Params`."""
+        env_settings = instantiate(cfg)
+
+        if "simulation" in env_settings.env_config.keys():
+            sim_obj = env_settings.env_config.simulation
+            # Intention: create a (dotpath) string representation of `sim_obj`.
+            if not isinstance(sim_obj, str):
+                sim_obj = ".".join(
+                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
+                )
+            env_settings.env_config.simulation = sim_obj
+
+        run["environment"] = env_settings
+
     def _log_simulation_config(self, run: Run, cfg: DictConfig):
         """Log the simulation config to Aim as `Run Params`."""
         # NOTE: Both `train` and `eval` configs are logged, even if they are the same. In
@@ -264,76 +294,3 @@ class AimLoggerCallback(LoggerCallback):
 
         # train_set = set(train_cfg_flat.items())
         # eval_set = set(eval_cfg_flat.items())
-
-    def _log_environment_config(self, run: Run, cfg: DictConfig):
-        """Log the environment config to Aim as `Run Params`."""
-        env_cfg = instantiate(cfg)
-
-        if env_cfg.env_config.get("sim"):
-            sim_obj = env_cfg.env_config.sim
-            # Intention: create a (dotpath) string representation of `sim_obj`.
-            if not isinstance(sim_obj, str):
-                sim_obj = ".".join(
-                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
-                )
-            env_cfg.env_config.sim = sim_obj
-
-        # NOTE: If-else here because `benchmark_sim` is an optional argument.
-        if env_cfg.env_config.get("benchmark_sim"):
-            # If not None, then assume `benchmark_sim` uses SAME class as `sim`.
-            env_cfg.env_config.benchmark_sim = sim_obj
-        else:
-            env_cfg.env_config.benchmark_sim = None
-
-        if env_cfg.env_config.get("action_space_type"):
-            # Intention: create a (dotpath) string representation of `action_space_type`.
-            action_space_type = env_cfg.env_config.action_space_type
-            if isinstance(action_space_type, partial):
-                action_space_type = action_space_type.func
-            if not isinstance(action_space_type, str):
-                action_space_type = ".".join(
-                    [
-                        action_space_type.__module__,
-                        action_space_type.__name__,
-                    ]
-                )
-            env_cfg.env_config.action_space_type = action_space_type
-
-        run["environment"] = env_cfg
-
-    def _log_evaluation_config(self, run: Run, cfg: DictConfig):
-        """Log the evaluation config to Aim as `Run Params`."""
-        eval_cfg_settings = instantiate(cfg.evaluation_config)
-
-        if eval_cfg_settings.env_config.get("sim"):
-            sim_obj = eval_cfg_settings.env_config.sim
-            # Intention: create a (dotpath) string representation of `sim_obj`.
-            if not isinstance(sim_obj, str):
-                sim_obj = ".".join(
-                    [sim_obj.__class__.__module__, sim_obj.__class__.__name__]
-                )
-            eval_cfg_settings.env_config.sim = sim_obj
-
-        # NOTE: If-else here because `benchmark_sim` is an optional argument.
-        if eval_cfg_settings.env_config.get("benchmark_sim"):
-            # If not None, then assume `benchmark_sim` uses SAME class as `sim`.
-            eval_cfg_settings.env_config.benchmark_sim = sim_obj
-        else:
-            eval_cfg_settings.env_config.benchmark_sim = None
-
-        if eval_cfg_settings.env_config.get("action_space_type"):
-            # Intention: create a (dotpath) string representation of `action_space_type`.
-            action_space_type = eval_cfg_settings.env_config.action_space_type
-            if isinstance(action_space_type, partial):
-                action_space_type = action_space_type.func
-            if not isinstance(action_space_type, str):
-                action_space_type = ".".join(
-                    [
-                        action_space_type.__module__,
-                        action_space_type.__name__,
-                    ]
-                )
-            eval_cfg_settings.env_config.action_space_type = action_space_type
-
-        cfg.evaluation_config = eval_cfg_settings
-        run["evaluation"] = cfg

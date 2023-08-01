@@ -13,9 +13,7 @@ Typical usage example:
 import logging
 import os
 from importlib import import_module
-from typing import Any, Dict, Tuple
 
-import gymnasium as gym
 import hydra
 import ray
 from hydra.core.hydra_config import HydraConfig
@@ -27,31 +25,21 @@ from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.utils.typing import ResultDict
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
-from simfire.sim.simulation import Simulation  # noqa: F401
 
+from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
 from simharness2.utils.evaluation_fires import get_default_operational_fires
-from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
+
+# from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
 OmegaConf.register_new_resolver("operational_screen_size", lambda x: int((x / 64) * 1920))
 OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
-OmegaConf.register_new_resolver("square", lambda x: x**2)
 
-logger = logging.getLogger(__name__)
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
-    """Train the
-
-    Args:
-        algo_cfg (AlgorithmConfig): [description]
-        cfg (DictConfig): [description]
-
-    Returns:
-        ResultDict: [description]
-    """
-    
+    """FIXME: Docstring for train_with_tune."""
     # automated run with Tune and grid search and TensorBoard
     tuner = tune.Tuner(
         cfg.algo.name,
@@ -59,9 +47,15 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
         # TODO add `tune_config` argument with `tune.TuneConfig`
         run_config=air.RunConfig(
             name=cfg.runtime.name or None,
-            # FIXME: `local_dir` has been deprecated, see:
-            # https://github.com/ray-project/ray/pull/33463
             local_dir=cfg.runtime.local_dir,
+            # callbacks=[
+            #     AimLoggerCallback(
+            #         repo="/home/jovyan/aim",
+            #         experiment="aim_test",
+            #         system_tracking_interval=None,
+            #         log_system_params=False,
+            #     )
+            # ],
             stop={**cfg.stop_conditions},
             callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
             failure_config=None,
@@ -73,111 +67,134 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultDict:
     return results
 
 
-def train(algo: Algorithm, cfg: DictConfig) -> None:
-    """Train the given algorithm within RLlib.
-
-    Args:
-        algo (Algorithm): Algorithm to train with.
-        cfg (DictConfig): Hydra config with all required parameters for training.
-    """
-    
+def train(algo: Algorithm, cfg: DictConfig, log: logging.Logger):
+    """FIXME: Docstring for train."""
     stop_cond = cfg.stop_conditions
     # Run manual training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
-        logger.info(f"Training iteration {i}")
+        log.info(f"Training iteration {i}")
         result = algo.train()
-        logger.info(f'{pretty_print(result)}\n')
+        log.info(pretty_print(result))
 
-        if i % cfg.checkpoint.frequency == 0:
+        if i % cfg.checkpoint.checkpoint_frequency == 0:
             ckpt_path = algo.save()
-            log_str = f"A checkpoint has been created inside directory: {ckpt_path}.\n"
-            logger.info(log_str)
+            log.info(f"A checkpoint has been created inside directory: {ckpt_path}.")
 
         if (
             result["timesteps_total"] >= stop_cond.timesteps_total
             or result["episode_reward_mean"] >= stop_cond.episode_reward_mean
         ):
-            logger.info(f"Training stopped short at iteration {i}.\n")
+            log.info(f"Training stopped short at iteration {i}")
             ts = result["timesteps_total"]
             mean_rew = result["episode_reward_mean"]
-            logger.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
+            log.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}")
             break
 
     model_path = algo.save()
-    logger.info(f"The final model has been saved inside directory: {model_path}.")
+    log.info(f"The final model has been saved inside directory: {model_path}.")
     algo.stop()
 
 
-def _instantiate_config(
-    cfg: DictConfig
-    ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    """Instantiate the algorithm config used to build the RLlib training algorithm.
+# def view(algo: Algorithm, cfg: DictConfig, view_sim: Simulation, log: logging.Logger):
+#     """FIXME: Docstring for view."""
+#     log.info("Collecting gifs of trained model...")
+#     env_name = cfg.evaluation.evaluation_config.env
 
-    Args:
-        cfg (DictConfig): Hydra config with all required parameters.
+#     env_cfg = OmegaConf.to_container(cfg.environment.env_config)
+#     env_cfg.update({"simulation": view_sim})
 
-    Returns:
-        Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-        env_settings: Parameters needed for instantiating the environment
-        eval_settings: Parameters needed for running the evaluation code.
-        debug_settings: Settings needed for debugging.
-        exploration_cfg: RLlib exploration configurations.
-    """
-    
-    # Instantiate objects based on the provided settings
-    # NOTE: We are instantiating to a NEW object on purpose; otherwise a
-    # `TypeError` will be raised when attempting to log the cfg to Aim.
-    env_settings = instantiate(cfg.environment, _convert_="partial")
-    eval_settings = instantiate(cfg.evaluation, _convert_="partial")
-    # Inject operational fires into the evaluation settings
-    # eval_settings["evaluation_config"]["env_config"].update(
-    #     {"scenarios": operational_fires}
-    # )
-    # TODO: Move (both) NOTE below to docs and remove from code
-    # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
-    # Prepare exploration options for the algorithm
-    exploration_cfg = OmegaConf.to_container(cfg.exploration.exploration_config)
+#     env = gym.make(env_name, **env_cfg)
 
-    # Prepare debugging settings
-    # If no `type` is given, tune's `UnifiedLogger` is used as follows:
-    # DEFAULT_LOGGERS = (JsonLogger, CSVLogger, TBXLogger)
-    # `UnifiedLogger(config, self._logdir, loggers=DEFAULT_LOGGERS)`
-    # - The `logger_config` defined below is used here:
-    # https://github.com/ray-project/ray/blob/863928c4f13b66465399d63e01df3c446b4536d9/rllib/algorithms/algorithm.py#L423
-    # - The `Trainable._create_logger` method can be found here:
-    # https://github.com/ray-project/ray/blob/8d2dc9a3997482100034b60568b06aad7fd9fc59/python/ray/tune/trainable/trainable.py#L1067
-    debug_settings = OmegaConf.to_container(cfg.debugging)
-    # TODO make options passed to `logger_config` configurable from the CLI
-    debug_settings.update(
-        {
-            "logger_config": {
-                "type": tune.logger.TBXLogger,
-                "logdir": cfg.runtime.local_dir,
-            }
-        }
-    )
-    # Register the environment with Ray
-    # TODO: Move this to a function (ie `register_env`)?
-    # NOTE: Assume that same environment cls is used for training and evaluation.
-    env_module, env_cls = cfg.environment.env.rsplit(".", 1)
-    env_cls = getattr(import_module(env_module), env_cls)
-    register_env(cfg.environment.env, lambda config: env_cls(config))
-    
-    return env_settings, eval_settings, debug_settings, exploration_cfg
+#     for _ in range(2):
+#         env.simulation.rendering = True
+#         obs, _ = env.reset()
+#         done = False
 
-def build_algo(cfg: DictConfig) -> Algorithm:
-    """Build the algorithm config and object for training an RLlib model.
+#         fire_loc = env.simulation.fire_manager.init_pos
+#         agent_pos = env.agent_pos  # type: ignore
+#         info = f"Agent Start Location: {agent_pos}, Fire Start Location: {fire_loc}"
 
-    Args:
-        cfg (DictConfig): Hydra config with all required parameters.
+#         total_reward = 0.0
+#         while not done:
+#             action = algo.compute_single_action(obs)
 
-    Returns:
-        Algorithm: Algorithm to train with.
-    """
-    
-    env_settings, eval_settings, debug_settings, explor_cfg = _instantiate_config(cfg)
+#             obs, reward, done, _, _ = env.step(action)
+#             total_reward += reward
+#         info = info + f", Final Reward: {total_reward}"
+#         log.info(info)
 
-    algo_cfg = (
+#         head_path, checkpoint_dir = os.path.split(cfg.algo.checkpoint_path)
+#         save_dir = os.path.join(head_path, "gifs", checkpoint_dir)
+#         env.simulation.save_gif(save_dir)
+#         env.simulation.rendering = False
+
+
+@hydra.main(version_base=None, config_path="conf", config_name="config")
+def main(cfg: DictConfig):
+    """FIXME: Docstring for main."""
+    # Start the Ray runtime
+    ray.init()
+    # Fetch logger, which is configured in `conf/hydra/job_logging`
+    log = logging.getLogger(__name__)
+    outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
+    log.warning(f"Configuration files for this job can be found at {outdir}")
+
+    # assume for now that operational fires are the default
+    operational_fires = get_default_operational_fires(cfg)
+
+    model_available = False
+    if cfg.algo.checkpoint_path:
+        log.info(f"Creating an algorithm instance from {cfg.algo.checkpoint_path}")
+        # TODO raise error if checkpoint_path is not a valid path
+        algo = Algorithm.from_checkpoint(cfg.algo.checkpoint_path)
+        model_available = True
+
+    if cfg.cli.mode == "train" or cfg.cli.mode == "tune":
+        log.info(f"Training model on {cfg.environment.env}")
+        if not model_available:
+            # Instantiate objects based on the provided settings
+            # TODO: Move this to a utility function (ie `instantiate_from_config`)?
+            # NOTE: We are instantiating to a NEW object on purpose; otherwise a
+            # `TypeError` will be raised when attempting to log the cfg to Aim.
+            env_settings = instantiate(cfg.environment, _convert_="partial")
+            eval_settings = instantiate(cfg.evaluation, _convert_="partial")
+            # Inject operational fires into the evaluation settings
+            eval_settings["evaluation_config"]["env_config"].update(
+                {"scenarios": operational_fires}
+            )
+            # TODO: Move (both) NOTE below to docs and remove from code
+            # NOTE: Need to convert OmegaConf container to dict to avoid `TypeError`.
+            # Prepare exploration options for the algorithm
+            explore = cfg.exploration.explore
+            exploration_cfg = OmegaConf.to_container(cfg.exploration.exploration_config)
+
+            # Prepare debugging settings
+            # If no `type` is given, tune's `UnifiedLogger` is used as follows:
+            # DEFAULT_LOGGERS = (JsonLogger, CSVLogger, TBXLogger)
+            # `UnifiedLogger(config, self._logdir, loggers=DEFAULT_LOGGERS)`
+            # - The `logger_config` defined below is used here:
+            # https://github.com/ray-project/ray/blob/863928c4f13b66465399d63e01df3c446b4536d9/rllib/algorithms/algorithm.py#L423
+            # - The `Trainable._create_logger` method can be found here:
+            # https://github.com/ray-project/ray/blob/8d2dc9a3997482100034b60568b06aad7fd9fc59/python/ray/tune/trainable/trainable.py#L1067
+            debug_settings = OmegaConf.to_container(cfg.debugging)
+            # TODO make options passed to `logger_config` configurable from the CLI
+            debug_settings.update(
+                {
+                    "logger_config": {
+                        "type": tune.logger.TBXLogger,
+                        "logdir": cfg.runtime.local_dir,
+                    }
+                }
+            )
+            # Register the environment with Ray
+            # TODO: Move this to a function (ie `register_env`)?
+            # NOTE: Assume that same environment cls is used for training and evaluation.
+            env_module, env_cls = cfg.environment.env.rsplit(".", 1)
+            env_cls = getattr(import_module(env_module), env_cls)
+            register_env(cfg.environment.env, lambda config: env_cls(config))
+
+            # Build the `AlgorithmConfig` object using the provided settings.
+            algo_cfg = (
                 get_trainable_cls(cfg.algo.name)
                 .get_default_config()
                 .training(**cfg.training)
@@ -185,51 +202,27 @@ def build_algo(cfg: DictConfig) -> Algorithm:
                 .framework(**cfg.framework)
                 .rollouts(**cfg.rollouts)
                 .evaluation(**eval_settings)
-                .exploration(explore=cfg.exploration.explore, 
-                             exploration_config=explor_cfg)
+                .exploration(explore=explore, exploration_config=exploration_cfg)
                 .resources(**cfg.resources)
                 .debugging(**debug_settings)
-                .callbacks(SetEnvSeedsCallback)
+                .callbacks(RenderEnv)
             )
-    
-    algo = algo_cfg.build()
-    
-    return algo, algo_cfg
 
+            if cfg.cli.mode == "tune":
+                train_with_tune(algo_cfg, cfg)
+            else:
+                algo = algo_cfg.build()
+                model_available = True
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
-def main(cfg: DictConfig) -> None:
-    """Main entry-point for training a SimHarness model with RLlib.
+                train(algo, cfg, log)
 
-    Args:
-        cfg (DictConfig): Hydra config with all required parameters for training.
-    """
-    
-    # Start the Ray runtime
-    ray.init(num_gpus=0, num_cpus=8)
-    # Fetch logger, which is configured in `conf/hydra/job_logging`
-    outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
-    logger.warning(f"Configuration files for this job can be found at {outdir}")
+    elif cfg.cli.mode == "view":
+        if not model_available:
+            raise ValueError("No model is available for viewing.")
 
-    # assume for now that operational fires are the default
-    # operational_fires = get_default_operational_fires(cfg)
-    
-    algo, algo_cfg = build_algo(cfg)
-
-    if cfg.algo.checkpoint_path:
-        ckpt_path = cfg.algo.checkpoint_path
-        logger.info(f"Creating an algorithm instance from {ckpt_path}")
-        
-        assert os.path.isfile(ckpt_path), f'{ckpt_path} is not a valid file path.'
-        algo.restore(checkpoint_path=ckpt_path)
-
-    if cfg.cli.mode == "train":
-        logger.info(f"Training model on {cfg.environment.env}")
-        train(algo, cfg)
-        
-    if cfg.cli.mode == "tune":
-        logger.info(f"Tuning model on {cfg.environment.env}")
-        train_with_tune(algo_cfg, cfg)
+        # view(algo, cfg, sim(view_cfg))
+    else:
+        raise ValueError(f"Invalid mode: {cfg.cli.mode}")
 
     ray.shutdown()
 

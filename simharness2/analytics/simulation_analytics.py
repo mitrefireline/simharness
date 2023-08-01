@@ -4,15 +4,18 @@ TODO: Add a list of any classes, exception, functions, and any other objects exp
 the module.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
 from functools import partial
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
-from simharness2.analytics.agent_analytics import AgentAnalytics
+
+from simharness2.analytics.agent_analytics import (
+    AgentMetricsTracker,
+    ReactiveAgentAnalytics,
+)
 
 
 class SimulationAnalytics(ABC):
@@ -43,8 +46,8 @@ class SimulationAnalytics(ABC):
 
         Arguments:
             sim: The `FireSimulation` object that will be tracked.
-            agent_analytics_partial: A `functools.partial` object that defines the class that
-                will be used to monitor and track agent (s) behavior within `self.sim`.
+            agent_analytics_partial: A `functools.partial` object that defines the class
+            that will be used to monitor and track agent (s) behavior within `self.sim`.
             is_benchmark: TODO
 
         NOTE: In the MARL case, we can use a dictionary of AgentAnalytics objects,
@@ -57,7 +60,7 @@ class SimulationAnalytics(ABC):
         self.sim = sim
         # Indicates whether this object will track a `benchmark` simulation.
         self.is_benchmark = is_benchmark
-        self.agent_analytics: AgentAnalytics = None
+        self.agent_analytics: Optional[ReactiveAgentAnalytics] = None
 
         if not self.is_benchmark:
             # Agents only exist in the main simulation.
@@ -209,9 +212,9 @@ class FireSimulationAnalytics(SimulationAnalytics):
 
     def update(self, timestep: int) -> None:
         """TODO Add docstring."""
-        # NOTE: We can also get sim_steps with self._sim.elapsed_steps
-        self.num_sim_steps += 1
-        self.active = self.sim.active
+        # Only access `active` attribute if the sim has been updated at least once.
+        if self.sim.elapsed_steps != 0:
+            self.active = self.sim.active
 
         # Add the current timestep's data to the dataframe.
         # TODO: Is there a better alternative to this df build approach?
@@ -236,11 +239,13 @@ class FireSimulationAnalytics(SimulationAnalytics):
                 ]
             )
 
-        sim_data_dict = dict(zip(self.dfs, sim_data))
+        sim_data_dict = dict(zip(self.df_cols, sim_data))
         timestep_df = (
             pd.DataFrame(sim_data_dict).astype(self.df_dtypes).set_index(self.df_index)
         )
         self.df = pd.concat([self.df, timestep_df])
+
+        self.num_sim_steps += 1  # increment AFTER method logic is performed (convention).
 
     def reset(self):
         """Reset the attributes of `FireSimulationData` to initial values."""
@@ -269,14 +274,15 @@ class FireSimulationMetricsTracker:
         """TODO Add docstring.
 
         Arguments:
-            agent_analytics_partial: A `functools.partial` object that defines the class that
-                will be used to monitor and track agent (s) behavior within `self.sim`.
+            agent_analytics_partial: A `functools.partial` object that defines the class
+                that will be used to monitor and track agent (s) behavior within
+                `self.sim`.
 
         """
         self._sim = sim
         # Indicates whether this object will track a `benchmark` simulation.
         self.is_benchmark = is_benchmark
-        self.agent_analytics: AgentMetricsTracker = None
+        self.agent_analytics: AgentMetricsTracker
 
         # NOTE: In the MARL case, we can use a dictionary of AgentMetricsTracker objects,
         # where the key is the agent ID. This would replace the `agent_analytics` below.
@@ -297,8 +303,8 @@ class FireSimulationMetricsTracker:
         self.active = self._sim.active
 
         # Calculate the number of currently burned (burning) squares in this timestep.
-        num_currently_burned = np.sum(self._sim.fire_map == BurnStatus.BURNED)
-        num_currently_burning = np.sum(self._sim.fire_map == BurnStatus.BURNING)
+        num_currently_burned: int = np.sum(self._sim.fire_map == BurnStatus.BURNED)
+        num_currently_burning: int = np.sum(self._sim.fire_map == BurnStatus.BURNING)
 
         # Calculate the number of newly burned (burning) squares in this timestep.
         self.num_new_burned = num_currently_burned - self.num_burned
@@ -323,7 +329,7 @@ class FireSimulationMetricsTracker:
 
         # Calculate the number of currently undamaged squares in this timestep.
         # TODO: verify that `UNBURNED` is the correct `BurnStatus` to use here.
-        num_currently_undamaged = np.sum(self._sim.fire_map == BurnStatus.UNBURNED)
+        num_currently_undamaged: int = np.sum(self._sim.fire_map == BurnStatus.UNBURNED)
         self.num_new_damaged = self.num_undamaged - num_currently_undamaged
 
         # FIXME refactor into a separate method?
@@ -337,7 +343,8 @@ class FireSimulationMetricsTracker:
         self.num_undamaged = num_currently_undamaged
 
         # Finally reset the agent_analytics object for the next timestep
-        # TODO: Should this be moved elsewhere to make calculating the reward easier when using agent_metrics
+        # TODO: Should this be moved elsewhere to make calculating the reward easier
+        # when using agent_metrics
         # This is currently moved into the larger AnalyticsTracker class
         # self.agent_analytics.reset()
 
@@ -348,12 +355,12 @@ class FireSimulationMetricsTracker:
         # reset the SimulationMetricsTracker object variables at the end of each episode
         self.active = True
         self.num_sim_steps: int = 0
-        self.num_burned = 0
-        self.num_new_burned = 0
-        self.num_burning = 0
-        self.num_new_burning = 0
-        self.num_undamaged = 0
-        self.num_new_damaged = 0
+        self.num_burned: int = 0
+        self.num_new_burned: int = 0
+        self.num_burning: int = 0
+        self.num_new_burning: int = 0
+        self.num_undamaged: int = 0
+        self.num_new_damaged: int = 0
         self.num_damaged_per_step = [0]
 
         # We do not need to track mitigation lines in the benchmark simulation.

@@ -25,11 +25,10 @@ Then, create and populate the `sh2` conda environment with project dependencies:
 ```shell
 cd simharness2/
 sudo apt-get update && sudo apt-get install build-essential -y
-# Create a conda environment with the correct python version
-conda create --yes --name sh2 python=3.9.*
+# Create a conda environment using `conda-linux-64.lock`
+conda create --name sh2 --file conda-linux-64.lock
 conda activate sh2
-pip install -r requirements.txt
-pip install ray[rllib]==2.3.0
+poetry install
 ```
 
 ## Troubleshooting
