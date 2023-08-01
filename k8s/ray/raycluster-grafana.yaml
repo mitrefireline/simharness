@@ -9,7 +9,7 @@ metadata:
 spec:
   # The version of Ray you are using. Make sure all Ray containers are running this version of Ray.
   # Just make sure `rayVersion` == version installed in the docker image that will be used.
-  rayVersion: "2.3.0" 
+  rayVersion: "2.3.0"
   ######################headGroupSpec#################################
   # head group template and specs, (perhaps 'group' is not needed in the name)
   headGroupSpec:
@@ -18,11 +18,11 @@ spec:
     # The following params are used to complete the ray start: ray start --head --block ...
     # To see all options available for the ray start command, see https://docs.ray.io/en/latest/cluster/cli.html#ray-start
     rayStartParams:
-      # The amount of memory (in bytes) to start the object store with. By default, this 
+      # The amount of memory (in bytes) to start the object store with. By default, this
       # is capped at 20GB but can be set higher.
       # object-store-memory: "40000000000" # (40 GB)
       object-store-memory: "12000000000" # (12 GB)
-      # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with 
+      # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with
       # non-zero CPU requirements) from being scheduled on the head.
       num-cpus: "0"
       # The host to bind the dashboard server to, either localhost (127.0.0.1) or 0.0.0.0
@@ -65,7 +65,7 @@ spec:
             requests:
               cpu: "4"
               memory: "20G"
-          volumeMounts: 
+          volumeMounts:
             - mountPath: /dev/shm
               name: dshm
         volumes:
@@ -82,10 +82,10 @@ spec:
     groupName: small-group
     # To see all options available for the ray start command, see https://docs.ray.io/en/latest/cluster/cli.html#ray-start
     rayStartParams:
-      # The amount of memory (in bytes) to start the object store with. By default, this 
+      # The amount of memory (in bytes) to start the object store with. By default, this
       # is capped at 20GB but can be set higher.
       object-store-memory: "30000000000" # (40 GB)
-      # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with 
+      # The number of CPUs on this node. Set to "0" to prevent Ray workloads (with
       # non-zero CPU requirements) from being scheduled on the head.
       # num-cpus: "0"
       # The host to bind the dashboard server to, either localhost (127.0.0.1) or 0.0.0.0
@@ -138,7 +138,7 @@ spec:
               cpu: "8"
               memory: "40G"
               nvidia.com/gpu: 1
-          volumeMounts: 
+          volumeMounts:
             - mountPath: /dev/shm
               name: dshm
             - mountPath: /opt/aim

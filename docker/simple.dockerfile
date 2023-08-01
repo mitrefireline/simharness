@@ -20,7 +20,7 @@ RUN sudo su -c "echo 'deb http://packages.cloud.google.com/apt/ kubernetes-xenia
 RUN sudo su -c "echo 'deb [by-hash=no] http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /' > /etc/apt/sources.list.d/cuda.list"
 
 # Install MITRE certs
-RUN sudo apt-get update 
+RUN sudo apt-get update
 RUN sudo apt-get install -y curl
 RUN curl -ksSL https://gitlab.mitre.org/mitre-scripts/mitre-pki/raw/master/os_scripts/install_certs.sh | sudo sh
 # Set the correct environment variables

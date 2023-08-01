@@ -4,7 +4,7 @@
 # - torch
 framework: torch
 
-# Enable tracing in eager mode. This greatly improves performance (speedup ~2x), but 
-# makes it slightly harder to debug since Python code won’t be evaluated after the 
+# Enable tracing in eager mode. This greatly improves performance (speedup ~2x), but
+# makes it slightly harder to debug since Python code won’t be evaluated after the
 # initial eager pass. Only possible if framework=tf2.
 eager_tracing: False

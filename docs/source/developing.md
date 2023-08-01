@@ -56,7 +56,7 @@ kubectl delete raycluster raycluster-grafana
 The recommended way to execute an application on a Ray Cluster is to use [Ray Jobs](https://docs.ray.io/en/latest/cluster/running-applications/job-submission/quickstart.html#jobs-quickstart).
 
 #### Exposing dashboards/services
-The `KubeRay` operator configures a Kubernetes service targeting the Ray head pod. This service allows us to interact with Ray clusters without directly executing commands in the Ray container. We can use port-forwarding to access the Ray Dashboard port (8265 by default). 
+The `KubeRay` operator configures a Kubernetes service targeting the Ray head pod. This service allows us to interact with Ray clusters without directly executing commands in the Ray container. We can use port-forwarding to access the Ray Dashboard port (8265 by default).
 
 There are a few other dashboards/services that we want to have access to from our local workstation. Currently, we have:
 - Aim server
