@@ -1,23 +1,22 @@
+"""Callback for rendering gifs during evaluation."""
 import logging
 import os
-from math import log10
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-import ray
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
 from ray.rllib.env.env_context import EnvContext
+from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
 from ray.rllib.utils.typing import PolicyID  # AgentID, EnvType,
-from ray.rllib.evaluation import RolloutWorker
-
 from simfire.sim.simulation import FireSimulation
 from simfire.utils.config import Config
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
+
     from simharness2.environments.reactive import ReactiveHarness
 
 logger = logging.getLogger(__name__)
@@ -27,6 +26,12 @@ class RenderEnv(DefaultCallbacks):
     """To use this callback, set {"callbacks": RenderEnv} in the algo config."""
 
     def __init__(self, legacy_callbacks_dict: Dict[str, callable] = None):
+        """TODO.
+
+        Args:
+            legacy_callbacks_dict (Dict[str, callable], optional): _description_.
+                Defaults to None.
+        """
         super().__init__(legacy_callbacks_dict)
 
         # Empty path, updated within first `on_episode_start` call (for each rollout).
@@ -47,7 +52,6 @@ class RenderEnv(DefaultCallbacks):
             algorithm: Reference to the Algorithm instance.
             kwargs: Forward compatibility placeholder.
         """
-
         logdir = algorithm.logdir
         # Put the trial result path in Ray's object store (accessible by all workers).
         algorithm.evaluation_workers.foreach_worker(
@@ -66,6 +70,7 @@ class RenderEnv(DefaultCallbacks):
         **kwargs,
     ) -> None:
         """Runs when an episode is done.
+
         Args:
             worker: Reference to the current rollout worker.
             base_env: BaseEnv running the episode. The underlying
