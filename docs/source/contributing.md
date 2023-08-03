@@ -1,15 +1,15 @@
 # Contributing
 
-Currently, contribution to SimHarness2 is limited to the MITRE Employees currently 
-working on the FireLine project. Eventually, SimHarness2 will be deployed to [FireLine's 
-public facing GitHub account](https://github.com/mitrefireline) and the process will 
+Currently, contribution to SimHarness2 is limited to the MITRE Employees currently
+working on the FireLine project. Eventually, SimHarness2 will be deployed to [FireLine's
+public facing GitHub account](https://github.com/mitrefireline) and the process will
 need to be updated accordingly.
 
 
 ## Contributing for MITRE Employees
 
-Contributing to the [MITRE internal GitLab SimHarness codebase](https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2) 
-requires a specific workflow process to be followed. This page will explain how to 
+Contributing to the [MITRE internal GitLab SimHarness codebase](https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2)
+requires a specific workflow process to be followed. This page will explain how to
 follow that process and will provide some tools to make local development easier.
 
 ### Overall Process
@@ -81,8 +81,8 @@ when adding commits from a higher branch. For example:
 
 Two people are working on `feature1` and `feature2` separately. `feature1` finishes
 before `feature2`. As `feature1` is a higher branch than `dev`, we will **merge**
-`feature1` into `dev`. Since `dev` has now changed, `feature2` branch needs to be 
-updated. As `dev` is a lower branch than `feature2`, we will **rebase** `dev` into 
+`feature1` into `dev`. Since `dev` has now changed, `feature2` branch needs to be
+updated. As `dev` is a lower branch than `feature2`, we will **rebase** `dev` into
 `feature2`. Once `feature2` is complete, we now **merge** `feature2` into `dev`.
 
 Make sure your feature branches are always up to date with the current state of
@@ -122,7 +122,7 @@ below:
 6. Click the blue `Create issue` button.
 
 Issues should be smaller, reasonable issues to avoid large, unwieldy MRs. Smaller issues
-are easier to review and detect problems with and result in faster collaboration and 
+are easier to review and detect problems with and result in faster collaboration and
 development overall. Larger issues should invlude subtasks within them to outline
 why the process requires a single issue and show progress within the issue.
 
@@ -167,7 +167,7 @@ The following label groups are available and should be used for **every** issue 
 
 ### Creating Merge Requests
 
-Each merge request **must** be tied to an issue from the issue board. To create a new 
+Each merge request **must** be tied to an issue from the issue board. To create a new
 MR, follow the instructions below:
 
 1. Create an issue in the issue board and click the issue name to open the issue page.
@@ -184,9 +184,9 @@ Merge requests **must** be created from the parent `dev` branch - **not** `main`
 Each MR **needs** to be reviewed by the other members of the project to ensure that the
 new code additions are complete and stable. MRs into the `dev` branch require approval
 from at least one other member of the team in order to be merged. Reviewers should
-look through the code of the MR and leave comments (preferably linked to a line within 
+look through the code of the MR and leave comments (preferably linked to a line within
 the code). Reviewers should look for areas to reformat, documentation, poor naming
-conventions, incorrect code, etc. Some of these can be auto-solved following the 
+conventions, incorrect code, etc. Some of these can be auto-solved following the
 package usage in [Code Quality](#code-quality).
 
 No branch should be merged into `dev` before going through a review first.
@@ -194,7 +194,7 @@ No branch should be merged into `dev` before going through a review first.
 ### Merge Process
 
 All feature branches should be merged into `dev` alone. The only branch that should be
-merged into `main` is `dev`. This is to ensure the code being pushed to our 
+merged into `main` is `dev`. This is to ensure the code being pushed to our
 public-facing GitHub is stable, well-documented, and well-tested. The code within `dev`
 should also be up to par, but is more lenient as it is internal facing. All merges into
 `main` should be marked as a new `version` of SimHarness as only high-quality, large
@@ -216,18 +216,18 @@ remote side (explained in [Using Pre-commit](#using-pre-commit)).
 
 ### Using Pre-commit (**Highly Recommended**)
 
-If you'd like, you can install [pre-commit](https://pre-commit.com/) to run linting and 
-code-formatting before you are able to commit. This will ensure that you pass this 
+If you'd like, you can install [pre-commit](https://pre-commit.com/) to run linting and
+code-formatting before you are able to commit. This will ensure that you pass this
 portion of the remote pipelines when you push to your merge request.
 
 ```shell
 pre-commit install
 ```
 
-Now, every time you try to commit, your code that you have staged will be linted by 
-`flake8` and auto-formatted by `black`. If the linting doesn’t pass pre-commit, it will 
-tell you, and you’ll have to make those changes before committing those files. If 
-`black` autoformats your code during pre-commit, you can view those changes and then 
+Now, every time you try to commit, your code that you have staged will be linted by
+`flake8` and auto-formatted by `black`. If the linting doesn’t pass pre-commit, it will
+tell you, and you’ll have to make those changes before committing those files. If
+`black` autoformats your code during pre-commit, you can view those changes and then
 you’ll have to stage them. Then you can commit and push.
 
 Pre-commit can also be run manually on all files without having to commit.

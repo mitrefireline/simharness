@@ -26,11 +26,12 @@ from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
-from simfire.sim.simulation import Simulation  # noqa: F401
 
-from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
+from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
 from simharness2.utils.evaluation_fires import get_default_operational_fires
+
+# from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
@@ -59,7 +60,7 @@ def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) ->
             elif value["type"] == "random":
                 sampler = tune.randint(value["values"][0], value["values"][1])
             elif value["type"] == "choice":
-                sampler = tune.choice(value["values"][0], value["values"][1])
+                sampler = tune.choice(value["values"])
             else:
                 LOGGER.error(f"Invalid value type {value['type']} given - skipping.")
 
@@ -87,7 +88,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # Configs for this specific trial run
     run_config = air.RunConfig(
         name=cfg.runtime.name or None,
-        storage_path=cfg.runtime.local_dir,
+        local_dir=cfg.runtime.local_dir,
         stop={**cfg.stop_conditions},
         callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
         failure_config=None,
@@ -95,8 +96,10 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
         checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
     )
 
+    # TODO make sure 'reward' is reported with tune.report()
+    # TODO add this to config
     # Config for the tuning process (used for all trial runs)
-    tune_config = tune.TuneConfig(mode="max", metric="reward", num_samples=50)
+    tune_config = tune.TuneConfig(num_samples=4)
 
     # Create a Tuner
     tuner = tune.Tuner(
@@ -107,6 +110,9 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     )
 
     results = tuner.fit()
+    result_df = results.get_dataframe()
+
+    logging.info(result_df)
     return results
 
 
@@ -186,11 +192,7 @@ def _instantiate_config(
     # - The `Trainable._create_logger` method can be found here:
     # https://github.com/ray-project/ray/blob/8d2dc9a3997482100034b60568b06aad7fd9fc59/python/ray/tune/trainable/trainable.py#L1067
 
-    # Instantiate the debug settings object from the config
-    debug_settings = OmegaConf.to_container(cfg=cfg.debugging, resolve=True)
-
-    # TODO How can we handle this in the config without a large `if` clause?
-    debug_settings["logger_config"]["type"] = tune.logger.TBXLogger
+    debug_settings = instantiate(cfg.debugging, _convert_="partial")
 
     # Register the environment with Ray
     # NOTE: Assume that same environment cls is used for training and evaluation.
@@ -202,7 +204,7 @@ def _instantiate_config(
     return env_settings, eval_settings, debug_settings, exploration_cfg
 
 
-def _build_algo(cfg: DictConfig) -> Tuple(Algorithm, AlgorithmConfig):
+def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     """Build the algorithm config and object for training an RLlib model.
 
     Args:
@@ -225,12 +227,10 @@ def _build_algo(cfg: DictConfig) -> Tuple(Algorithm, AlgorithmConfig):
         .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(SetEnvSeedsCallback)
+        .callbacks(RenderEnv)
     )
 
-    algo = algo_cfg.build()
-
-    return algo, algo_cfg
+    return algo_cfg
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -241,25 +241,26 @@ def main(cfg: DictConfig) -> None:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
     # Start the Ray runtime
-    ray.init(num_gpus=0, num_cpus=8)
+    ray.init()
 
     # Set the output directory for saving logging files for this run.
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")
 
-    # Build the algorithm and the algorithm config.
-    algo, algo_cfg = _build_algo(cfg)
-
-    if cfg.algo.checkpoint_path:
-        ckpt_path = cfg.algo.checkpoint_path
-        LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
-
-        if not os.path.isfile(ckpt_path):
-            raise ValueError(f"{ckpt_path} is not a valid file path.")
-
-        algo.restore(checkpoint_path=ckpt_path)
+    # Build the algorithm config.
+    algo_cfg = _build_algo_cfg(cfg)
 
     if cfg.cli.mode == "train":
+        algo = algo_cfg.build()
+        if cfg.algo.checkpoint_path:
+            ckpt_path = cfg.algo.checkpoint_path
+            LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
+
+            if not os.path.isfile(ckpt_path):
+                raise ValueError(f"{ckpt_path} is not a valid file path.")
+
+            algo.restore(checkpoint_path=ckpt_path)
+
         LOGGER.info(f"Training model on {cfg.environment.env}.")
         train(algo, cfg)
 

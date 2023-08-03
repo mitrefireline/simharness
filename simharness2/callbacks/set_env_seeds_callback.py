@@ -131,8 +131,8 @@ class SetEnvSeedsCallback(DefaultCallbacks):
             base_env.vector_env.envs[env_index].agent_pos = agent_pos
 
         # TODO find out what attribute of `episode` gives the iteration
-        # if in_evaluation and log10(episode_iter).is_integer()
-        #   and log10(episode_iter) > 0:
+        # if in_evaluation and log10(episode_iter).is_integer() and
+        #   log10(episode_iter) > 0:
         # if in_evaluation:
         # base_env.vector_env.envs[env_index].simulation = FireSimulation(
         #     Config(_SIMULATION_VIEW_EVAL_CONFIG_FILE)

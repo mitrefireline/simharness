@@ -1,20 +1,7 @@
-simulation:
-  _target_: simfire.sim.simulation.FireSimulation
+# Override value (s) to use eval simulation instead of train simulation
+sim:
   config:
-    _target_: simfire.utils.config.Config
     config_dict: ${simulation.eval}
-movements: [up, down, left, right]
-interactions: [fireline]
-attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
-normalized_attributes: [elevation]
-agent_speed: 9
-# reward_cls: null
-deterministic: True
-# initial_agent_pos: null
-# randomize_initial_agent_pos: False
-# benchmark_sim: null
-# Would we want to randomize fire_initial_position during evaluation? Probably NOT.
-# sim_seeds_to_randomize: [fire_initial_position]
-# sim_seeds_to_randomize: [fire_start_location, elevation, fuel, wind_speed, wind_direction]
+benchmark_sim: ${.sim}
 is_evaluation_env: True
 evaluation_duration: ${evaluation.evaluation_duration}

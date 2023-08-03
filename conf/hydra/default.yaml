@@ -1,0 +1,7 @@
+defaults:
+  - run: day-time
+  - override job_logging: stdout_only
+
+output_subdir: hydra_output
+job:
+  chdir: False

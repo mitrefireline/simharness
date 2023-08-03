@@ -14,12 +14,22 @@ import copy
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, OrderedDict, Tuple, no_type_check
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    OrderedDict,
+    Tuple,
+    Union,
+    no_type_check,
+)
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-from simfire.sim.simulation import Simulation
+from simfire.sim.simulation import FireSimulation
 
 
 class RLHarness(gym.Env, ABC):
@@ -32,11 +42,11 @@ class RLHarness(gym.Env, ABC):
     Longer class information... FIXME.
 
     Attributes:
-        simulation: A subclass of `Simulation` that defines a given simulator.
+        sim: A subclass of `Simulation` that defines a given simulator.
         movements: A list containing the movements available to a given agent. For
           example, possible movements could be: ["up", "down", "left", "right"].
         interactions: A list containing the interactions available to a given agent.
-          For example, if the simulation IS-A `FireSimulation`, possible interactions
+          For example, if the sim IS-A `FireSimulation`, possible interactions
           could be: ["fireline", "scratchline", "wetline"]. To learn more, see
           https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/main/simfire/sim/simulation.py#L269-280
         attributes: (FIXME) A list containing the input features into the observations.
@@ -59,12 +69,14 @@ class RLHarness(gym.Env, ABC):
 
     def __init__(
         self,
-        simulation: Simulation,
+        sim: FireSimulation,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],
         normalized_attributes: List[str],
+        action_space_cls: Callable,
         deterministic: bool = False,
+        benchmark_sim: FireSimulation = None,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -78,11 +90,26 @@ class RLHarness(gym.Env, ABC):
         intuition behind design choices. This is relatively important since RLHarness
         serves as a base class that each environment will inherit from.
         """
-        self.simulation = simulation
+        # NOTE: The caller is responsible for creating the `FireSimulation` object (s),
+        # and if a `benchmark_sim` is provided, it should be a separate object, identical
+        # to `sim` (after initialization), but will not receive any mitigations.
+        self.sim = sim
+        self.benchmark_sim = benchmark_sim
+        # Indicates (internally) whether a benchmark simulation should be used
+        # FIXME: I'm not sure if we need `_use_benchmark_sim`, since we can just check
+        # if `benchmark_sim` is None or not.
+        # self._use_benchmark_sim = True if benchmark_sim else False
+        # TODO Create self._time_arg_passed_to_sim_run and set default value to 1. This
+        # would allow the simulation to be run for an arbitrary number of timesteps.
+
+        # TODO: use more apt name, ex: `available_movements`, `possible_movements`.
         self.movements = copy.deepcopy(movements)
+        # TODO: use more apt name, ex: `available_interactions`, `possible_interactions`.
         self.interactions = copy.deepcopy(interactions)
         self.attributes = attributes
+        # TODO: Maybe use `attributes_to_normalize` over `normalized_attributes`?
         self.normalized_attributes = normalized_attributes
+        # FIXME: remove `deterministic` from the constructor; externally randomize env.
         self.deterministic = deterministic
 
         if not set(self.normalized_attributes).issubset(self.attributes):
@@ -92,8 +119,8 @@ class RLHarness(gym.Env, ABC):
             )
 
         # Retrieve the observation space and action space for the simulation.
-        sim_attributes = self.simulation.get_attribute_data()
-        sim_actions = self.simulation.get_actions()
+        sim_attributes = self.sim.get_attribute_data()
+        sim_actions = self.sim.get_actions()
 
         # FIXME(afennelly) provide a better explanation (below) for sim_agent_id
         # Make ID of agent +1 of the max value returned by the simulation for a location
@@ -103,19 +130,11 @@ class RLHarness(gym.Env, ABC):
         #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
         self.sim_agent_id = 3 + len(self.interactions) + 1
 
-        if not set(self.interactions).issubset(list(sim_actions.keys())):
+        if not set(self.interactions[1:]).issubset(list(sim_actions.keys())):
             raise AssertionError(
-                f"All interactions ({str(self.interactions)}) must be "
+                f"All interactions ({str(self.interactions[1:])}) must be "
                 f"in the simulator's actions ({str(list(sim_actions.keys()))})!"
             )
-
-        # NOTE: In the RLHARNESS section in the config file (s) it says "NONE movement
-        # and interaction is added by default at position 0 for both", which is referring
-        # to the insertion below (for `self.movements` and `self.interactions`).
-        # TODO(afennelly) add note in docs wrt the below insertion of "none".
-        # NOTE: The insertion of "none" MUST happen AFTER the above usage check!
-        self.movements.insert(0, "none")  # "don't move", "stay put", etc.
-        self.interactions.insert(0, "none")  # "don't interact", "do nothing", etc.
 
         # FIXME review purpose of sim_nonsim conversions + add brief comment
         self._separate_sim_nonsim(sim_attributes)
@@ -131,13 +150,13 @@ class RLHarness(gym.Env, ABC):
         ).reshape(1, 1, len(self.attributes))
 
         self.low = np.repeat(
-            np.repeat(channel_lows, self.simulation.config.area.screen_size, axis=1),
-            self.simulation.config.area.screen_size,
+            np.repeat(channel_lows, self.sim.config.area.screen_size, axis=1),
+            self.sim.config.area.screen_size,
             axis=0,
         )
         self.high = np.repeat(
-            np.repeat(channel_highs, self.simulation.config.area.screen_size, axis=1),
-            self.simulation.config.area.screen_size,
+            np.repeat(channel_highs, self.sim.config.area.screen_size, axis=1),
+            self.sim.config.area.screen_size,
             axis=0,
         )
 
@@ -148,8 +167,8 @@ class RLHarness(gym.Env, ABC):
             dtype=np.float32,
         )
 
-        action_shape = [len(self.movements), len(self.interactions)]
-        self.action_space = spaces.MultiDiscrete(action_shape)
+        action_shape = self._get_action_space_shape(space_type=action_space_cls)
+        self.action_space = action_space_cls(action_shape)
 
     @no_type_check
     @abstractmethod
@@ -321,7 +340,7 @@ class RLHarness(gym.Env, ABC):
         # TODO add comments and refactor as needed
         sim_min_maxes = ordered_dict()
         # fetch the observation space bounds for the simulation.
-        sim_bounds = self.simulation.get_attribute_bounds()
+        sim_bounds = self.sim.get_attribute_bounds()
         for attribute in self.sim_attributes:
             sim_min_maxes[attribute] = sim_bounds[attribute]
 
@@ -354,3 +373,25 @@ class RLHarness(gym.Env, ABC):
             )
 
         return observations
+
+    def _get_action_space_shape(
+        self, space_type: spaces.Space
+    ) -> Union[int, np.ndarray, List]:
+        """Get the shape of the action space, dependent on the action space type.
+
+        Args:
+            space_type (spaces.Space): [description]
+
+        Raises:
+            NotImplementedError: [description]
+
+        Returns:
+            Union[int, np.ndarray, List]: [description]
+        """
+        if space_type is spaces.Discrete:
+            return len(self.movements) * len(self.interactions)
+        elif space_type is spaces.MultiDiscrete:
+            return [len(self.movements), len(self.interactions)]
+        else:
+            # TODO provide a descriptive error message.
+            raise NotImplementedError

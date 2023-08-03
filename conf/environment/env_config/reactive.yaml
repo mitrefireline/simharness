@@ -1,17 +1,38 @@
-simulation:
+sim:
   _target_: simfire.sim.simulation.FireSimulation
   config:
     _target_: simfire.utils.config.Config
     config_dict: ${simulation.train}
-movements: [up, down, left, right]
-interactions: [fireline]
+movements: [none, up, down, left, right]
+interactions: [none, fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 agent_speed: 9
-# reward_cls: null
-deterministic: False
-# initial_agent_pos: null
-# randomize_initial_agent_pos: null
+# Defines the class that will be used to monitor and track `ReactiveHarness`.
+harness_analytics_partial:
+  _target_: simharness2.analytics.harness_analytics.ReactiveHarnessAnalytics
+  _partial_: true
+  # Defines the class that will be used to monitor and track `FireSimulation`.
+  sim_analytics_partial:
+    _target_: simharness2.analytics.simulation_analytics.FireSimulationAnalytics
+    _partial_: true
+    # Defines the class that will be used to monitor and track agent behavior.
+    agent_analytics_partial:
+      _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
+      _partial_: true
+      movement_types: ${....movements}
+      interaction_types: ${....interactions}
+reward_cls_partial:
+  _target_: simharness2.rewards.base_reward.ComprehensiveReward
+  _partial_: true
+  fixed_reward: 100
+  static_penalty: 50
+initial_agent_pos: [50, 50]
+randomize_initial_agent_pos: false
+benchmark_sim: ${.sim}
+# TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
+# NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).
 # benchmark_sim: null
-# sim_seeds_to_randomize: [fire_initial_position]
-# sim_seeds_to_randomize: [fire_start_location, elevation, fuel, wind_speed, wind_direction]
+action_space_partial:
+  _partial_: true
+  _target_: gymnasium.spaces.Discrete

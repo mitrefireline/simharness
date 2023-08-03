@@ -12,18 +12,20 @@ Typical usage example:
 """
 import logging
 from collections import OrderedDict as ordered_dict
+from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
-from simfire.utils.log import create_logger
+from simfire.enums import BurnStatus
 
-# TODO(afennelly) fix import path (relative to root)
-from .rl_harness import RLHarness
+from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
+from simharness2.environments.rl_harness import RLHarness
+from simharness2.rewards.base_reward import BaseReward
 
-log = create_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -38,7 +40,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     - Movements refer to actions where the agent **traverses** the environment.
         - For example, possible movements could be: ["up", "down", "left", "right"].
     - Interactions refer to actions where the agent **interacts** with the environment.
-        - For example, if the simulation IS-A `FireSimulation`, possible interactions
+        - For example, if the sim IS-A `FireSimulation`, possible interactions
             could be: ["fireline", "scratchline", "wetline"]. To learn more, see
             [simulation.py](https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/main/simfire/sim/simulation.py#L269-280).
     - Actions are determined based on the provided (harness) config file.
@@ -49,8 +51,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     ### Observation Space
     The observation space type is `Box`, and `sample()` returns an `np.ndarray` of shape
     `(A,X,X)`, where `A == len(ReactiveHarness.attributes)` and
-    `X == ReactiveHarness.simulation.config.area.screen_size`.
-    - The value of `ReactiveHarness.simulation.config.area.screen_size` is determined
+    `X == ReactiveHarness.sim.config.area.screen_size`.
+    - The value of `ReactiveHarness.sim.config.area.screen_size` is determined
       based on the value of the `screen_size` attribute (within the `area` section) of
       the (simulation) config file. See `simharness2/sim_registry.py` to find more info
       about the `register_simulation()` method, which is used to register the simulation
@@ -79,20 +81,18 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def __init__(self, config: EnvContext) -> None:
         """See RLHarness (parent/base class)."""
         # NOTE: We don't set a default value in `config.get` for required arguments.
-
-        # Create a log that will be used to log information about the environment
-        self.log = logging.getLogger(__name__)
         # Indicates that environment information should be logged at various points.
         self._debug_mode = config.get("debug_mode", False)
-        self._debug_duration = config.get("debug_duration", 1)
+        self._debug_duration = config.get("debug_duration", 1)  # unit == episodes
         self._episodes_debugged = 0
-        self.log.debug(f"Initializing environment {hex(id(self))}")
+        logger.debug(f"Initializing environment {hex(id(self))}")
 
+        # Indicator variable to determine if environment has ever been reset.
+        self._has_reset = False
         # When there are multiple workers created, this uniquely identifies the worker
         # the env is created in. 0 for local worker, >0 for remote workers.
         self.worker_idx = config.worker_index
-        # When there are multiple envs per worker,
-        # this uniquely identifies the env index
+        # When there are multiple envs per worker, this uniquely identifies the env index
         # within the worker. Starts from 0.
         self.vector_idx = config.vector_index
         # Whether individual sub-envs (in a vectorized env) are @ray.remote actors.
@@ -100,6 +100,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Total number of (remote) workers in the set. 0 if only a local worker exists.
         self.num_workers = config.num_workers
 
+        # FIXME: Perform env setup depending on if the env is used for eval/train.
         # Indicates whether the environment was created for evaluation purposes.
         self._is_eval_env = config.get("is_evaluation_env", False)
         eval_duration = config.get("evaluation_duration")
@@ -109,7 +110,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                     f"The `evaluation_duration` ({eval_duration}) must be evenly "
                     f"divisible by the `num_workers` ({self.num_workers}.)"
                 )
-            # Indicates how many rounds of eval will be run using this environment.
+            # Indicates how many rounds of evaluation will be run using this environment.
             self._total_eval_rounds = (
                 eval_duration / self.num_workers if eval_duration else 0
             )
@@ -127,152 +128,243 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             entry_point="simharness2.environments.reactive:ReactiveHarness",
             max_episode_steps=2000,
         )
-        # Set the number of steps an agent has taken in the current simulation.
-        self.num_agent_steps = 0
-        self.agent_speed = config.get("agent_speed")
+        # Track the number of timesteps that have occurred within an episode.
+        self.timesteps = 0
 
-        # Store agent position parameters for use in `step()`, `reset()`, etc.
+        # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
+        self.agent_speed: int = config.get("agent_speed")
+        # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
         self.agent_pos: List[int]
         # FIXME: Default value (ie. [15, 15]) should be set in the config file.
-        self.initial_agent_pos = config.get("initial_agent_pos", [15, 15])
-        self.randomize_initial_agent_pos = config.get(
+        self.initial_agent_pos: List[int] = config.get("initial_agent_pos", [15, 15])
+        self.randomize_initial_agent_pos: bool = config.get(
             "randomize_initial_agent_pos", False
         )
+
+        action_space_partial: partial = config.get("action_space_partial")
+        # Ensure the provided `action_space_partial` has a `func` attribute.
+        if not isinstance(action_space_partial, partial):
+            raise TypeError(
+                f"Expected `action_space_partial` to be an instance of "
+                f"`functools.partial`, but got {type(action_space_partial)}."
+            )
+
+        super().__init__(
+            sim=config.get("sim"),
+            movements=config.get("movements"),
+            interactions=config.get("interactions"),
+            attributes=config.get("attributes"),
+            normalized_attributes=config.get("normalized_attributes"),
+            action_space_cls=action_space_partial.func,
+            deterministic=config.get("deterministic"),
+            benchmark_sim=config.get("benchmark_sim"),
+        )
+
+        self._log_env_init()
+
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
-        super().__init__(
-            config.get("simulation"),
-            config.get("movements"),
-            config.get("interactions"),
-            config.get("attributes"),
-            config.get("normalized_attributes"),
-            config.get("deterministic"),
+        # If provided, construct the class used to monitor this `ReactiveHarness` object.
+        self._setup_harness_analytics(
+            harness_analytics_partial=config.get("harness_analytics_partial")
         )
-        self._log_env_init()
+
+        # If provided, construct the class used to perform reward calculation.
+        self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
+
+        # After every agent action, store the movement and interaction that were taken.
+        # FIXME: any ideas on "better" names? we can prepend `prev_`, or `curr_`?
+        self.latest_movement: int = -1
+        self.latest_interaction: int = -1
+        # If the square the agent is on is "empty", this is set to True.
+        self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
+        # If the agent places a mitigation, this is set to True.
+        self.mitigation_placed: bool = False
+
+    def set_trial_results_path(self, path: str) -> None:
+        """Set the path to the directory where (tune) trial results will be stored."""
+        self._trial_results_path = path
 
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
-        # TODO(afennelly) Add docstring?
-        movement = action[0]
-        interaction = action[1]
+        # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
+        self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
-        movement_str = self.movements[movement]
-        interaction_str = self.interactions[interaction]
-        reward = 0.0
+        if self.harness_analytics:
+            self.harness_analytics.update_after_one_agent_step(
+                timestep=self.timesteps,
+                movement=self.latest_movement,
+                interaction=self.latest_interaction,
+                agent_pos=self.agent_pos,
+            )
 
-        pos_placeholder = self.agent_pos.copy()
-        screen_size = self.simulation.config.area.screen_size
+        # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
+        # indicate how to calculate the reward for the current timestep.
+        sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
 
-        # Update agent location on map
-        if movement_str == "none":
-            pass
-        elif movement_str == "up" and not self.agent_pos[0] == 0:
-            pos_placeholder[0] -= 1
-        elif movement_str == "down" and not self.agent_pos[0] == screen_size - 1:
-            pos_placeholder[0] += 1
-        elif movement_str == "left" and not self.agent_pos[1] == 0:
-            pos_placeholder[1] -= 1
-        elif movement_str == "right" and not self.agent_pos[1] == screen_size - 1:
-            pos_placeholder[1] += 1
-        else:
-            pass
+        if sim_run and self.harness_analytics:
+            self.harness_analytics.update_after_one_simulation_step(
+                timestep=self.timesteps
+            )
 
-        self.agent_pos = pos_placeholder
-
-        # Check if there was an interaction already done on this space
-        fire_map_idx = self.attributes.index("fire_map")
-        is_empty = self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
-
-        if is_empty and not interaction_str == "none":
-            # Perform interaction on new space
-            sim_interaction = self.harness_to_sim[interaction]
-            mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
-            self.simulation.update_mitigation([mitigation_update])
-
-        # Update the Simulation with new agent position (s).
-        # NOTE: We assume the single-agent case here, so agent ID == 0.
-        point = [self.agent_pos[1], self.agent_pos[0], 0]
-        self.simulation.update_agent_positions([point])
-
-        # Don't run the Simulation every step depending on speed
-        if self.num_agent_steps % self.agent_speed == 0:
-            sim_fire_map, sim_active = self.simulation.run(1)
-            fire_map = np.copy(sim_fire_map)
-            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
-            reward += self._calculate_reward(fire_map)
-        else:
-            sim_active = True
-            sim_fire_map = self.simulation.fire_map
-            fire_map = np.copy(sim_fire_map)
-            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
-
-        # Update the state with the new fire map
-        self.state[..., fire_map_idx] = fire_map
-
-        if not sim_active:
-            reward += 10
-
-        # if self._nearby_fire():
-        #     reward -= 2.0
-
-        self.num_agent_steps += 1
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
         truncated = False
-        return self.state, reward, not sim_active, truncated, {}
+        # FIXME `fire_status` is set in `FireSimulation.__init__()`, while `active` is
+        # set in `FireSimulation.run()`, so attribute DNE prior to first call to `run()`.
+        # terminated = self.sim.fire_status == GameStatus.QUIT
+        # The simulation has not yet been run via `run()`
+        if self.sim.elapsed_steps == 0:
+            terminated = False
+        else:
+            terminated = not self.sim.active
 
-    def _nearby_fire(self) -> bool:
-        """Check if the agent is adjacent to a space that is currently burning.
+        # Calculate the reward for the current timestep
+        # TODO pass `terminated` into `get_reward` method
+        reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
-        Returns:
-            nearby_fire: A boolean indicating if there is a burning space adjacent to the
-              agent.
-        """
-        nearby_locs = []
-        screen_size = self.simulation.config.area.screen_size
-        # Get all spaces surrounding agent
-        for i in range(self.agent_pos[0] - 1, self.agent_pos[0] + 2):
-            for j in range(self.agent_pos[1] - 1, self.agent_pos[1] + 2):
-                if (
-                    i < 0
-                    or i >= screen_size
-                    or j < 0
-                    or j >= screen_size
-                    or [i, j] == self.agent_pos
-                ):
-                    pass
-                else:
-                    nearby_locs.append((i, j))
+        # TODO account for below updates in the reward_cls.calculate_reward() method
+        # "End of episode" reward
+        if terminated:
+            reward += 10
 
-        for i, j in nearby_locs:
-            if self.state[self.attributes.index("fire_map")][i][j] == 1:
-                return True
+        if self.harness_analytics:
+            self.harness_analytics.update_after_one_harness_step(
+                sim_run, terminated, reward, timestep=self.timesteps
+            )
 
-        return False
+        self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
-    def _calculate_reward(self, fire_map: np.ndarray) -> float:
-        """Calculate the reward given the current fire_map.
+        return self.state, reward, terminated, truncated, {}
+
+    def _do_one_agent_step(self, action: np.ndarray) -> None:
+        """Move the agent and interact with the environment.
+
+        Within this method, the movement and interaction that the agent takes are stored
+        in `self.latest_movement` and `self.latest_interaction`, respectively. If this
+        movement is not "none", then the agent's position on the map is updated and
+        stored in `self.agent_pos`.
+
+        Given some arbitrary method that defines whether a space in the simulation is
+        empty or not (see `_agent_pos_is_empty_space()`), the value of
+        `self.agent_pos_is_empty_space` is updated accordingly. If the space occupied by
+        the agent (`self.agent_pos`) is *empty* and the interaction is not "none", then
+        the agent will place a mitigation on the map and `self.mitigation_placed` is set
+        to True. Otherwise, `self.mitigation_placed` is set to False.
 
         Arguments:
-            fire_map: An ndarray containing the current state of the `Simulation`.
-
-        Returns:
-            reward: A float representing the reward for given state.
+            action: An ndarray provided by the agent to update the environment state.
         """
-        burning = np.count_nonzero(fire_map == 1)
-        # burnt = np.count_nonzero(fire_map == 2)
+        # Parse the movement and interaction from the action, and store them.
+        self.latest_movement, self.latest_interaction = self._parse_action(action)
 
-        # diff = burnt - self.num_burned
-        # self.num_burned = burnt
+        # Update agent location on map
+        if self.movements[self.latest_movement] != "none":
+            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
+            self._update_agent_position()
 
-        # firelines = np.count_nonzero(fire_map == 3)
+        # Check if there was an interaction already done on this space
+        # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
+        self._agent_pos_is_empty_space()  # FIXME do we still need this??
 
-        total = self.simulation.config.area.screen_size**2
-        reward = -(burning / total) * 10
+        # Interact with the environment
+        interact = self.interactions[self.latest_interaction] != "none"
+        if self.agent_pos_is_empty_space and interact:
+            # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
+            self._update_mitigation()
 
-        return reward
+    def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
+        """Parse the action into movement and interaction."""
+        # Handle the MultiDiscrete case (currently used in `ReactiveHarness`)
+        if isinstance(self.action_space, spaces.MultiDiscrete):
+            return action[0], action[1]
+        # Handle the Discrete case (currently used in `ReactiveDiscreteHarness`)
+        elif isinstance(self.action_space, spaces.Discrete):
+            return action % len(self.movements), int(action / len(self.movements))
+        else:
+            # TODO provide a descriptive error message.
+            raise NotImplementedError
+
+    def _update_agent_position(self) -> None:
+        """Update the agent's position on the map by performing the provided movement."""
+        # Store agent's current position in a temporary variable to avoid overwriting it.
+        temp_agent_pos = self.agent_pos.copy()
+        map_boundary = self.sim.config.area.screen_size - 1
+
+        # Update the agent's position based on the provided movement.
+        movement_str = self.movements[self.latest_movement]
+        if movement_str == "up" and not self.agent_pos[0] == 0:
+            temp_agent_pos[0] -= 1
+        elif movement_str == "down" and not self.agent_pos[0] == map_boundary:
+            temp_agent_pos[0] += 1
+        elif movement_str == "left" and not self.agent_pos[1] == 0:
+            temp_agent_pos[1] -= 1
+        elif movement_str == "right" and not self.agent_pos[1] == map_boundary:
+            temp_agent_pos[1] += 1
+        else:
+            # FIXME: We are assuming that the agent will never move out of bounds, but
+            # there is no guarantee that this is true. Need to handle this case!!
+            # TODO should we provide a more descriptive error message here?
+            raise ValueError(f"Invalid movement string provided: {movement_str}.")
+
+        # Store the updated agent position.
+        self.agent_pos = temp_agent_pos
+
+        # Update the Simulation with new agent position (s).
+        # NOTE: We assume the single-agent case here, so agent ID == 0.
+        # NOTE: Elements of `point` should follow (column, row, agent_id) convention.
+        point = [self.agent_pos[1], self.agent_pos[0], self.sim_agent_id]
+        self.sim.update_agent_positions([point])
+
+    def _agent_pos_is_empty_space(self) -> bool:
+        """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
+        # FIXME Store the value that indicates whether space is empty or not
+        #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
+        fire_map_idx = self.attributes.index("fire_map")
+        self.agent_pos_is_empty_space = (
+            self.state[self.agent_pos[0], self.agent_pos[1], fire_map_idx]
+            == BurnStatus.UNBURNED
+        )
+
+    def _update_mitigation(self) -> None:
+        """Interact with the environment by performing the provided interaction."""
+        # Perform interaction on new space
+        sim_interaction = self.harness_to_sim[self.latest_interaction]
+        # NOTE: Elements of `mitigation_update` should follow (column, row, agent_id)
+        # convention.
+        mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
+        self.sim.update_mitigation([mitigation_update])
+        # Store indicator that a mitigation was placed
+        self.mitigation_placed = True
+
+    def _do_one_simulation_step(self) -> bool:
+        """Step the simulation forward one timestep, depending on `self.agent_speed`."""
+        run_sim = self.timesteps % self.agent_speed == 0
+        # The simulation WILL NOT be run every step, unless `self.agent_speed` == 1.
+        if run_sim:
+            self._run_simulation()
+        # Prepare the observation that is returned in the `self.step()` method.
+        self._update_state()
+        return run_sim
+
+    def _run_simulation(self):
+        """Run the simulation (s) for one timestep."""
+        if self.benchmark_sim:
+            self.benchmark_sim.run(1)
+
+        self.sim.run(1)
+
+    def _update_state(self):
+        """Modify environment's state to contain updates from the current timestep."""
+        # Copy the fire map from the simulation so we don't overwrite it.
+        fire_map = np.copy(self.sim.fire_map)
+        # Update the fire map with the numeric identifier for the agent.
+        fire_map[self.agent_pos[0], self.agent_pos[1]] = self.sim_agent_id
+        # Modify the state to contain the updated fire map
+        fire_map_idx = self.attributes.index("fire_map")
+        self.state[..., fire_map_idx] = fire_map
 
     def reset(
         self,
@@ -302,14 +394,23 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
-        self.simulation.reset()
+        logger.info(f"Resetting environment {hex(id(self))}")
+        self.sim.reset()
+        # FIXME quick fix to avoid errors if benchmark_sim is not used (ie. None)
+        if self.benchmark_sim:
+            # reset benchmark simulation
+            self.benchmark_sim.reset()
+
+        # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
+        if self.harness_analytics:
+            self.harness_analytics.reset()
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
         # Get the starting state of the `Simulation` after it has been reset (above).
         sim_observations = super()._select_from_dict(
-            self.simulation.get_attribute_data(), self.sim_attributes
+            self.sim.get_attribute_data(), self.sim_attributes
         )
         nonsim_observations = super()._select_from_dict(
             self.get_nonsim_attribute_data(), self.nonsim_attributes
@@ -332,14 +433,15 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
-        point = [self.agent_pos[1], self.agent_pos[0], 0]
-        self.simulation.update_agent_positions([point])
+        point = [self.agent_pos[1], self.agent_pos[0], self.sim_agent_id]
+        self.sim.update_agent_positions([point])
 
         # NOTE: `self.num_burned` is not currently used in the reward calculation.
         # self.num_burned = 0 FIXME include once we modularize the reward function
-        self.num_agent_steps = 0
+        self.timesteps = 0
 
         self._log_env_reset()
+        self._has_reset = True
 
         return self.state, {}
 
@@ -363,28 +465,27 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         nonsim_data["fire_map"] = np.zeros(
             (
-                self.simulation.config.area.screen_size,
-                self.simulation.config.area.screen_size,
+                self.sim.config.area.screen_size,
+                self.sim.config.area.screen_size,
             )
         )
 
         # Place the agent on the fire map using the agent ID.
-        nonsim_data["fire_map"][self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
+        nonsim_data["fire_map"][self.agent_pos[0], self.agent_pos[1]] = self.sim_agent_id
         # FIXME the below line has no dependence on `nonsim_data`; needs to be moved.
         # FIXME Why are we placing a fireline at the agents position here?
-        self.simulation.update_mitigation([(self.agent_pos[1], self.agent_pos[0], 3)])
+        # self.sim.update_mitigation([(self.agent_pos[1], self.agent_pos[0], 3)])
 
         return nonsim_data
 
     def render(self):  # noqa
-        self.simulation.rendering = True
+        self.sim.rendering = True
 
-    # TODO(atapley): Move this to RLHarness
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
         if self.randomize_initial_agent_pos:
             self.agent_pos = self.np_random.integers(
-                0, self.simulation.config.area.screen_size, size=2, dtype=int
+                0, self.sim.config.area.screen_size, size=2, dtype=int
             )
         else:
             # TODO(afennelly): Verify initial_agent_pos is within the bounds of the map
@@ -394,18 +495,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Log information about the environment that is being initialized."""
         if self._is_eval_env:
             i, j = self.worker_idx, self.vector_idx
-            self.log.warning(
-                f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}"
-            )
+            logger.warning(f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}")
 
         if not self._debug_mode:
             return
 
         # TODO: What log level should we use here?
-        self.log.info(f"Object {hex(id(self))}: worker_index: {self.worker_idx}")
-        self.log.info(f"Object {hex(id(self))}: vector_index: {self.vector_idx}")
-        self.log.info(f"Object {hex(id(self))}: num_workers: {self.num_workers}")
-        self.log.info(f"Object {hex(id(self))}: is_remote: {self.is_remote}")
+        logger.info(f"Object {hex(id(self))}: worker_index: {self.worker_idx}")
+        logger.info(f"Object {hex(id(self))}: vector_index: {self.vector_idx}")
+        logger.info(f"Object {hex(id(self))}: num_workers: {self.num_workers}")
+        logger.info(f"Object {hex(id(self))}: is_remote: {self.is_remote}")
 
     def _log_env_reset(self):
         """Log information about the environment that is being reset."""
@@ -418,194 +517,66 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             obs_min = round(self.state[..., idx].min(), 2)
             obs_max = round(self.state[..., idx].max(), 2)
             # Log lower bound of the (obs space) and max returned obs for each attribute.
-            self.log.info(f"{feat} LB: {low}, obs min: {obs_min}")
+            logger.info(f"{feat} LB: {low}, obs min: {obs_min}")
             # Log upper (lower) bounds of the returned observations for each attribute.
-            self.log.info(f"{feat} UB: {high}, obs max: {obs_max}")
+            logger.info(f"{feat} UB: {high}, obs max: {obs_max}")
 
         # Increment the number of episodes that have been debugged.
         self._episodes_debugged += 1
 
+    def _setup_harness_analytics(self, harness_analytics_partial: partial) -> None:
+        """Instantiates the harness_analytics used to monitor this object.
 
-class PGReactiveHarness(ReactiveHarness):  # noqa: D205,D212,D415
-    """
-    ### Description
-    Progressive Growth Reactive Harness for use with slowly growing the "static" fire
-    start location. The fire start location will expand every `sims_per_growth`
-    simulations. The fire start location will expand up to `growth_per_step` pixels for
-    every start location growth. `growth_seed` will control the randomization of start
-    locations for reproducability.
-    """
+        Arguments:
+            harness_analytics_partial: A `functools.partial` object that indicates the
+            top-level class that will be used to monitor the `ReactiveHarness` object.
+            The user is expected to provide the `sim_data_partial` keyword argument,
+            along with a valid value.
 
-    def __init__(self, config: EnvContext) -> None:
-        """Initialize the harness.
-
-        This checks that the fire initial position is static
-        and creates a counter for the total number of simulations run.
-
-        Progressive Growth Reactive Harness for use with slowly growing the "static" fire
-        start location. The fire start location will expand every `sims_per_growth`
-        simulations. The fire start location will expand up to `growth_per_step` pixels
-        for every start location growth.
-
-        TODO (afennelly) Update docstring.
+        Raises:
+            TypeError: If `harness_analytics_partial.keywords` does not contain a
+            `sim_data_partial` key with value of type `functools.partial`.
 
         """
-        super().__init__(config)
-        # Verify that a static initial position is used
-        fire_init_pos_type = self.simulation.config.yaml_data["fire"][
-            "fire_initial_position"
-        ]["type"]
-        if fire_init_pos_type != "static":
-            raise ValueError(
-                "The PG Harness requires a static `fire_initial_position`, "
-                f"but the supplied value is {fire_init_pos_type}"
-            )
-        # Number of sims to run before each growth step
-        self.sims_per_growth = config.get("sims_per_growth", 1)
-        # Number of pixels to allow starting region to grow per growths step
-        self.growth_per_step = config.get("growth_per_step", 1)
-        # Number of times the simulation has run (or been reset)
-        self.num_sims = 0
-
-    def reset(
-        self,
-        *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[Any, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[Any, Any]]:  # noqa
-        output, _ = super().reset()
-        # FIXME Currently, `ReactiveHarness.reset()` will update the seed used for
-        # "fire_initial_position", which is not what we want in the PG case.
-
-        # Update the number of times the simulation has run (or been reset).
-        self.num_sims += 1
-
-        # Retreive the "static" fire start position, as specified in the config.
-        fire_pos = self.simulation.config.yaml_data["fire"]["fire_initial_position"][
-            "static"
-        ]["position"]
-        fire_pos = fire_pos[1:-1].split(",")
-        x, y = (int(fire_pos[0]), int(fire_pos[1]))
-
-        # Randomly select a new fire start position within the growth range.
-        additional_pts = (self.num_sims // self.sims_per_growth) * self.growth_per_step
-        new_x = x + self.np_random.integers(
-            -additional_pts, additional_pts + 1, dtype=int
-        )
-        new_y = y + self.np_random.integers(
-            -additional_pts, additional_pts + 1, dtype=int
-        )
-
-        # Clamp the new values to the screen size.
-        new_x = max(
-            0, min(new_x, self.simulation.config.yaml_data["area"]["screen_size"] - 1)
-        )
-        new_y = max(
-            0, min(new_y, self.simulation.config.yaml_data["area"]["screen_size"] - 1)
-        )
-        self.simulation.set_fire_initial_position((new_x, new_y))
-
-        return output, {}
-
-
-class ReactiveDiscreteHarness(ReactiveHarness):  # noqa: D205,D212,D415
-    """
-    ### Description
-    This environment is the same as the above ReactiveHarness, except it uses a discrete
-    action space instead of a multi-discrete (used for algorithms that cannot support
-    multi-discrete)
-
-    ### Action Space
-    The action space is discrete with the shape `((M*I)+3)`. Movements refer to actions
-    where the agent traverses the environment (ie up, down). Interactions refer to actions
-    where the agent interacts with the environment (ie place fireline, cut trees). The
-    environment combines both movements and actions into a discrete space and adds the
-    option for no movement and no interaction.
-    """
-
-    def __init__(self, config: EnvContext) -> None:
-        """See ReactiveHarness (parent/base class)."""
-        super().__init__(config)
-        self.spec = EnvSpec(
-            id="ReactiveHarness-v1",
-            entry_point="simharness2.environments.reactive:ReactiveDiscreteHarness",
-            max_episode_steps=2000,
-        )
-        action_shape = len(self.movements) * len(self.interactions)
-        # Overwrite the action space to be Discrete.
-        self.action_space = spaces.Discrete(action_shape)
-
-    def step(
-        self, action: np.ndarray
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
-        # TODO(afennelly) Add docstring?
-        # Separate out the movement and the interaction from the action
-        movement = action % len(self.movements)
-        interaction = int(action / len(self.movements))
-
-        # FIXME (afennelly) Everything below is identical to parent class. We should
-        # refactor this to avoid code duplication, but it's okay to keep for now.
-        movement_str = self.movements[movement]
-        interaction_str = self.interactions[interaction]
-        reward = 0.0
-
-        pos_placeholder = self.agent_pos.copy()
-        screen_size = self.simulation.config.area.screen_size
-
-        # Update agent location on map
-        if movement_str == "none":
-            pass
-        elif movement_str == "up" and not self.agent_pos[0] == 0:
-            pos_placeholder[0] -= 1
-        elif movement_str == "down" and not self.agent_pos[0] == screen_size - 1:
-            pos_placeholder[0] += 1
-        elif movement_str == "left" and not self.agent_pos[1] == 0:
-            pos_placeholder[1] -= 1
-        elif movement_str == "right" and not self.agent_pos[1] == screen_size - 1:
-            pos_placeholder[1] += 1
+        self.harness_analytics: ReactiveHarnessAnalytics
+        if harness_analytics_partial:
+            try:
+                self.harness_analytics = harness_analytics_partial(
+                    sim=self.sim, benchmark_sim=self.benchmark_sim
+                )
+            except TypeError as e:
+                raise e
         else:
-            pass
+            self.harness_analytics = None
 
-        self.agent_pos = pos_placeholder
+    def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
+        """Instantiates the reward class used to perform reward calculation each episode.
 
-        # Check if there was an interaction already done on this space
-        fire_map_idx = self.attributes.index("fire_map")
-        is_empty = self.state[self.agent_pos[0]][self.agent_pos[1]][fire_map_idx] == 0
+        This method must be called AFTER `self._setup_harness_analytics()`, as the reward
+        class requires `self.harness_analytics` to be passed as an argument to its
+        constructor.
 
-        if is_empty and not interaction_str == "none":
-            # Perform interaction on new space
-            sim_interaction = self.harness_to_sim[interaction]
-            mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
-            self.simulation.update_mitigation([mitigation_update])
+        Arguments:
+            reward_cls_partial: A `functools.partial` object that indicates the reward
+                class that will be used to perform reward calculation after each timestep
+                in an episode.
 
-        # Update the Simulation with new agent position (s).
-        # NOTE: We assume the single-agent case here, so agent ID == 0.
-        point = [self.agent_pos[1], self.agent_pos[0], 0]
-        self.simulation.update_agent_positions([point])
+        Raises:
+            TypeError: If `harness_analytics_partial.keywords` does not contain a
+                `sim_data_partial` key with value of type `functools.partial`.
+            AttributeError: If `self` does not have a `harness_analytics` attribute. See
+            the above message for more details.
 
-        # Don't run the Simulation every step depending on speed
-        if self.num_agent_steps % self.agent_speed == 0:
-            sim_fire_map, sim_active = self.simulation.run(1)
-            fire_map = np.copy(sim_fire_map)
-            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
-            reward += self._calculate_reward(fire_map)
+        """
+        self.reward_cls: BaseReward
+        if reward_cls_partial:
+            try:
+                self.reward_cls = reward_cls_partial(
+                    harness_analytics=self.harness_analytics
+                )
+            except TypeError as e:
+                raise e
+            except AttributeError as e:
+                raise e
         else:
-            sim_active = True
-            sim_fire_map = self.simulation.fire_map
-            fire_map = np.copy(sim_fire_map)
-            fire_map[self.agent_pos[0]][self.agent_pos[1]] = self.sim_agent_id
-
-        # Update the state with the new fire map
-        self.state[..., fire_map_idx] = fire_map
-
-        if not sim_active:
-            reward += 10
-
-        # if self._nearby_fire():
-        #     reward -= 2.0
-
-        self.num_agent_steps += 1
-        # TODO(afennelly): Need to handle truncation properly. For now, we assume that
-        # the episode will never be truncated, but this isn't necessarily true.
-        truncated = False
-        return self.state, reward, not sim_active, truncated, {}
+            self.reward_cls = None

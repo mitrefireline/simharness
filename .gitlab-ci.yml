@@ -39,6 +39,17 @@ black:
   only:
     - merge_requests
 
+# mypy:
+#   stage: Static Analysis
+#   tags:
+#     - lslab2
+#   script:
+#     - poetry install --only dev
+#     - poetry run mypy .
+#   needs: []
+#   only:
+#     - merge_requests
+
 isort:
   stage: Static Analysis
   tags:

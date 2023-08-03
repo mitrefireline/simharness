@@ -1,4 +1,4 @@
-"""Module for using AIM with simharness2."""
+"""TODO."""
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
@@ -95,7 +95,7 @@ class AimLoggerCallback(LoggerCallback):
         Returns:
             Run: The created aim run for a specific trial.
         """
-        experiment_dir = trial.local_experiment_path
+        experiment_dir = trial.local_dir
         run = Run(
             repo=self._repo_path or experiment_dir,
             **self._aim_run_kwargs,
@@ -113,10 +113,10 @@ class AimLoggerCallback(LoggerCallback):
         return run
 
     def log_trial_start(self, trial: "Trial"):
-        """Execute on trial start.
+        """TODO.
 
         Args:
-            trial: The Tune trial that aim will track as a Run.
+            trial (Trial): [description]
         """
         if trial in self._trial_to_run:
             # Cleanup an existing run if the trial has been restarted
@@ -129,12 +129,12 @@ class AimLoggerCallback(LoggerCallback):
             self._log_trial_hparams(trial)
 
     def log_trial_result(self, iteration: int, trial: "Trial", result: Dict):
-        """Log a result.
+        """TODO.
 
         Args:
-            iteration: The iteration number
-            trial: The Tune trial that aim will track as a Run.
-            result: Dictionary containing key:value information to log
+            iteration (int): [description]
+            trial (Trial): [description]
+            result (Dict): [description]
         """
         tmp_result = result.copy()
 
@@ -176,20 +176,20 @@ class AimLoggerCallback(LoggerCallback):
                 valid_result[attr] = value
 
     def log_trial_end(self, trial: "Trial", failed: bool = False):
-        """Execute on trial end.
+        """TODO.
 
         Args:
-            trial: The Tune trial that aim will track as a Run.
-            failed: Flag indicating whether or not the trial failed
+            trial (Trial): [description]
+            failed (bool, optional): [description]. Defaults to False.
         """
         trial_run = self._trial_to_run.pop(trial)
         trial_run.close()
 
     def _log_trial_hparams(self, trial: "Trial"):
-        """Log Hyperparameters.
+        """TODO.
 
         Args:
-            trial: The Tune trial that aim will track as a Run.
+            trial (Trial): [description]
         """
         params = flatten_dict(trial.evaluated_params, delimiter="/")
         flat_params = flatten_dict(params)
