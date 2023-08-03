@@ -5,6 +5,6 @@ training:
   gamma:
     type: uniform
     values: [0.5, 0.9]
-  train_batch_size: 64
+  train_batch_size:
     type: choice
     values: [16, 32, 64, 128]
