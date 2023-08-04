@@ -27,7 +27,7 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
 
-from simharness2.callbacks.render_env import RenderEnv
+from simharness2.callbacks.render_env_marl import RenderEnvMARL
 from simharness2.logger.aim import AimLoggerCallback
 from simharness2.utils.evaluation_fires import get_default_operational_fires
 
@@ -227,7 +227,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(RenderEnv)
+        .callbacks(RenderEnvMARL)
     )
 
     return algo_cfg

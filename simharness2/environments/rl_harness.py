@@ -26,13 +26,15 @@ from typing import (
     no_type_check,
 )
 
-import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simfire.sim.simulation import FireSimulation
 
+# import gymnasium as gym
 
-class RLHarness(gym.Env, ABC):
+
+class RLHarness(MultiAgentEnv, ABC):
     """`Simulation` wrapper enabling RL agent's to interact with different simulators.
 
     The most important API methods a RLHarness exposes are `step()`, `reset()`,

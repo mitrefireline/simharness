@@ -18,7 +18,7 @@ harness_analytics_partial:
     _partial_: true
     # Defines the class that will be used to monitor and track agent behavior.
     agent_analytics_partial:
-      _target_: simharness2.analytics.agent_analytics.AgentAnalytics
+      _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
       _partial_: true
       movement_types: ${....movements}
       interaction_types: ${....interactions}

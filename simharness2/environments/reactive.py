@@ -307,7 +307,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # FIXME: We are assuming that the agent will never move out of bounds, but
             # there is no guarantee that this is true. Need to handle this case!!
             # TODO should we provide a more descriptive error message here?
-            raise ValueError(f"Invalid movement string provided: {movement_str}.")
+            logger.error(f"Invalid movement string provided: {movement_str}.")
 
         # Store the updated agent position.
         self.agent_pos = temp_agent_pos

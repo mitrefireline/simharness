@@ -11,19 +11,18 @@ within the training config and corresponding reward class.
 """
 import logging
 from collections import OrderedDict as ordered_dict
-from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 from functools import partial
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple
 
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
-
-from simharness2.rewards.base_reward import BaseReward
 from simfire.enums import BurnStatus, GameStatus
 
-from simharness2.environments.rl_harness import RLHarness
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
+from simharness2.environments.rl_harness import RLHarness
+from simharness2.rewards.base_reward import BaseReward
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +81,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def __init__(self, config: EnvContext) -> None:
         """See RLHarness (parent/base class)."""
         # NOTE: We don't set a default value in `config.get` for required arguments.
-        
+
         # FIXME Most, if not all, of these can be moved into the RLHarness.
         # TODO Should we make an RLlibHarness class to handle all these extras?
-        
+
         # Indicates that environment information should be logged at various points.
         self._debug_mode = config.get("debug_mode", False)
         self._debug_duration = config.get("debug_duration", 1)  # unit == episodes
@@ -112,8 +111,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.num_workers != 0:
             if eval_duration and not (eval_duration / self.num_workers).is_integer():
                 raise ValueError(
-                    f"The `evaluation_duration` ({eval_duration}) must be evenly divisible "
-                    f"by the `num_workers` ({self.num_workers}.)"
+                    f"The `evaluation_duration` ({eval_duration}) must be evenly "
+                    f"divisible by the `num_workers` ({self.num_workers}.)"
                 )
             # Indicates how many rounds of evaluation will be run using this environment.
             self._total_eval_rounds = (
@@ -135,7 +134,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         )
         # Track the number of timesteps that have occurred within an episode.
         self.timesteps: int = 0
-        
+
         action_space_partial: partial = config.get("action_space_partial")
         # Ensure the provided `action_space_partial` has a `func` attribute.
         if not isinstance(action_space_partial, partial):
@@ -143,62 +142,74 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 f"Expected `action_space_partial` to be an instance of "
                 f"`functools.partial`, but got {type(action_space_partial)}."
             )
-        
+
         self._log_env_init()
 
         # --- MARL SPECIFIC ---
         default_num_agents = 1
         self.num_agents = config.get("num_agents", default_num_agents)
-        
+
         # FIXME DEFAULTS (set these in the cfg)
         default_agent_speeds = [1] * default_num_agents
         self.agent_speeds: int = config.get("agent_speeds", default_agent_speeds)
-        
+
         # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
         self.agent_pos: List[List[int]] = [None] * self.num_agents
         default_pos_list = [[15, 15], [15, 15], [15, 15], [15, 15]]
-        self.initial_agent_pos: List[int] = config.get("initial_agent_pos", default_pos_list)
-        
+        self.initial_agent_pos: List[int] = config.get(
+            "initial_agent_pos", default_pos_list
+        )
+
         default_randomize_init = [False] * self.num_agents
         self.randomize_initial_agent_pos = config.get(
             "randomize_initial_agent_pos", default_randomize_init
         )
 
         super().__init__(
-            config.get("sim"),
-            config.get("movements"),
-            config.get("interactions"),
-            config.get("attributes"),
-            config.get("normalized_attributes"),
-            config.get("deterministic"),
-            benchmark_sim=config.get("benchmark_sim"),
+            sim=config.get("sim"),
+            movements=config.get("movements"),
+            interactions=config.get("interactions"),
+            attributes=config.get("attributes"),
+            normalized_attributes=config.get("normalized_attributes"),
             action_space_cls=action_space_partial.func,
+            deterministic=config.get("deterministic"),
+            benchmark_sim=config.get("benchmark_sim"),
         )
-        
+
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
 
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         # FIXME Move into RLHarness
-        self._setup_harness_analytics(harness_analytics_partial=config.get("harness_analytics_partial"))
-        
+        self._setup_harness_analytics(
+            harness_analytics_partial=config.get("harness_analytics_partial")
+        )
+
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
+    def set_trial_results_path(self, path: str) -> None:
+        """Set the path to the directory where (tune) trial results will be stored."""
+        self._trial_results_path = path
+
     def step(
         self, actions: Dict[str, np.ndarray]
-    ) -> Tuple[Dict[str, np.ndarray], 
-               Dict[str, float], 
-               Dict[str, bool], 
-               Dict[str, bool], 
-               Dict[str, Dict[str, Any]]]:  # noqa
+    ) -> Tuple[
+        Dict[str, np.ndarray],
+        Dict[str, float],
+        Dict[str, bool],
+        Dict[str, bool],
+        Dict[str, Dict[str, Any]],
+    ]:  # noqa
 
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
         self.timesteps += 1  # increment BEFORE method logic is performed (convention)
 
         for agent_id_num in range(self.num_agents):
             agent_id = f"agent_{agent_id_num}"
-            movement, interaction = self._do_one_agent_step(agent_id_num, actions[agent_id])  # alternatively, self._step_agent(action)
+            movement, interaction = self._do_one_agent_step(
+                agent_id_num, actions[agent_id]
+            )  # alternatively, self._step_agent(action)
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_agent_step(
@@ -213,7 +224,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         sim_run = self._do_one_simulation_step()  # alternatively, self._step_simulation()
 
         if sim_run and self.harness_analytics:
-            self.harness_analytics.update_after_one_simulation_step(timestep=self.timesteps)
+            self.harness_analytics.update_after_one_simulation_step(
+                timestep=self.timesteps
+            )
 
         # TODO(afennelly): Need to handle truncation properly. For now, we assume that
         # the episode will never be truncated, but this isn't necessarily true.
@@ -235,7 +248,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self.harness_analytics.update_after_one_harness_step(
                 sim_run, terminated, reward, timestep=self.timesteps
             )
-            
+
         new_obs, rewards, truncateds, terminateds, infos = {}, {}, {}, {}, {}
         truncs = set()
         terms = set()
@@ -246,7 +259,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             truncateds[agent_id] = truncated
             terminateds[agent_id] = terminated
             infos[agent_id] = {}
-            
+
             if truncated:
                 truncs.add(id_num)
             if terminated:
@@ -272,8 +285,12 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         the agent will place a mitigation on the map and `self.mitigation_placed` is set
         to True. Otherwise, `self.mitigation_placed` is set to False.
 
-        Arguments:
-            action: An ndarray provided by the agent to update the environment state.
+        Args:
+            agent_id_num (int): _description_
+            action (np.ndarray): _description_
+
+        Returns:
+            _type_: _description_
         """
         # Parse the movement and interaction from the action, and store them.
         movement_id, interaction_id = self._parse_action(action)
@@ -285,14 +302,16 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Check if there was an interaction already done on this space
         # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
-        is_empty_space = self._agent_pos_is_empty_space(agent_id_num)  # FIXME do we still need this??
+        is_empty_space = self._agent_pos_is_empty_space(
+            agent_id_num
+        )  # FIXME do we still need this??
 
         # Interact with the environment
         interact = self.interactions[interaction_id] != "none"
         if is_empty_space and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation(agent_id_num, interaction_id)
-        
+
         return movement_id, interaction_id
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
@@ -309,7 +328,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def _update_agent_position(self, agent_id_num: int, movement_id: str) -> None:
         """Update the agent's position on the map by performing the provided movement."""
         # Store agent's current position in a temporary variable to avoid overwriting it.
-        
+
         agent_pos = self.agent_pos[agent_id_num]
         temp_agent_pos = agent_pos.copy()
         map_boundary = self.sim.config.area.screen_size - 1
@@ -328,7 +347,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # FIXME: We are assuming that the agent will never move out of bounds, but
             # there is no guarantee that this is true. Need to handle this case!!
             # TODO should we provide a more descriptive error message here?
-            raise ValueError(f"Invalid movement string provided: {movement_str}.")
+            logger.error(
+                f"Invalid movement string provided: {movement_str} at pos {agent_pos}."
+            )
 
         # Store the updated agent position.
         self.agent_pos[agent_id_num] = temp_agent_pos
@@ -336,10 +357,12 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
         # NOTE: Elements of `point` should follow (column, row, agent_id) convention.
-        point = [self.agent_pos[agent_id_num][1], 
-                 self.agent_pos[agent_id_num][0], 
-                 agent_id_num]
-        
+        point = [
+            self.agent_pos[agent_id_num][1],
+            self.agent_pos[agent_id_num][0],
+            agent_id_num,
+        ]
+
         self.sim.update_agent_positions([point])
 
     def _agent_pos_is_empty_space(self, agent_id_num: int) -> bool:
@@ -347,11 +370,11 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # FIXME Store the value that indicates whether space is empty or not
         #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
-        
+
         agent_pos = self.agent_pos[agent_id_num]
         square_status = self.state[agent_pos[0], agent_pos[1], fire_map_idx]
-        
-        return square_status == BurnStatus.UNBURNED   
+
+        return square_status == BurnStatus.UNBURNED
 
     def _update_mitigation(self, agent_id_num: int, interaction_id: int) -> None:
         """Interact with the environment by performing the provided interaction."""
@@ -368,7 +391,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._run_simulation()
         # Prepare the observation that is returned in the `self.step()` method.
         self._update_state()
-        return True 
+        return True
 
     def _run_simulation(self):
         """Run the simulation (s) for one timestep."""
@@ -397,7 +420,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
               agent.
         """
         # TODO: This method MUST be tested to ensure it returns the correct boolean!!
-        
+
         nearby_fire = [False] * self.num_agents
         for agent_id in range(self.num_agents):
             agent_pos = self.agent_pos[agent_id]
@@ -423,7 +446,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 if self.state[i][j][self.attributes.index("fire_map")] == 1:
                     nearby_fire[agent_id] = True
                     break
-            
+
         return nearby_fire
 
     def reset(
@@ -431,7 +454,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         *,
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[Any, Any]]:  # noqa
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, Dict[Any, Any]]]:  # noqa
         # log.info("Resetting environment")
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
@@ -495,7 +518,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         for agent_id in range(self.num_agents):
             agent_pos = self.agent_pos[agent_id]
             points.append([agent_pos[1], agent_pos[0], 0])
-        
+
         self.sim.update_agent_positions(points)
 
         # NOTE: `self.num_burned` is not currently used in the reward calculation.
@@ -504,13 +527,14 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self._log_env_reset()
         self._has_reset = True
-        
-        obs, infos = {}, {}
-        for id_num in range(self.num_agents):
-            obs[f"agent_{id_num}"] = self.state
-            infos[f"agent_{id_num}"] = {}
 
-        return obs, infos
+        marl_obs, infos = {}, {}
+        for id_num in range(self.num_agents):
+            agent_id = f"agent_{id_num}"
+            marl_obs[agent_id] = self.state
+            infos[agent_id] = {}
+
+        return marl_obs, infos
 
     def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:  # noqa
         nonsim_min_maxes = ordered_dict()
@@ -522,8 +546,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #   - 4: BurnStatus.SCRATCHLINE (if "scratchline" in self.interactions)
         #   - 5: BurnStatus.WETLINE (if "wetline" in self.interactions)
         #   - X: self.sim_agent_id (value is set in RLHarness.__init__)
-        nonsim_min_maxes["fire_map"] = {"min": 0, 
-                                        "max": self.sim_agent_id + self.num_agents}
+        nonsim_min_maxes["fire_map"] = {
+            "min": 0,
+            "max": self.sim_agent_id + self.num_agents,
+        }
         return nonsim_min_maxes
 
     def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:  # noqa
@@ -532,8 +558,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         nonsim_data = ordered_dict()
 
         nonsim_data["fire_map"] = np.zeros(
-            (self.sim.config.area.screen_size,
-             self.sim.config.area.screen_size)
+            (self.sim.config.area.screen_size, self.sim.config.area.screen_size)
         )
 
         for agent_id in range(self.num_agents):
@@ -549,29 +574,34 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _check_start_pos(self, start_pos: Tuple[int, int]) -> bool:
         # Check that value is in the correct range
-        if (start_pos[0] < 0 or 
-            start_pos[0] >= self.sim.config.area.screen_size or 
-            start_pos[1] < 0 or 
-            start_pos[1] >= self.sim.config.area.screen_size):
-            
+        if (
+            start_pos[0] < 0
+            or start_pos[0] >= self.sim.config.area.screen_size
+            or start_pos[1] < 0
+            or start_pos[1] >= self.sim.config.area.screen_size
+        ):
+
             return False
-        
+
         for pos in self.agent_pos:
             if np.array_equal(pos, start_pos):
                 return False
-        
+
         return True
-    
+
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
         for agent_id in range(self.num_agents):
-            
+
             # If initial position is given
             if self._check_start_pos(self.initial_agent_pos[agent_id]):
                 self.agent_pos[agent_id] = self.initial_agent_pos[agent_id]
             else:
-                raise ValueError(f'Initial position {self.initial_agent_pos[agent_id]} for agent {agent_id} is not valid.')
-            
+                raise ValueError(
+                    f"Initial position {self.initial_agent_pos[agent_id]} "
+                    f"for agent {agent_id} is not valid."
+                )
+
             # If initial position is random
             if self.randomize_initial_agent_pos[agent_id]:
                 valid_pos = False
@@ -580,19 +610,16 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                     random_pos = self.np_random.integers(
                         0, self.sim.config.area.screen_size, size=2, dtype=int
                     )
-                    
+
                     valid_pos = self._check_start_pos(random_pos)
-                
+
                 self.agent_pos[agent_id] = random_pos
 
     def _log_env_init(self):
         """Log information about the environment that is being initialized."""
-
         if self._is_eval_env:
             i, j = self.worker_idx, self.vector_idx
-            logger.warning(
-                f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}"
-            )
+            logger.warning(f"Object {hex(id(self))}: index (i+1)*(j+1) == {(i+1)*(j+1)}")
 
         if not self._debug_mode:
             return
@@ -622,10 +649,11 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._episodes_debugged += 1
 
     def _setup_harness_analytics(self, harness_analytics_partial: partial) -> None:
-        """Instantiates the harness_analytics used to monitor this `ReactiveHarness` object.
+        """Instantiates the harness_analytics used to monitor this `ReactiveHarness` obj.
 
         Arguments:
-            harness_analytics_partial: A `functools.partial` object that indicates the top-level
+            harness_analytics_partial:
+                A `functools.partial` object that indicates the top-level
                 class that will be used to monitor the `ReactiveHarness` object. The user
                 is expected to provide the `sim_data_partial` keyword argument, along
                 with a valid value.
@@ -649,8 +677,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
         """Instantiates the reward class used to perform reward calculation each episode.
 
-        This method must be called AFTER `self._setup_harness_analytics()`, as the reward class
-        requires `self.harness_analytics` to be passed as an argument to its constructor.
+        This method must be called AFTER `self._setup_harness_analytics()`, as the reward
+        class requires `self.harness_analytics` to be passed as an argument to its
+        constructor.
 
         Arguments:
             reward_cls_partial: A `functools.partial` object that indicates the reward
@@ -660,14 +689,16 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         Raises:
             TypeError: If `harness_analytics_partial.keywords` does not contain a
                 `sim_data_partial` key with value of type `functools.partial`.
-            AttributeError: If `self` does not have a `harness_analytics` attribute. See the above
-                message for more details.
+            AttributeError: If `self` does not have a `harness_analytics` attribute.
+                See the above message for more details.
 
         """
         self.reward_cls: BaseReward
         if reward_cls_partial:
             try:
-                self.reward_cls = reward_cls_partial(harness_analytics=self.harness_analytics)
+                self.reward_cls = reward_cls_partial(
+                    harness_analytics=self.harness_analytics
+                )
             except Exception as e:
                 raise e
         else:
