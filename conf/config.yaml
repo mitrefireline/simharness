@@ -9,17 +9,18 @@ defaults:
   # - debugging: default
   - resources: default
   - hydra: default
+  - tunables: default
   - _self_
 
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
   run_hash: null
   repo: ${cli.data_dir}/simharness/aim
-  experiment: debug
+  experiment: debug_alex
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true
-  log_hydra_config: true
+  log_hydra_config: false
 cli:
   # Specify the run mode. Supported options: train, tune, view
   mode: ??? # Force command-line override
@@ -44,12 +45,12 @@ checkpoint:
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 1000000
+  training_iteration: 4
   timesteps_total: 2000000000
   # episodes_total: 1000000
   episode_reward_mean: 10000000
 debugging:
-  log_level: WARN
+  log_level: INFO
   log_sys_usage: True
   seed: 2000
   # Prepare debugging settings
@@ -70,8 +71,8 @@ debugging:
   #         }
   #     }
   # )
-  # logger_config:
-  #   type:
-  #     _partial_: true
-  #     _target_: ray.tune.logger.TBXLogger
-  #   logdir: ${hydra:run.dir}
+  logger_config:
+    type:
+      _target_: hydra.utils.get_class
+      path: ray.tune.logger.TBXLogger
+    logdir: ${hydra:run.dir}

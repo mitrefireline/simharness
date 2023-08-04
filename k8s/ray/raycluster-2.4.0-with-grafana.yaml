@@ -143,7 +143,7 @@ spec:
             limits:
               cpu: "32"
               memory: "40G"
-              # MIG Options: 
+              # MIG Options:
               # - mig-1g.5gb
               # - mig-2g.10gb
               # - mig-3g.20gb
