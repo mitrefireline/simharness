@@ -17,18 +17,24 @@ SimHarness's easy-to-use interface allows for the quick and simple training of i
 - For the time being, a `requirements.txt` file will be used to install the project dependencies.
 
 Clone the repository:
+
+(with HTTPS)
 ```shell
 git clone https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2.git
 ```
-
+(with SSH)
+```shell
+git clone git@gitlab.mitre.org:fireline/reinforcementlearning/simharness2.git
+```
 Then, create and populate the `sh2` conda environment with project dependencies:
 ```shell
 cd simharness2/
-sudo apt-get update && sudo apt-get install build-essential -y
-# Create a conda environment using `conda-linux-64.lock`
-conda create --name sh2 --file conda-linux-64.lock
+sudo apt-get update && sudo apt-get install build-essential libgl1 -y
+# Create a conda environment with the correct python version
+conda create --yes --name sh2 python=3.9.*
 conda activate sh2
-poetry install
+pip install -r requirements.txt
+pip install ray[rllib]==2.6.2
 ```
 
 ## Troubleshooting

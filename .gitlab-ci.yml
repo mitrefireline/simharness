@@ -121,21 +121,6 @@ pages:
     - docker build --build-arg RAY_VERSION=${RAY_VERSION} -f docker/simple-grafana-prometheus.dockerfile -t butler.mitre.org/fireline/simharness2:simple-grafana-prometheus-${RAY_VERSION} .
     - docker push butler.mitre.org/fireline/simharness2:simple-grafana-prometheus-${RAY_VERSION}
 
-simple-2.3.0:
-  stage: Docker
-  tags:
-    - lslab2
-  image: docker:20.10.16-dind
-  services:
-    - docker:20.10.16-dind
-  before_script:
-    - docker --version
-  variables:
-    RAY_VERSION: 2.3.0
-  extends: .build
-  only:
-    - main
-
 simple-2.4.0:
   stage: Docker
   tags:
@@ -149,4 +134,37 @@ simple-2.4.0:
     RAY_VERSION: 2.4.0
   extends: .build
   only:
+    - dev
+    - main
+
+simple-2.5.1:
+  stage: Docker
+  tags:
+    - lslab2
+  image: docker:20.10.16-dind
+  services:
+    - docker:20.10.16-dind
+  before_script:
+    - docker --version
+  variables:
+    RAY_VERSION: 2.5.1
+  extends: .build
+  only:
+    - dev
+    - main
+
+simple-2.6.2:
+  stage: Docker
+  tags:
+    - lslab2
+  image: docker:20.10.16-dind
+  services:
+    - docker:20.10.16-dind
+  before_script:
+    - docker --version
+  variables:
+    RAY_VERSION: 2.6.2
+  extends: .build
+  only:
+    - dev
     - main
