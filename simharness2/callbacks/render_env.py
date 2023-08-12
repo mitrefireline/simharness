@@ -93,7 +93,7 @@ class RenderEnv(DefaultCallbacks):
         """
         env_ctx = worker.env_context
         vector_idx = env_ctx.vector_index
-        in_evaluation = worker.policy_config["in_evaluation"]
+        in_evaluation = worker.config.in_evaluation
         env: ReactiveHarness = base_env.vector_env.envs[vector_idx]
         headless = env.sim.config.simulation.headless
         # Save a GIF and fire spread graph from the last episode
