@@ -174,13 +174,14 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
         # After every agent action, store the movement and interaction that were taken.
-        # FIXME: any ideas on "better" names? we can prepend `prev_`, or `curr_`?
-        self.latest_movement: int = -1
-        self.latest_interaction: int = -1
+        self.latest_movement: int = None
+        self.latest_interaction: int = None
         # If the square the agent is on is "empty", this is set to True.
         self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
         # If the agent places a mitigation, this is set to True.
         self.mitigation_placed: bool = False
+        # If the agent attempts to move out of bounds, this is set to True.
+        self._moved_off_map = False
 
     def set_trial_results_path(self, path: str) -> None:
         """Set the path to the directory where (tune) trial results will be stored."""
@@ -198,6 +199,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 movement=self.latest_movement,
                 interaction=self.latest_interaction,
                 agent_pos=self.agent_pos,
+                valid_movement=not self._moved_off_map,
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -295,7 +297,11 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Update the agent's position based on the provided movement.
         movement_str = self.movements[self.latest_movement]
-        if movement_str == "up" and not self.agent_pos[0] == 0:
+        # First, check that the movement string is valid.
+        if movement_str not in ["up", "down", "left", "right"]:
+            raise ValueError(f"Invalid movement string provided: {movement_str}.")
+        # Then, ensure that the agent will not move off the map.
+        elif movement_str == "up" and not self.agent_pos[0] == 0:
             temp_agent_pos[0] -= 1
         elif movement_str == "down" and not self.agent_pos[0] == map_boundary:
             temp_agent_pos[0] += 1
@@ -303,11 +309,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             temp_agent_pos[1] -= 1
         elif movement_str == "right" and not self.agent_pos[1] == map_boundary:
             temp_agent_pos[1] += 1
+        # Movement invalid from current pos, so the agent movement will be ignored.
+        # Depending on `self.reward_cls`, the agent may receive a small penalty.
         else:
-            # FIXME: We are assuming that the agent will never move out of bounds, but
-            # there is no guarantee that this is true. Need to handle this case!!
-            # TODO should we provide a more descriptive error message here?
-            raise ValueError(f"Invalid movement string provided: {movement_str}.")
+            # Inform caller that the agent cannot move in the provided direction.
+            logger.debug(f"Agent cannot move {movement_str} from {self.agent_pos}.")
+            logger.debug("Setting `self._moved_off_map = True`...")
+            self._moved_off_map = True
 
         # Store the updated agent position.
         self.agent_pos = temp_agent_pos
@@ -442,6 +450,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self._log_env_reset()
         self._has_reset = True
+
+        # Reset attributes that help track the agent's actions.
+        self.latest_movement: int = None
+        self.latest_interaction: int = None
+        # If the square the agent is on is "empty", this is set to True.
+        self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
+        # If the agent places a mitigation, this is set to True.
+        self.mitigation_placed: bool = False
+        # If the agent attempts to move out of bounds, this is set to True.
+        self._moved_off_map = False
 
         return self.state, {}
 

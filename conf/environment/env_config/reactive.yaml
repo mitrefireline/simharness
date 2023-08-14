@@ -27,6 +27,7 @@ reward_cls_partial:
   _partial_: true
   fixed_reward: 100
   static_penalty: 50
+  invalid_movement_penalty: 5
 initial_agent_pos: [50, 50]
 randomize_initial_agent_pos: false
 benchmark_sim: ${.sim}

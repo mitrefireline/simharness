@@ -83,7 +83,12 @@ class AgentAnalytics(ABC):
 
     @abstractmethod
     def update(
-        self, timestep: int, movement: int, interaction: int, agent_pos: List[int]
+        self,
+        timestep: int,
+        movement: int,
+        interaction: int,
+        agent_pos: List[int],
+        valid_movement: bool,
     ) -> None:
         """Update the AgentMetricsTracker object variables after each agent action."""
         pass
@@ -182,6 +187,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         Columns used to store the agent's behavior:
             - `timestep`: current timestep in the episode.
             - `movement`: string id for the movement that the agent selected.
+            - `valid_movement`: bool indicating if the agent's movement was valid.
             - `interaction`: string id for the interaction that the agent selected.
             - `near_fire`: bool indicating if the agent is near the fire.
             - `burn_status`: name (str) of the BurnStatus value at the agent's current
@@ -193,6 +199,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         self.df_cols = [
             "timestep",
             "movement",
+            "valid_movement",
             "interaction",
             "near_fire",
             "burn_status",
@@ -206,6 +213,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         self.df_dtypes = {
             "timestep": np.uint16,
             "movement": movement_types,
+            "valid_movement": "boolean",
             "interaction": interaction_types,
             "near_fire": "boolean",
             "burn_status": status_types,
@@ -221,6 +229,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         movement: int,
         interaction: int,
         agent_pos: List[int],
+        valid_movement: bool,
     ) -> None:
         """Update the AgentAnalytics object variables after each agent action.
 
@@ -229,6 +238,9 @@ class ReactiveAgentAnalytics(AgentAnalytics):
             movement (int): Movement ID for the agent
             interaction (int): Interaction ID for the agent
             agent_pos (List[int]): Current agent position
+            valid_movement: A boolean indicating whether the agent's latest movement was
+                valid. Expect the value to be `False` if the agent attempted to move to a
+                position not contained within the `FireSimulation.fire_map`.
         """
         # NOTE: These are stored in the corresponding `FireSimulationData.df`.
         if self.interaction_types[interaction] != "none":
@@ -243,6 +255,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         agent_data = [
             [timestep],
             [self.movement_types[movement]],
+            [valid_movement],
             [self.interaction_types[interaction]],
             [self.agent_near_fire(fire_map, agent_pos)],
             [BurnStatus(fire_map[agent_pos[0], agent_pos[1]]).name],
