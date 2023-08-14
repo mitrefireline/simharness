@@ -48,6 +48,7 @@ class RLHarnessAnalytics(ABC):
         movement: int,
         interaction: int,
         agent_pos: List[int],
+        valid_movement: bool,
     ) -> None:
         """See subclass for docstring."""
         pass
@@ -123,6 +124,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         movement: int,
         interaction: int,
         agent_pos: List[int],
+        valid_movement: bool,
     ) -> None:
         """Updates `self.sim_analytics.agent_analytics`, if agents are in the sim.
 
@@ -136,10 +138,13 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             interaction: An integer indicating the index of the latest interaction that
                 the agent selected.
             agent_pos: A list of integers indicating the current position of the agent.
+            valid_movement: A boolean indicating whether the agent's latest movement was
+                valid. Expect the value to be `False` if the agent attempted to move to a
+                position not contained within the `FireSimulation.fire_map`.
         """
         if self.sim_analytics.agent_analytics:
             self.sim_analytics.agent_analytics.update(
-                timestep, movement, interaction, agent_pos
+                timestep, movement, interaction, agent_pos, valid_movement
             )
 
     def update_after_one_simulation_step(self, *, timestep: int) -> None:

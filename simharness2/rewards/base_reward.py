@@ -140,6 +140,7 @@ class ComprehensiveReward(BaseReward):
         harness_analytics: ReactiveHarnessAnalytics,
         fixed_reward: float,
         static_penalty: float,
+        invalid_movement_penalty: float,
     ):
         """Induces a postive reward structure using the number of undamaged squares.
 
@@ -156,9 +157,14 @@ class ComprehensiveReward(BaseReward):
                 by the agent.
             static_penalty: The fixed penalty that is applied to the agent if it is
                 within a certain distance of the fire.
+            invalid_movement_penalty: The fixed penalty that is applied to the agent if
+                it attempts to move to a square that is not contained within the bounds
+                of the `FireSimulation.fire_map`.
         """
         self.fixed_reward = fixed_reward
+        # TODO: rename to `self.near_fire_penalty`
         self.static_penalty = static_penalty
+        self.invalid_movement_penalty = invalid_movement_penalty
         super().__init__(harness_analytics)
 
     def get_reward(self, timestep: int, sim_run: bool) -> float:
@@ -240,6 +246,12 @@ class ComprehensiveReward(BaseReward):
             # set the reward to be -1.0 * static_penalty
             reward = -self.static_penalty
 
+        # Penalize agent if chosen movement would result in an invalid map position.
+        if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
+            "valid_movement"
+        ]:
+            reward -= self.invalid_movement_penalty
+
         # TODO add very large negative reward if agent steps into fire
         # (or end the simulation)
 
@@ -259,6 +271,12 @@ class ComprehensiveReward(BaseReward):
             ["interaction", "near_fire"]
         ].tolist() != ["none", True]:
             inter_reward += 1
+
+        # Penalize agent if chosen movement would result in an invalid map position.
+        if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
+            "valid_movement"
+        ]:
+            inter_reward -= self.invalid_movement_penalty
 
         # update self.latest_reward and then return the intermediate reward
         # self.latest_reward = inter_reward
