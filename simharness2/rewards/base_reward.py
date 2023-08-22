@@ -41,21 +41,24 @@ class SimpleReward(BaseReward):
     def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
         # if Simulation was not run this timestep, return intermediate reward
-        if not sim_run:
-            # No intermediate reward calculation used currently, so 0.0 is returned.
-            return self.get_timestep_intermediate_reward(timestep)
+        # if not sim_run:
+        #     # No intermediate reward calculation used currently, so 0.0 is returned.
+        #     return self.get_timestep_intermediate_reward(timestep)
 
         # Use the data stored in harness_analytics object to calculate timestep reward
 
+        df = self.harness_analytics.sim_analytics.df.iloc[-1]
+        burning = df["burning_total"].astype("int")
+
         # set the simplereward to be the number of new_damaged squares in the main sim
-        new_damaged = self.harness_analytics.sim_analytics.num_new_damaged  # FIXME
+        # new_damaged = self.harness_analytics.sim_analytics.num_new_damaged  # FIXME
 
         # total = self.simulation.config.area.screen_size**2
 
         # get the total area from the sim_tracker
         # total = self.tracker.sim_tracker.sim_area
 
-        reward = -(new_damaged / self._sim_area) * 100
+        reward = -(burning / self._sim_area)
 
         # update self.latest_reward and then return the reward
         self.latest_reward = reward

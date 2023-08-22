@@ -1,4 +1,4 @@
 defaults:
-  - model: screen_size_128
+  - model: screen_size_64
 
-train_batch_size: 1000
+train_batch_size: 4000

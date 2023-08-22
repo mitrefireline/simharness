@@ -16,7 +16,7 @@ defaults:
 aim:
   run_hash: null
   repo: ${cli.data_dir}/simharness/aim
-  experiment: debug_alex
+  experiment: single_simple-64
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true
@@ -41,11 +41,11 @@ runtime:
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
-  checkpoint_frequency: 20
+  checkpoint_frequency: 5000
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 4
+  training_iteration: 10000
   timesteps_total: 2000000000
   # episodes_total: 1000000
   episode_reward_mean: 10000000

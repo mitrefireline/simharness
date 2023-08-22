@@ -42,7 +42,7 @@ rollout_fragment_length: "auto"
 # batch size. Note that when `num_envs_per_worker > 1`, episode steps will be buffered
 # until the episode completes, and hence batches may contain significant amounts of
 # off-policy data.
-batch_mode: "truncate_episodes"
+batch_mode: "complete_episodes"
 
 # Whether to validate that each created remote worker is healthy after its construction
 # process.

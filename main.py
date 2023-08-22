@@ -32,6 +32,8 @@ import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
 
+# from simharness2.utils.evaluation_fires import get_default_operational_fires
+
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"

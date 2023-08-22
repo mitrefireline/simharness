@@ -36,6 +36,7 @@ class RenderEnv(DefaultCallbacks):
 
         # Empty path, updated within first `on_episode_start` call (for each rollout).
         self.trial_results_path: str = ""
+        self.num_runs = 0
 
     def on_algorithm_init(
         self,
@@ -106,7 +107,8 @@ class RenderEnv(DefaultCallbacks):
             id = f"worker_idx_{env_ctx.worker_index}_vector_idx_{vector_idx}"
             # FIXME what happens when cli.mode == tune??
             logdir = env._trial_results_path
-            episode_num = env.harness_analytics.episodes_total
+            # episode_num = env.harness_analytics.episodes_total
+            episode_num = self.num_runs
             save_path = os.path.join(logdir, "gifs", f"episode_{episode_num}_{id}.gif")
             # FIXME: Can we save each gif in a folder that relates it to episode iter?
             logger.warning(f"ATTEMPTING TO SAVE GIF TO {save_path}")
@@ -128,6 +130,7 @@ class RenderEnv(DefaultCallbacks):
             )
             # base_env.vector_env.envs[vector_idx].sim.reset()
             # log.info(type(base_env.vector_env.envs[env_index].simulation._game))
+            self.num_runs += 1
 
     def on_evaluate_start(
         self,

@@ -21,9 +21,10 @@ from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
 from simfire.enums import BurnStatus
 
-from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
+# from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
-from simharness2.rewards.base_reward import BaseReward
+
+# from simharness2.rewards.base_reward import BaseReward
 
 logger = logging.getLogger(__name__)
 
@@ -225,12 +226,17 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Calculate the reward for the current timestep
         # TODO pass `terminated` into `get_reward` method
-        reward = self.reward_cls.get_reward(self.timesteps, sim_run)
+        # reward = self.reward_cls.get_reward(self.timesteps, sim_run)
+        burning = np.count_nonzero(self.state[0] == 1)
+        reward = -(
+            burning
+            / (self.sim.config.area.screen_size * self.sim.config.area.screen_size)
+        )
 
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        if terminated:
-            reward += 10
+        # if terminated:
+        #     reward += 10
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
@@ -558,16 +564,17 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             `sim_data_partial` key with value of type `functools.partial`.
 
         """
-        self.harness_analytics: ReactiveHarnessAnalytics
-        if harness_analytics_partial:
-            try:
-                self.harness_analytics = harness_analytics_partial(
-                    sim=self.sim, benchmark_sim=self.benchmark_sim
-                )
-            except TypeError as e:
-                raise e
-        else:
-            self.harness_analytics = None
+        self.harness_analytics = None
+        # self.harness_analytics: ReactiveHarnessAnalytics
+        # if harness_analytics_partial:
+        #     try:
+        #         self.harness_analytics = harness_analytics_partial(
+        #             sim=self.sim, benchmark_sim=self.benchmark_sim
+        #         )
+        #     except TypeError as e:
+        #         raise e
+        # else:
+        #     self.harness_analytics = None
 
     def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
         """Instantiates the reward class used to perform reward calculation each episode.
@@ -588,15 +595,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             the above message for more details.
 
         """
-        self.reward_cls: BaseReward
-        if reward_cls_partial:
-            try:
-                self.reward_cls = reward_cls_partial(
-                    harness_analytics=self.harness_analytics
-                )
-            except TypeError as e:
-                raise e
-            except AttributeError as e:
-                raise e
-        else:
-            self.reward_cls = None
+        self.reward_cls = None
+        # self.reward_cls: BaseReward
+        # if reward_cls_partial:
+        #     try:
+        #         self.reward_cls = reward_cls_partial(
+        #             harness_analytics=self.harness_analytics
+        #         )
+        #     except TypeError as e:
+        #         raise e
+        #     except AttributeError as e:
+        #         raise e
+        # else:
+        #     self.reward_cls = None
