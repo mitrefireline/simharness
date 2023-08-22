@@ -27,9 +27,10 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
 
+# from simharness2.utils.evaluation_fires import get_default_operational_fires
+import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
-from simharness2.utils.evaluation_fires import get_default_operational_fires
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
@@ -83,7 +84,8 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     param_space = algo_cfg
 
     # Override the variables we want to tune on
-    _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
+    if cfg.tunables:
+        _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
 
     # Configs for this specific trial run
     run_config = air.RunConfig(
@@ -99,14 +101,14 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # TODO make sure 'reward' is reported with tune.report()
     # TODO add this to config
     # Config for the tuning process (used for all trial runs)
-    tune_config = tune.TuneConfig(num_samples=4)
+    # tune_config = tune.TuneConfig(num_samples=4)
 
     # Create a Tuner
     tuner = tune.Tuner(
         trainable=trainable_algo_str,
         param_space=param_space,
         run_config=run_config,
-        tune_config=tune_config,
+        # tune_config=tune_config,
     )
 
     results = tuner.fit()
@@ -130,7 +132,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         result = algo.train()
         LOGGER.info(f"{pretty_print(result)}\n")
 
-        if i % cfg.checkpoint.frequency == 0:
+        if i % cfg.checkpoint.checkpoint_frequency == 0:
             ckpt_path = algo.save()
             log_str = f"A checkpoint has been created inside directory: {ckpt_path}.\n"
             LOGGER.info(log_str)
@@ -171,13 +173,14 @@ def _instantiate_config(
     env_settings = instantiate(cfg.environment, _convert_="partial")
     eval_settings = instantiate(cfg.evaluation, _convert_="partial")
 
+    # FIXME: Fire scenario configuration disabled for now. Fix this in new MR.
     # Get the operational fires we want to run evaluation with
-    operational_fires = get_default_operational_fires(cfg)
+    # operational_fires = get_default_operational_fires(cfg)
 
     # Inject operational fires into the evaluation settings
-    eval_settings["evaluation_config"]["env_config"].update(
-        {"scenarios": operational_fires}
-    )
+    # eval_settings["evaluation_config"]["env_config"].update(
+    #     {"scenarios": operational_fires}
+    # )
 
     # Prepare exploration options for the algorithm
     exploration_cfg = OmegaConf.to_container(
@@ -240,10 +243,12 @@ def main(cfg: DictConfig) -> None:
     Args:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
+    # NOTE: We are disabling logging to the driver. For reference, see
+    # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
+    # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
-    ray.init()
+    ray.init(address="auto", log_to_driver=False)
 
-    # Set the output directory for saving logging files for this run.
     outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")
 
