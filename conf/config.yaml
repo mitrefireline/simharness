@@ -45,7 +45,7 @@ checkpoint:
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 4
+  # training_iteration: 4
   timesteps_total: 2000000000
   # episodes_total: 1000000
   episode_reward_mean: 10000000

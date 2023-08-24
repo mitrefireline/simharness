@@ -132,20 +132,26 @@ class RenderEnv(DefaultCallbacks):
         # Save a GIF from the last episode
         # TODO: Do we also want to save the fire spread graph?
         if worker.config.in_evaluation:
+            logdir = env._trial_results_path
+            eval_iters = env._num_eval_iters
             # Check if there is a gif "ready" to be saved
             if env._should_render and env.sim.rendering:
-                logdir = env._trial_results_path
-                eval_iters = env._num_eval_iters
+                # FIXME Update logic to handle saving same gif when writing to Aim UI
                 gif_save_path = os.path.join(
                     logdir, "gifs", f"eval_iter_{eval_iters}.gif"
                 )
-
                 # FIXME: Can we save each gif in a folder that relates it to episode iter?
                 logger.info(f"Saving GIF to {gif_save_path}...")
                 base_env.vector_env.envs[env_index].sim.save_gif(gif_save_path)
                 # Save the gif_path so that we can write image to aim server, if desired
                 # NOTE: `save_path` is a list after the above; do element access for now
+                logger.debug(f"Type of gif_save_path: {type(gif_save_path)}")
                 episode.media.update({"gif": gif_save_path})
+
+                # Try to collect and log episode history, if it was saved.
+                if env.harness_analytics.sim_analytics.save_history:
+                    env.harness_analytics.save_sim_history(logdir, eval_iters)
+
             # sim.save_spread_graph(save_dir)
 
     def on_evaluate_start(
@@ -165,7 +171,7 @@ class RenderEnv(DefaultCallbacks):
         # TODO: Add note in docs that the local worker IS NOT rendered. With this
         # assumption, we should always set `evaluation.evaluation_num_workers >= 1`.
         # TODO: Handle edge case where num_evaluation_workers == 0.
-
+        logger.info("Starting evaluation...")
         # Increment the number of evaluation iterations
         algorithm.evaluation_workers.foreach_worker(
             lambda w: w.foreach_env(lambda env: env._increment_evaluation_iterations()),

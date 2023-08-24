@@ -3,19 +3,91 @@
 TODO: Add a list of any classes, exception, functions, and any other objects exported by
 the module.
 """
+import logging
+import os
 from abc import ABC, abstractmethod
+from collections import deque
+from dataclasses import InitVar, dataclass
 from functools import partial
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
-from simharness2.analytics.agent_analytics import (
-    AgentMetricsTracker,
-    ReactiveAgentAnalytics,
-)
+from simharness2.analytics import ReactiveAgentAnalytics
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SimulationData:
+    """Docstring.
+
+    FIXME: Alt. names - `SimulationBehavior`, `SimEpisodeBehavior`, etc. ??
+    """
+
+    is_benchmark: bool = False
+    save_history: InitVar[bool] = False
+
+    def __post_init__(self, save_history):
+        """TODO"""
+        # Create a deque that is (optionally) used to aggregate data across timesteps.
+        if save_history:
+            self._history = deque()
+        else:
+            self._history = None
+
+    def update(self, timestep_dict):
+        """
+        Regardless of whether we save history, we want to store:
+        - burned_total
+        - unburned_total
+        - burning_total
+        - mitigated_total (all mitigation types, can break up later if desired)
+        - timestep and/or sim_step (not sure if we actually need this though?)
+        Additionally, it might be useful to store (mostly for debug purposes??):
+        - num_new_interactions (sum !"none" interactions since last call to sim.run(1))
+        - num_new_movements (total non "none" movements since last call to sim.run(1))
+        """
+        # Store the current timestep's data in the history deque.
+        if self._history is not None:
+            self._history.append(timestep_dict)
+
+        # Update the attributes that store the simulation's behavior.
+        self.burned = timestep_dict["burned"]
+        self.unburned = timestep_dict["unburned"]
+        self.burning = timestep_dict["burning"]
+
+        if not self.is_benchmark:
+            self.mitigated = timestep_dict["mitigated"]
+            self.agent_interactions = timestep_dict["agent_interactions"]
+            self.agent_movements = timestep_dict["agent_movements"]
+
+    def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
+        """Save episode history to CSV file."""
+        if self._history is None:
+            return
+
+        # TODO: Add logic to save history from multiple episodes (run concurrently).
+        # Maybe we can use the PID to create a unique file name for each episode?
+        # Prepare to save
+        if self.is_benchmark:
+            subdir = "benchsim_data"
+        else:
+            subdir = "sim_data"
+
+        # TODO: Update logic to handle saving history from training episodes too.
+        sim_data_save_path = os.path.join(
+            output_dir, subdir, f"eval_iter_{total_eval_iters}.csv"
+        )
+        # Converts deque to list of dicts, then to DataFrame.
+        df = pd.DataFrame(list(self._history))
+        # Write to CSV file.
+        logger.info(f"Saving episode history to {sim_data_save_path}...")
+        os.makedirs(os.path.dirname(sim_data_save_path), exist_ok=True)
+        df.to_csv(sim_data_save_path, index=False)
 
 
 class SimulationAnalytics(ABC):
@@ -23,15 +95,8 @@ class SimulationAnalytics(ABC):
 
     Attributes:
         sim: TODO
-        is_benchmark: TODO
         agent_analytics: TODO
-        num_agents: TODO
-        df: TODO
-        df_cols: TODO
-        df_dtypes: TODO
-        df_index: TODO
-        num_sim_steps: TODO
-        active: TODO
+        is_benchmark: TODO
 
     TODO: Add section for anything related to the interface for subclassers.
     """
@@ -52,9 +117,6 @@ class SimulationAnalytics(ABC):
 
         NOTE: In the MARL case, we can use a dictionary of AgentAnalytics objects,
         where the key is the agent ID. This would change the type of `agent_analytics`.
-
-        NOTE: `self.df` will be initialized in `self._reset_df()`, which is called within
-        `self.reset()`.
         """
         # Store a reference to the `FireSimulation` object that is being tracked.
         self.sim = sim
@@ -62,33 +124,14 @@ class SimulationAnalytics(ABC):
         self.is_benchmark = is_benchmark
         self.agent_analytics: Optional[ReactiveAgentAnalytics] = None
 
+        # TODO: Update for MARL case.
         if not self.is_benchmark:
             # Agents only exist in the main simulation.
             self.agent_analytics = agent_analytics_partial(sim=self.sim)
 
-        # Define stubs for the class attributes.
-        self.df: pd.DataFrame = None
-        self.df_cols: List[str]
-        self.df_dtypes: Dict[str, Any]
-        self.df_index: str
-
-        self.prepare_df_metadata()
-        self.reset()
-
-    def reset(self):
-        """Reset the attributes of `FireSimulationData` to initial values."""
-        # Reset attributes used to store simulation behavior across a single episode.
-        self._reset_df()
-        self.num_sim_steps = 0
-        self.active = True
-
-        # If we are tracking agent behavior, reset the `agent_analytics` object.
-        if self.agent_analytics:
-            self.agent_analytics.reset()
-
     @abstractmethod
-    def prepare_df_metadata(self):
-        """Prepares the metadata (column names, dtypes, etc.) for the sim dataframe."""
+    def reset(self, env_is_rendering: bool = False):
+        """Reset the attributes of `FireSimulationData` to initial values."""
         pass
 
     @abstractmethod
@@ -96,21 +139,9 @@ class SimulationAnalytics(ABC):
         """TODO Add docstring."""
         pass
 
-    def _reset_df(self):
-        """Resets the episode dataframe, `self.df`, to its initial state."""
-        if self.df is not None:
-            # FIXME convert to usage of df.iat, if possible
-            self.df = self.df.iloc[0:0]
-        else:
-            self.df = (
-                pd.DataFrame(columns=self.df_cols)
-                .astype(self.df_dtypes)
-                .set_index(self.df_index)
-            )
-
 
 class FireSimulationAnalytics(SimulationAnalytics):
-    """Use `FireSimulationAnalytics` to monitor `fire_map` the within a `FireSimulation`.
+    """Use `FireSimulationAnalytics` to monitor the `fire_map` within a `FireSimulation`.
 
     Attributes:
         sim: TODO
@@ -132,6 +163,10 @@ class FireSimulationAnalytics(SimulationAnalytics):
         sim: FireSimulation,
         agent_analytics_partial: partial,
         is_benchmark: bool = False,
+        save_history: bool = False,
+        log_to_file: bool = False,
+        file_type: str = "csv",
+        custom_file_name: Optional[str] = None,
     ):
         """TODO: A brief description of what the method is and what it's used for.
 
@@ -145,70 +180,19 @@ class FireSimulationAnalytics(SimulationAnalytics):
                 that will be used to monitor and track agent (s) behavior within
                 `self.sim`.
             is_benchmark: TODO
+            save_data: TODO
         """
         super().__init__(sim, agent_analytics_partial, is_benchmark)
 
-    def prepare_df_metadata(self):
-        """Prepares the metadata (column names, dtypes, etc.) for the sim dataframe.
+        self._is_benchmark = is_benchmark
+        # Indicates if data from each timestep will be stored across the entire episode.
+        self.save_history = save_history
+        self.data = SimulationData(is_benchmark, save_history)
 
-        Within this method, the default names and dtypes for the columns of the agent
-        dataframe are defined and stored in `self.df_cols` and
-        `self.df_dtypes`, respectively. These values are used to initialize the
-        `self.df` dataframe within the `self._reset_df()` method.
-
-        Columns used to store the simulation's behavior:
-            - `sim_step`: current simulation step in the episode.
-            - `timestep`: current timestep in the episode.
-            - `agent_interactions`: total number of interactions that were performed by
-                the agent (s) since the last simulation step (`sim_step - 1`).
-            - `agent_movements`: total number of movements that were performed by the
-                agent (s) since the last simulation step (`sim_step - 1`).
-            - `unburned_total`: total number of tiles in `self._sim.fire_map` that have
-                `BurnStatus.UNBURNED`.
-            - `burned_total`: total number of tiles in `self._sim.fire_map` that have
-                `BurnStatus.BURNED`.
-            - `burning_total`: total number of tiles in `self._sim.fire_map` that have
-                `BurnStatus.BURNING`.
-            - `mitigations_total`: total number of tiles in `self._sim.fire_map` that
-                contain a mitigation line. This equates to tiles that are any of
-                `BurnStatus.FIRELINE`, `BurnStatus.WETLINE`, `BurnStatus.SCRATCHLINE`.
-        """
-        # Define the columns that will be used to store the simulation's behavior.
-        self.df_cols: List[str] = [
-            "sim_step",
-            "timestep",
-            "unburned_total",
-            "burned_total",
-            "burning_total",
-        ]
-
-        # NOTE: Last 3 columns are not applicable to the benchmark simulation.
-        self.df_dtypes = {
-            "sim_step": np.uint16,
-            "timestep": np.uint16,
-            "unburned_total": np.uint16,
-            "burned_total": np.uint16,
-            "burning_total": np.uint16,
-        }
-        # Insert columns that are only applicable to the main simulation.
-        if not self.is_benchmark:
-            self.df_cols.extend(
-                [
-                    "agent_interactions",
-                    "agent_movements",
-                    # TODO: do we want to distinguish each mitigation type?
-                    "mitigations_total",
-                ]
-            )
-            self.df_dtypes.update(
-                {
-                    "agent_interactions": np.uint8,
-                    "agent_movements": np.uint8,
-                    "mitigations_total": np.uint16,
-                }
-            )
-        # FIXME: do we want to index using "timestep" or "sim_step"?
-        self.df_index = "sim_step"
+        # Helper attributes used to control the saving of data to a file.
+        self.log_to_file = log_to_file
+        self.file_type = file_type
+        self.custom_file_name = custom_file_name
 
     def update(self, timestep: int) -> None:
         """TODO Add docstring."""
@@ -216,158 +200,46 @@ class FireSimulationAnalytics(SimulationAnalytics):
         if self.sim.elapsed_steps != 0:
             self.active = self.sim.active
 
-        # Add the current timestep's data to the dataframe.
-        # TODO: Is there a better alternative to this df build approach?
+        # Prepare current timestep data.
         fire_map = self.sim.fire_map
         burned_total = np.sum(fire_map == BurnStatus.BURNED)
         burning_total = np.sum(fire_map == BurnStatus.BURNING)
         unburned_total = np.sum(fire_map == BurnStatus.UNBURNED)
-        sim_data = [
-            [self.num_sim_steps],
-            [timestep],
-            [unburned_total],
-            [burned_total],
-            [burning_total],
-        ]
+
+        sim_timestep_dict = {
+            "sim_step": self.num_sim_steps,
+            "timestep": timestep,
+            "burned": burned_total,
+            "burning": burning_total,
+            "unburned": unburned_total,
+        }
+
         if not self.is_benchmark:
             non_mitigated_total = burned_total + burning_total + unburned_total
-            sim_data.extend(
-                [
-                    [self.agent_analytics.num_interactions_since_last_sim_step],
-                    [self.agent_analytics.num_movements_since_last_sim_step],
-                    [fire_map.size - non_mitigated_total],
-                ]
+            sim_timestep_dict.update(
+                {
+                    "mitigated": fire_map.size - non_mitigated_total,
+                    "agent_interactions": self.agent_analytics.num_interactions_since_last_sim_step,  # noqa: E501
+                    "agent_movements": self.agent_analytics.num_movements_since_last_sim_step,  # noqa: E501
+                }
             )
 
-        sim_data_dict = dict(zip(self.df_cols, sim_data))
-        timestep_df = (
-            pd.DataFrame(sim_data_dict).astype(self.df_dtypes).set_index(self.df_index)
-        )
-        self.df = pd.concat([self.df, timestep_df])
+        # Update the dataclass that stores the simulation's behavior.
+        self.data.update(sim_timestep_dict)
 
         self.num_sim_steps += 1  # increment AFTER method logic is performed (convention).
 
-    def reset(self):
+    def reset(self, env_is_rendering: bool = False):
         """Reset the attributes of `FireSimulationData` to initial values."""
+
+        # NOTE: either create new object or use dataclasses.replace()
+        save_history = env_is_rendering and self.save_history
+        self.data = SimulationData(self._is_benchmark, save_history)
+
         # Reset attributes used to store simulation behavior across a single episode.
-        self._reset_df()
         self.num_sim_steps = 0
         self.active = True
 
         # If we are tracking agent behavior, reset the `agent_analytics` object.
         if self.agent_analytics:
-            self.agent_analytics.reset()
-
-
-class FireSimulationMetricsTracker:
-    """FIXME: Docstring for FireSimulationMetricsTracker class.
-
-    metrics tracked after the simulation updates
-    """
-
-    def __init__(
-        self,
-        sim: FireSimulation,
-        agent_analytics_partial: partial,
-        is_benchmark: bool = False,
-    ):
-        """TODO Add docstring.
-
-        Arguments:
-            agent_analytics_partial: A `functools.partial` object that defines the class
-                that will be used to monitor and track agent (s) behavior within
-                `self.sim`.
-
-        """
-        self._sim = sim
-        # Indicates whether this object will track a `benchmark` simulation.
-        self.is_benchmark = is_benchmark
-        self.agent_analytics: AgentMetricsTracker
-
-        # NOTE: In the MARL case, we can use a dictionary of AgentMetricsTracker objects,
-        # where the key is the agent ID. This would replace the `agent_analytics` below.
-        if not self.is_benchmark:
-            # Agents only exist in the main simulation.
-            self.agent_analytics = agent_analytics_partial(sim=self._sim)
-
-        self.reset()
-
-    def update(self) -> None:
-        """TODO Add docstring."""
-        # run this tracker update function after the agents actions and right after the
-        # simulation has updated
-        # track the current timestep
-        self.num_sim_steps += 1
-
-        # update the simulation update counter
-        self.active = self._sim.active
-
-        # Calculate the number of currently burned (burning) squares in this timestep.
-        num_currently_burned: int = np.sum(self._sim.fire_map == BurnStatus.BURNED)
-        num_currently_burning: int = np.sum(self._sim.fire_map == BurnStatus.BURNING)
-
-        # Calculate the number of newly burned (burning) squares in this timestep.
-        self.num_new_burned = num_currently_burned - self.num_burned
-        self.num_new_burning = num_currently_burning - self.num_burning
-
-        # FIXME refactor into a separate method?
-        # Set values to 0 if they are negative (indicates no new burned/burning squares).
-        if self.num_new_burning < 0:
-            self.num_new_burning = 0
-        if self.num_new_burned < 0:
-            self.num_new_burned = 0
-
-        self.num_burned = num_currently_burned
-        self.num_burning = num_currently_burning
-
-        # Update values for attributes tracking mitigation lines.
-        if self.agent_analytics:
-            self.num_new_mitigations = (
-                self.agent_analytics.num_interactions_since_last_sim_step
-            )
-            self.num_mitigations_total += self.num_new_mitigations
-
-        # Calculate the number of currently undamaged squares in this timestep.
-        # TODO: verify that `UNBURNED` is the correct `BurnStatus` to use here.
-        num_currently_undamaged: int = np.sum(self._sim.fire_map == BurnStatus.UNBURNED)
-        self.num_new_damaged = self.num_undamaged - num_currently_undamaged
-
-        # FIXME refactor into a separate method?
-        # Set values to 0 if they are negative (though this really shouldn't happen).
-        if self.num_new_damaged < 0:
-            self.num_new_damaged = 0
-
-        self.num_damaged_per_step.append(self.num_new_damaged)
-
-        # Now can update the self.num_undamaged with its new value
-        self.num_undamaged = num_currently_undamaged
-
-        # Finally reset the agent_analytics object for the next timestep
-        # TODO: Should this be moved elsewhere to make calculating the reward easier
-        # when using agent_metrics
-        # This is currently moved into the larger AnalyticsTracker class
-        # self.agent_analytics.reset()
-
-        return
-
-    def reset(self):
-        """TODO Add docstring."""
-        # reset the SimulationMetricsTracker object variables at the end of each episode
-        self.active = True
-        self.num_sim_steps: int = 0
-        self.num_burned: int = 0
-        self.num_new_burned: int = 0
-        self.num_burning: int = 0
-        self.num_new_burning: int = 0
-        self.num_undamaged: int = 0
-        self.num_new_damaged: int = 0
-        self.num_damaged_per_step = [0]
-
-        # We do not need to track mitigation lines in the benchmark simulation.
-        self.num_mitigations_total: int = 0 if not self.is_benchmark else None
-
-        self.num_new_mitigations: int = 0 if not self.is_benchmark else None
-
-        # TODO: Indicate (maybe in docstring?) that `agent_analytics` is reset here.
-        if self.agent_analytics:
-            self.agent_analytics.reset()
+            self.agent_analytics.reset(env_is_rendering)

@@ -192,12 +192,8 @@ class ComprehensiveReward(BaseReward):
         # FIXME: should we index with `-1` or `timestep - 1`?
         # NOTE: Convert to int to avoid "overflow in scalar subtract"(cols are
         # np.uint16!!)
-        undamaged_mainsim = self.harness_analytics.sim_analytics.df.iloc[-1][
-            "unburned_total"
-        ].astype("int")
-        undamaged_benchsim = self.harness_analytics.benchmark_sim_analytics.df.iloc[-1][
-            "unburned_total"
-        ].astype("int")
+        undamaged_mainsim = self.harness_analytics.sim_analytics.data.unburned
+        undamaged_benchsim = self.harness_analytics.benchmark_sim_analytics.data.unburned
         # if the benchsim is no longer active, but the main simulation is still active,
         #   then it is okay to use the last value of the num_undamaged from the benchsim
         # as assumadley our main_sim agent will be rewarded for sustaining the fire longer
@@ -242,14 +238,13 @@ class ComprehensiveReward(BaseReward):
         # AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
         # use static reward so RL easily learns what causes this reward
         # TODO: determine best amount for this reward
-        if self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1]["near_fire"]:
+        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
             # set the reward to be -1.0 * static_penalty
             reward = -self.static_penalty
 
         # Penalize agent if chosen movement would result in an invalid map position.
-        if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
-            "valid_movement"
-        ]:
+        # if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
+        if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
             reward -= self.invalid_movement_penalty
 
         # TODO add very large negative reward if agent steps into fire
@@ -267,15 +262,156 @@ class ComprehensiveReward(BaseReward):
 
         # add a slight reward to the agent for placing a mitigation not in a burned area
         # FIXME: should we index with `-1` or `timestep - 1`?
-        if self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
-            ["interaction", "near_fire"]
-        ].tolist() != ["none", True]:
+        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
             inter_reward += 1
 
         # Penalize agent if chosen movement would result in an invalid map position.
-        if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
-            "valid_movement"
-        ]:
+        if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
+            inter_reward -= self.invalid_movement_penalty
+
+        # update self.latest_reward and then return the intermediate reward
+        # self.latest_reward = inter_reward
+        return inter_reward
+
+
+class ComprehensiveRewardV2(BaseReward):
+    """TODO add description."""
+
+    def __init__(
+        self,
+        *,
+        harness_analytics: ReactiveHarnessAnalytics,
+        fixed_reward: float,  # FIXME use better name
+        static_penalty: float,  # FIXME use better name
+        invalid_movement_penalty: float,
+    ):
+        """Induces a postive reward structure using the number of undamaged squares.
+
+        The method used for reward calculation is intended to mirror Dhanuj's
+        `complex_reward` from FY22, where the agent is rewarded using the difference in
+        the number of `BurnStatus.UNBURNED` tiles between the main and benchmark
+        simulations. This reward structure is intended to be task agnostic, and makes an
+        effort to penalize the agent for unsafe proximity to the fire (`static_penalty`).
+
+        Attributes:
+            harness_analytics: The `ReactiveHarnessAnalytics` object that houses the data
+                used to calculate the reward.
+            fixed_reward: The fixed reward that is scaled by the number of squares saved
+                by the agent.
+            static_penalty: The fixed penalty that is applied to the agent if it is
+                within a certain distance of the fire.
+            invalid_movement_penalty: The fixed penalty that is applied to the agent if
+                it attempts to move to a square that is not contained within the bounds
+                of the `FireSimulation.fire_map`.
+        """
+        self.fixed_reward = fixed_reward
+        # TODO: rename to `self.near_fire_penalty`
+        self.static_penalty = static_penalty
+        self.invalid_movement_penalty = invalid_movement_penalty
+        super().__init__(harness_analytics)
+
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
+        """Rewards the agent for `saving` squares from the fire wrt the benchmark sim.
+
+        A constant scalar reward, `self.fixed_reward`, is scaled by the number of squares
+        "saved" by the agent, which equates to the difference in the number of
+        `BurnStatus.UNBURNED` tiles between the main `FireSimulation.fire_map` and the
+        benchmark `FireSimulation.fire_map`.
+
+        Arguments:
+            timestep: The current timestep in the episode.
+            sim_run: Whether or not the simulation was run this timestep.
+
+        Returns:
+            (Fixed reward * number of squares saved) - (penalty for being near fire)
+        """
+        if not sim_run:
+            return self.get_timestep_intermediate_reward(timestep)
+
+        # This Reward will compare the number of new recently damaged squares in the
+        # main sim and within the bench sim
+
+        # Get the number of undamaged squares in the main and benchmark simulations
+        # FIXME: should we index with `-1` or `timestep - 1`?
+        # NOTE: Convert to int to avoid "overflow in scalar subtract"(cols are
+        # np.uint16!!)
+        undamaged_mainsim = self.harness_analytics.sim_analytics.data.timestep_data[
+            "unburned"
+        ]
+        undamaged_benchsim = self.harness_analytics.benchmark_sim_analytics.data.unburned
+        # if the benchsim is no longer active, but the main simulation is still active,
+        #   then it is okay to use the last value of the num_undamaged from the benchsim
+        # as assumadley our main_sim agent will be rewarded for sustaining the fire longer
+
+        # define the number of squares saved by the agent as the difference between the
+        # benchsim and the mainsim
+        timestep_number_squares_saved = undamaged_mainsim - undamaged_benchsim
+
+        # If MAIN SIMULATION ENDS FASTER THAN BENCH SIMULATION
+        #   there are either two possibilities
+        #   1. The agent's actions sped up the fire
+        #           - In which case the agent should be heavily penalized
+        #   2. The agent's actions ended the fire faster and saved more squares (The most
+        #           ideal Situation)
+        #           - In which case the agent should be heavily rewarded
+        if (
+            self.harness_analytics.benchmark_sim_analytics.active is True
+            and self.harness_analytics.sim_analytics.active is False
+        ):
+            # update the value of the undamaged benchsim to be that of the bench
+            # simulation if it reached it's end
+            undamaged_benchsim = self._sim_area - self.harness_analytics.bench_damage
+
+            timestep_number_squares_saved = undamaged_mainsim - undamaged_benchsim
+
+            # multiply this by the number of timesteps that the main_sim is faster than
+            # the bench sim
+            if (
+                self.harness_analytics.bench_timesteps
+                > self.harness_analytics.sim_analytics.num_sim_steps
+            ):
+                timestep_number_squares_saved = timestep_number_squares_saved * (
+                    self.harness_analytics.bench_timesteps
+                    - self.harness_analytics.sim_analytics.num_sim_steps
+                )
+
+        # this new reward works out well for both of the above cases
+        #   For Case 1., this reward will yield a large negative reward
+        #   For Case 2., this reward will yield a large positive reward
+        reward = ((timestep_number_squares_saved) / self._sim_area) * self.fixed_reward
+
+        # AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
+        # use static reward so RL easily learns what causes this reward
+        # TODO: determine best amount for this reward
+        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+            # set the reward to be -1.0 * static_penalty
+            reward = -self.static_penalty
+
+        # Penalize agent if chosen movement would result in an invalid map position.
+        # if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
+        if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
+            reward -= self.invalid_movement_penalty
+
+        # TODO add very large negative reward if agent steps into fire
+        # (or end the simulation)
+
+        # update self.latest_reward and then return the reward
+        self.latest_reward = reward
+        return reward
+
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
+        """TODO Add function docstring."""
+        # start with the intermediate reward just being the same as the previously
+        # calculated reward
+        inter_reward = self.harness_analytics.latest_reward
+
+        # add a slight reward to the agent for placing a mitigation not in a burned area
+        # FIXME: should we index with `-1` or `timestep - 1`?
+        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+            inter_reward += 1
+
+        # Penalize agent if chosen movement would result in an invalid map position.
+        if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
             inter_reward -= self.invalid_movement_penalty
 
         # update self.latest_reward and then return the intermediate reward
