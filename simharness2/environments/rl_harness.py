@@ -130,14 +130,26 @@ class RLHarness(gym.Env, ABC):
         #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
         self.sim_agent_id = 3 + len(self.interactions) + 1
 
-        if not set(self.interactions[1:]).issubset(list(sim_actions.keys())):
+        # Before verifying that all interactions are supported by the simulator, we need
+        # to remove the "none" interaction (if it exists).
+        if "none" in self.interactions:
+            none_idx = self.interactions.index("none")
+            interaction_types = (
+                self.interactions[:none_idx] + self.interactions[none_idx + 1 :]
+            )
+        else:
+            interaction_types = self.interactions
+
+        if not set(interaction_types).issubset(list(sim_actions.keys())):
             raise AssertionError(
-                f"All interactions ({str(self.interactions[1:])}) must be "
+                f"All interactions ({str(interaction_types)}) must be "
                 f"in the simulator's actions ({str(list(sim_actions.keys()))})!"
             )
 
         # FIXME review purpose of sim_nonsim conversions + add brief comment
         self._separate_sim_nonsim(sim_attributes)
+        # NOTE: `self.harness_to_sim` used in `ReactiveHarness._update_mitigation()`.
+        # FIXME `self.sim_to_harness` is NOT used anywhere else.
         self.harness_to_sim, self.sim_to_harness = self._sim_harness_conv(sim_actions)
         self.min_maxes = self._get_min_maxes()
 
@@ -299,15 +311,19 @@ class RLHarness(gym.Env, ABC):
         hts_action_conv = ordered_dict()
         sth_action_conv = ordered_dict()
 
-        # NOTE: We define self.interactions[0] as "none" ("don't interact", "do nothing")
-        hts_action_conv[0] = 0
-        sth_action_conv[0] = 0
+        # `self.interactions` used frequently below, so shorten name for readability.
+        actions = self.interactions
+        if len(actions) > 0:
+            # The sim does not support the "none" interaction, so omit from conversion.
+            if "none" in actions:
+                none_idx = actions.index("none")
+                interaction_types = actions[:none_idx] + actions[none_idx + 1 :]
+            else:
+                interaction_types = actions
 
-        if len(self.interactions) == 0:
-            pass
-        else:
-            # NOTE: omit first interaction since it is handled above
-            for idx, action in enumerate(self.interactions[1:], start=1):
+            # Using the "valid" interaction_types, populate the conversion dicts.
+            valid_idxs = [actions.index(act) for act in actions if act != "none"]
+            for idx, action in dict(zip(valid_idxs, interaction_types)).items():
                 hts_action_conv[idx] = sim_actions[action].value
                 sth_action_conv[sim_actions[action].value] = idx
 
