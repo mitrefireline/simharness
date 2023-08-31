@@ -315,7 +315,7 @@ class RLHarness(gym.Env, ABC):
         if len(actions) > 0:
             # Using the "valid" interaction_types, populate the conversion dicts.
             valid_idxs = [actions.index(act) for act in actions if act != "none"]
-            
+
             for idx in valid_idxs:
                 interaction = self.interactions[idx]
                 hts_action_conv[idx] = sim_actions[interaction].value
