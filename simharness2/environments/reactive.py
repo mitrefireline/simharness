@@ -10,6 +10,7 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+import os
 import logging
 from collections import OrderedDict as ordered_dict
 from functools import partial
@@ -19,13 +20,14 @@ import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
-from simfire.enums import BurnStatus
 
+from simfire.enums import BurnStatus
+from simfire.utils.config import SimulationConfig, Config
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray.rllib")
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -119,6 +121,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self._total_eval_rounds = eval_duration if eval_duration else 0
 
         self._current_eval_round = 1
+        # Incremented on each call to `RenderEnv.on_evaluate_start()` callback, via the
+        # `_increment_evaluation_iterations()` helper method.
+        self._num_eval_iters = 0
 
         self.fire_scenarios = config.get("scenarios", None)
         # Set the max number of steps that the environment can take before truncation
@@ -501,6 +506,90 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def render(self):  # noqa
         self.sim.rendering = True
 
+    def _configure_env_rendering(self, should_render: bool) -> None:
+        """Configure the environment's `FireSimulation` to be rendered (or not).
+
+        If the simulation should be rendered, then the `headless` parameter in the
+        simulation's config (file) should be set to `False`, enabling the usage of pygame.
+
+        Additionally, the environment's `_should_render` attribute is set to ensure
+        that rendering is active when desired. This is especially important when the
+        number of eval episodes, specified via `evaluation.evaluation_duration`, is >1.
+        """
+        sim_data = self.sim.config.yaml_data
+        sim_data["simulation"]["headless"] = not should_render
+
+        # Update simulation's config attribute.
+        logger.info(f"Updating the `self.sim.config` with new `Config` object...")
+        self.sim.config = Config(config_dict=sim_data)
+
+        # Reset the simulation to ensure that the new config is used.
+        logger.info(f"Resetting `self.sim` to configure rendering == {should_render}.")
+        self.sim.reset()
+
+        # Update the simulation's rendering attribute to match the provided value.
+        if should_render:
+            logger.info("Setting SDL_VIDEODRIVER environment variable to 'dummy'...")
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+
+        self.sim.rendering = should_render
+
+        # Indicate whether the environment's `FireSimulation` should be rendered.
+        self._should_render = should_render
+
+        # Update both the `Config`, and to be safe, the underlying yaml_data.
+        # self.sim.config.yaml_data["simulation"].update({"headless": not should_render})
+        # sim_config_args = self.sim.config.yaml_data["simulation"]
+        # sim_config_args.update({"headless": not should_render})
+        # self.sim.config.simulation = SimulationConfig(**sim_config_args)
+        # self.sim.config.simulation.headless = not should_render
+        # if should_render:
+        #     self.sim.reset()
+        # base_env.sim.reset()
+
+        # base_env.sim = FireSimulation(Config(config_dict=sim_data))
+        # breakpoint()
+
+        # Set simulation to rendering mode
+        # os.environ["SDL_VIDEODRIVER"] = "dummy"
+        # base_env.sim.rendering = True
+
+    # def prepare_to_render(self) -> None:
+    #     """Prepare the environment to be rendered."""
+
+    #     # breakpoint()
+    #     # Instantiate new simulation object with updated parameters
+    #     # del base_env.sim
+    #     base_env.sim = FireSimulation(Config(config_dict=sim_data))
+    #     # Set simulation to rendering mode
+    #     os.environ["SDL_VIDEODRIVER"] = "dummy"
+    #     base_env.sim.rendering = True
+    #     # Sim is using pygame, so don't delete the object.
+    #     if not self.sim.config.simulation.headless:
+    #         # TODO any logic to implement here?
+    #         pass
+    #     # Sim is not using pygame, so re-create the object.
+    #     else:
+    #         sim_data = self.sim.config.yaml_data
+    #         sim_data["simulation"]["headless"] = False
+
+    #         self._update_sim_object(sim_data)
+
+    #         self.sim.rendering = True
+    #     self.sim.rendering = True
+
+    # def _update_sim_object(self, yaml_data: Dict[str, Any]) -> None:
+    #     """Update the simulation object with the provided YAML data."""
+    #     # Create a new simulation object with the updated parameters
+    #     self.sim = FireSimulation(Config(config_dict=yaml_data))
+    #     # Set simulation to rendering mode
+    #     os.environ["SDL_VIDEODRIVER"] = "dummy"
+    #     self.sim.rendering = True
+
+    def _increment_evaluation_iterations(self) -> None:
+        """Increment the number of evaluation iterations that have been run."""
+        self._num_eval_iters += 1
+
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
         if self.randomize_initial_agent_pos:
@@ -561,6 +650,11 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.harness_analytics: ReactiveHarnessAnalytics
         if harness_analytics_partial:
             try:
+                # sim_ref = weakref.ref(self.sim)
+                # benchmark_sim_ref = weakref.ref(self.benchmark_sim)
+                # self.harness_analytics = harness_analytics_partial(
+                #     sim=sim_ref(), benchmark_sim=benchmark_sim_ref()
+                # )
                 self.harness_analytics = harness_analytics_partial(
                     sim=self.sim, benchmark_sim=self.benchmark_sim
                 )
