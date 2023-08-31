@@ -86,12 +86,8 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     param_space = algo_cfg
 
     # Override the variables we want to tune on
-<<<<<<< HEAD
     if cfg.tunables:
         _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
-=======
-    _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
->>>>>>> things to run
 
     # Configs for this specific trial run
     run_config = air.RunConfig(
