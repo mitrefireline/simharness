@@ -311,21 +311,15 @@ class RLHarness(gym.Env, ABC):
         hts_action_conv = ordered_dict()
         sth_action_conv = ordered_dict()
 
-        # `self.interactions` used frequently below, so shorten name for readability.
         actions = self.interactions
         if len(actions) > 0:
-            # The sim does not support the "none" interaction, so omit from conversion.
-            if "none" in actions:
-                none_idx = actions.index("none")
-                interaction_types = actions[:none_idx] + actions[none_idx + 1 :]
-            else:
-                interaction_types = actions
-
             # Using the "valid" interaction_types, populate the conversion dicts.
             valid_idxs = [actions.index(act) for act in actions if act != "none"]
-            for idx, action in dict(zip(valid_idxs, interaction_types)).items():
-                hts_action_conv[idx] = sim_actions[action].value
-                sth_action_conv[sim_actions[action].value] = idx
+            
+            for idx in valid_idxs:
+                interaction = self.interactions[idx]
+                hts_action_conv[idx] = sim_actions[interaction].value
+                sth_action_conv[sim_actions[interaction].value] = idx
 
         return hts_action_conv, sth_action_conv
 
