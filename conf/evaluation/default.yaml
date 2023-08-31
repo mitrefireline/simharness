@@ -23,7 +23,7 @@ evaluation_duration_unit: episodes
 # `evaluation_interval` is not None). If you increase this, it will increase the Ray
 # resource usage of the algorithm since evaluation workers are created separately from
 # rollout workers (used to sample data for training).
-evaluation_num_workers: 1
+evaluation_num_workers: 0
 
 # If True, use an `AsyncRequestsManager` for the evaluation workers and use this manager
 # to send `sample()` requests to the evaluation workers. This way, the Algorithm becomes

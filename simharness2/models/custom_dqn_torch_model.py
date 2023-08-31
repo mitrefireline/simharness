@@ -1,3 +1,4 @@
+"""Custom model to report DQN metrics."""
 from typing import Dict
 
 from ray.rllib.algorithms.dqn.dqn_torch_policy import QLoss

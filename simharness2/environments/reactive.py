@@ -272,6 +272,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._agent_pos_is_empty_space()  # FIXME do we still need this??
 
         # Interact with the environment
+        # NOTE: It is crucial that we do not attempt to place a mitigation when the
+        # interaction is "none", as this is not a valid interaction within the sim.
         interact = self.interactions[self.latest_interaction] != "none"
         if self.agent_pos_is_empty_space and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
