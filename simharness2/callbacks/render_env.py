@@ -5,14 +5,11 @@ from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
-from ray.rllib.env.env_context import EnvContext
 from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
 from ray.rllib.utils.typing import PolicyID  # AgentID, EnvType,
-from simfire.sim.simulation import FireSimulation
-from simfire.utils.config import Config
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
@@ -86,10 +83,12 @@ class RenderEnv(DefaultCallbacks):
         env: ReactiveHarness = base_env.vector_env.envs[env_index]
 
         if worker.config.in_evaluation:
+            logger.info("Creating evaluation episode...")
             # Ensure the evaluation env is rendering mode, if it should be.
             if env._should_render and not env.sim.rendering:
                 logger.info("Enabling rendering for evaluation env.")
                 # TODO: Refactor below 3 lines into `env.render()` method?
+                # base_env.vector_env.envs[env_index].render(active=True)
                 os.environ["SDL_VIDEODRIVER"] = "dummy"
                 base_env.vector_env.envs[env_index].sim.reset()
                 base_env.vector_env.envs[env_index].sim.rendering = True
@@ -139,7 +138,7 @@ class RenderEnv(DefaultCallbacks):
                 logdir = env._trial_results_path
                 eval_iters = env._num_eval_iters
                 gif_save_path = os.path.join(
-                    logdir, "gifs", f"eval_iter_{episode_num}.gif"
+                    logdir, "gifs", f"eval_iter_{eval_iters}.gif"
                 )
 
                 # FIXME: Can we save each gif in a folder that relates it to episode iter?
@@ -148,8 +147,6 @@ class RenderEnv(DefaultCallbacks):
                 # Save the gif_path so that we can write image to aim server, if desired
                 # NOTE: `save_path` is a list after the above, so do element access for now
                 episode.media.update({"gif": gif_save_path})
-
-                self.num_runs += 1
             # sim.save_spread_graph(save_dir)
 
     def on_evaluate_start(

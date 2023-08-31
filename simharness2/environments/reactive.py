@@ -516,12 +516,20 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         that rendering is active when desired. This is especially important when the
         number of eval episodes, specified via `evaluation.evaluation_duration`, is >1.
         """
-        sim_data = self.sim.config.yaml_data
-        sim_data["simulation"]["headless"] = not should_render
+        self.sim.config.yaml_data["simulation"].update({"headless": not should_render})
+        sim_config_args = self.sim.config.yaml_data["simulation"]
+        sim_config_args.update({"headless": not should_render})
+        logger.info(
+            f"Updating `self.sim.config.simulation` with new `SimulationConfig`..."
+        )
+        self.sim.config.simulation = SimulationConfig(**sim_config_args)
+
+        # sim_data = self.sim.config.yaml_data
+        # sim_data["simulation"]["headless"] = not should_render
 
         # Update simulation's config attribute.
-        logger.info(f"Updating the `self.sim.config` with new `Config` object...")
-        self.sim.config = Config(config_dict=sim_data)
+        # logger.info(f"Updating the `self.sim.config` with new `Config` object...")
+        # self.sim.config = Config(config_dict=sim_data)
 
         # Reset the simulation to ensure that the new config is used.
         logger.info(f"Resetting `self.sim` to configure rendering == {should_render}.")
