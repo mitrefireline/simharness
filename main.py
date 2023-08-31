@@ -86,8 +86,12 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     param_space = algo_cfg
 
     # Override the variables we want to tune on
+<<<<<<< HEAD
     if cfg.tunables:
         _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
+=======
+    _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
+>>>>>>> things to run
 
     # Configs for this specific trial run
     run_config = air.RunConfig(
@@ -103,14 +107,16 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # TODO make sure 'reward' is reported with tune.report()
     # TODO add this to config
     # Config for the tuning process (used for all trial runs)
-    # tune_config = tune.TuneConfig(num_samples=4)
+    tune_config = tune.TuneConfig(
+        num_samples=12, max_concurrent_trials=3, metric="episode_reward_mean", mode="max"
+    )
 
     # Create a Tuner
     tuner = tune.Tuner(
         trainable=trainable_algo_str,
         param_space=param_space,
         run_config=run_config,
-        # tune_config=tune_config,
+        tune_config=tune_config,
     )
 
     results = tuner.fit()

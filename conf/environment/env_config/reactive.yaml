@@ -3,11 +3,11 @@ sim:
   config:
     _target_: simfire.utils.config.Config
     config_dict: ${simulation.train}
-movements: [none, up, down, left, right]
+movements: [up, down, left, right]
 interactions: [fireline]
-attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
-normalized_attributes: [elevation]
-agent_speed: 2
+attributes: [fire_map] #, elevation, w_0, sigma, delta, M_x]
+normalized_attributes: [] #[elevation]
+agent_speed: 1
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 harness_analytics_partial:
   _target_: simharness2.analytics.harness_analytics.ReactiveHarnessAnalytics
@@ -28,7 +28,7 @@ reward_cls_partial:
   # fixed_reward: 100
   # static_penalty: 50
   # invalid_movement_penalty: 5
-initial_agent_pos: [10, 10]
+initial_agent_pos: [20, 20]
 randomize_initial_agent_pos: false
 benchmark_sim: ${.sim}
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
