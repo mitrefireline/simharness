@@ -83,19 +83,20 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     trainable_algo_str = cfg.algo.name
     param_space = algo_cfg
 
-    # Override the variables we want to tune on
+    # Override the variables we want to tune on ()`param_space` is updated in-place).
     if cfg.tunables:
         _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
 
     # Configs for this specific trial run
     run_config = air.RunConfig(
-        name=cfg.runtime.name or None,
-        local_dir=cfg.runtime.local_dir,
+        name=cfg.run.name or None,
+        storage_path=cfg.run.storage_path,
         stop={**cfg.stop_conditions},
         callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
         failure_config=None,
         sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
         checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
+        log_to_file=cfg.run.log_to_file
     )
 
     # TODO make sure 'reward' is reported with tune.report()
@@ -114,7 +115,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     results = tuner.fit()
     result_df = results.get_dataframe()
 
-    logging.info(result_df)
+    logging.debug(result_df)
     return results
 
 
@@ -247,9 +248,10 @@ def main(cfg: DictConfig) -> None:
     # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
-    ray.init(address="auto", log_to_driver=False)
+    # ray.init(address="auto", log_to_driver=False)
+    ray.init()
 
-    outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
+    outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")
 
     # Build the algorithm config.

@@ -3,11 +3,20 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
-from typing import List, Optional
+from typing import Any, Optional, Dict
 
 from simfire.sim.simulation import FireSimulation
 
 from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
+from simharness2.agents import ReactiveAgent
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 logger = logging.getLogger("ray.rllib")
 
@@ -32,7 +41,7 @@ class RLHarnessAnalytics(ABC):
                     sim_analytics_partial(sim=benchmark_sim, is_benchmark=True)
                 )
             else:
-                self.benchmark_sim_analytics
+                self.benchmark_sim_analytics: FireSimulationAnalytics = None
         except TypeError as e:
             raise e
 
@@ -48,10 +57,6 @@ class RLHarnessAnalytics(ABC):
         self,
         *,
         timestep: int,
-        movement: int,
-        interaction: int,
-        agent_pos: List[int],
-        moved_off_map: bool,
     ) -> None:
         """See subclass for docstring."""
         pass
@@ -77,6 +82,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         *,
         sim: FireSimulation,
         sim_analytics_partial: partial,
+        agent_ids: set,
         benchmark_sim: FireSimulation = None,
     ) -> None:
         """TODO Add summary line.
@@ -91,6 +97,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
                 `self.benchmark_sim`, if the optional `benchmark_sim` is provided. The
                 user is expected to provide the `agent_analytics_partial` keyword
                 argument, along with a valid value.
+            agent_ids: TODO
             benchmark_sim: A separate `FireSimulation` object, identical to
                 `sim` (after initialization). No mitigation lines will be placed in this
                 simulation, as it does not contain any agent (s).
@@ -100,6 +107,11 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             `agent_analytics_partial` key with value of type `functools.partial`.
 
         """
+        # NOTE: Below is a hacky way to specify agent ids; Fix later
+        # Inject `agent_ids` into keywords of `agent_analytics_partial`
+        agent_partial: partial = sim_analytics_partial.keywords["agent_analytics_partial"]
+        agent_partial.keywords.update({"agent_ids": agent_ids})
+        sim_analytics_partial.keywords["agent_analytics_partial"] = agent_partial
         # Initialize sim_analytics object (s) and best_episode_performance attribute.
         super().__init__(
             sim=sim,
@@ -125,10 +137,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         self,
         *,
         timestep: int,
-        movement: int,
-        interaction: int,
-        agent_pos: List[int],
-        moved_off_map: bool,
+        agents: Dict[Any, ReactiveAgent],
     ) -> None:
         """Updates `self.sim_analytics.agent_analytics`, if agents are in the sim.
 
@@ -141,19 +150,10 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
                 simulation will spread the fire. An episode terminates when the fire is
                 finished spreading. (FIXME later)
             timestep: An integer indicating the current timestep of the episode.
-            movement: An integer indicating the index of the latest movement that the
-                agent selected.
-            interaction: An integer indicating the index of the latest interaction that
-                the agent selected.
-            agent_pos: A list of integers indicating the current position of the agent.
-            moved_off_map: A boolean indicating whether the agent's latest movement was
-                valid. Expect the value to be `True` if the agent attempted to move to a
-                position that is not contained within the `FireSimulation.fire_map`.
+            agents: TODO
         """
         if self.sim_analytics.agent_analytics:
-            self.sim_analytics.agent_analytics.update(
-                timestep, movement, interaction, agent_pos, moved_off_map
-            )
+            self.sim_analytics.agent_analytics.update(timestep, agents)
 
     def update_after_one_simulation_step(self, *, timestep: int) -> None:
         """Updates `self.sim_analytics` (and `self.benchmark_sim_analytics`, if exists).
@@ -164,33 +164,33 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         Arguments:
             timestep: An integer indicating the current timestep of the episode.
         """
+        sim_area = self.sim_analytics.sim.fire_map.size
         self.sim_analytics.update(timestep)
 
         if self.benchmark_sim_analytics:
             self.benchmark_sim_analytics.update(timestep)
 
-        sim_area = self.sim_analytics.sim.fire_map.size
-        # FIXME mention in docstring that this logic is performed. need to condense!!
-        benchsim_active = self.benchmark_sim_analytics.active
-        benchsim_undamaged = self.benchmark_sim_analytics.data.unburned
-        # Use this to update the self.bench_timesteps and the self.bench_damage
-        if benchsim_active is False and self.bench_estimated is False:
-            # if the benchsim has reached it's end, then use this to set the values of
-            # the variables
-            self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps
-            self.bench_damage = sim_area - benchsim_undamaged
-            self.bench_estimated = True
+            # FIXME mention in docstring that this logic is performed. need to condense!!
+            benchsim_active = self.benchmark_sim_analytics.active
+            benchsim_undamaged = self.benchmark_sim_analytics.data.unburned
+            # Use this to update the self.bench_timesteps and the self.bench_damage
+            if benchsim_active is False and self.bench_estimated is False:
+                # if the benchsim has reached it's end, then use this to set the values of
+                # the variables
+                self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps
+                self.bench_damage = sim_area - benchsim_undamaged
+                self.bench_estimated = True
 
-        # use this to initialize the self.bench_timesteps and the self.bench_damage if
-        # the bench_sim has not ended before the main_sim yet
-        # TODO make this more efficient or just have the benchsim run once before the
-        # agent makes any actions
-        elif self.bench_estimated is False:
-            if self.benchmark_sim_analytics.num_sim_steps > self.bench_timesteps:
-                self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps + 1
+            # use this to initialize the self.bench_timesteps and the self.bench_damage if
+            # the bench_sim has not ended before the main_sim yet
+            # TODO make this more efficient or just have the benchsim run once before the
+            # agent makes any actions
+            elif self.bench_estimated is False:
+                if self.benchmark_sim_analytics.num_sim_steps > self.bench_timesteps:
+                    self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps + 1
 
-            if sim_area - benchsim_undamaged > self.bench_damage:
-                self.bench_damage = sim_area - benchsim_undamaged + 1
+                if sim_area - benchsim_undamaged > self.bench_damage:
+                    self.bench_damage = sim_area - benchsim_undamaged + 1
 
     def update_after_one_harness_step(
         self, sim_run: bool, terminated: bool, reward: float, *, timestep: int
@@ -226,6 +226,8 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
                     episode=self.episodes_total,
                     reward=reward,
                 )
+            perf = self.best_episode_performance
+            logger.info(f"Episode {self.episodes_total}: {perf}")
 
     def reset(self, env_is_rendering: bool = False):
         """Resets attributes that track data within each episode.

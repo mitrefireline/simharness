@@ -3,11 +3,11 @@ area:
     _target_: builtins.tuple
     # NOTE: This will initialize the fire at the center of the screen
     _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
-  pixel_scale: 12
+  pixel_scale: 50
 
 display:
-  fire_size: 2
-  control_line_size: 2
+  fire_size: 1
+  control_line_size: 3
   agent_size: 4
   rescale_factor: 2
 
@@ -61,15 +61,21 @@ terrain:
 
 fire:
   fire_initial_position:
-    type: static  # ${simulation.fire_initial_position.type}
+    type: random  # ${simulation.fire_initial_position.type}
     static:
       position:
         _target_: builtins.tuple
         # NOTE: This will initialize the fire at the center of the screen
         _args_: [[
-          "${calculate_half:${simulation.screen_width}}", # x position
-          "${calculate_half:${simulation.screen_height}}" # y position
+          0, # x position
+          0 # y position
         ]]
+        # _args_: [[
+        #   "${calculate_half:${simulation.screen_width}}", # x position
+        #   "${calculate_half:${simulation.screen_height}}" # y position
+        # ]]
+    random:
+      seed: ${simulation.fire_start_seed}
   max_fire_duration: 4
   diagonal_spread: false
 

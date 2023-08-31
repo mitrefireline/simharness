@@ -16,9 +16,15 @@ import pandas as pd
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
-from simharness2.analytics.agent_analytics import ReactiveAgentAnalytics
+from simharness2.analytics import ReactiveAgentAnalytics
 
 logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 @dataclass
@@ -62,8 +68,8 @@ class SimulationData:
 
         if not self.is_benchmark:
             self.mitigated = timestep_dict["mitigated"]
-            self.agent_interactions = timestep_dict["agent_interactions"]
-            self.agent_movements = timestep_dict["agent_movements"]
+            # self.agent_interactions = timestep_dict["agent_interactions"]
+            # self.agent_movements = timestep_dict["agent_movements"]
 
     def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
         """Save episode history to CSV file."""
@@ -219,8 +225,9 @@ class FireSimulationAnalytics(SimulationAnalytics):
             sim_timestep_dict.update(
                 {
                     "mitigated": fire_map.size - non_mitigated_total,
-                    "agent_interactions": self.agent_analytics.num_interactions_since_last_sim_step,  # noqa: E501
-                    "agent_movements": self.agent_analytics.num_movements_since_last_sim_step,  # noqa: E501
+                    # FIXME: Update for MARL case.
+                    # "agent_interactions": self.agent_analytics.num_interactions_since_last_sim_step,  # noqa: E501
+                    # "agent_movements": self.agent_analytics.num_movements_since_last_sim_step,  # noqa: E501
                 }
             )
 
