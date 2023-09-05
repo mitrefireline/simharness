@@ -179,10 +179,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
         # After every agent action, store the movement and interaction that were taken.
-        self.latest_movement: int = None
-        self.latest_interaction: int = None
+        self._latest_movement: int = None
+        self._latest_interaction: int = None
         # If the square the agent is on is "empty", this is set to True.
-        self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
         # If the agent places a mitigation, this is set to True.
         self.mitigation_placed: bool = False
         # If the agent attempts to move out of bounds, this is set to True.
@@ -201,10 +200,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.harness_analytics:
             self.harness_analytics.update_after_one_agent_step(
                 timestep=self.timesteps,
-                movement=self.latest_movement,
-                interaction=self.latest_interaction,
+                movement=self._latest_movement,
+                interaction=self._latest_interaction,
                 agent_pos=self.agent_pos,
-                valid_movement=not self._moved_off_map,
+                moved_off_map=self._moved_off_map,
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -250,37 +249,29 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Move the agent and interact with the environment.
 
         Within this method, the movement and interaction that the agent takes are stored
-        in `self.latest_movement` and `self.latest_interaction`, respectively. If this
-        movement is not "none", then the agent's position on the map is updated and
-        stored in `self.agent_pos`.
+        in `self._latest_movement` and `self._latest_interaction`, respectively. If this
+        movement is not "none", then the agent's position stored in `self.agent_pos` is
+        updated, as well as the corresponding agent stored in the `self.sim.agents` dict.
 
-        Given some arbitrary method that defines whether a space in the simulation is
-        empty or not (see `_agent_pos_is_empty_space()`), the value of
-        `self.agent_pos_is_empty_space` is updated accordingly. If the space occupied by
-        the agent (`self.agent_pos`) is *empty* and the interaction is not "none", then
-        the agent will place a mitigation on the map and `self.mitigation_placed` is set
-        to True. Otherwise, `self.mitigation_placed` is set to False.
+        If the (new) space occupied by the agent is `UNBURNED` and the interaction is not
+        "none", then the agent will place a mitigation on the map, and
+        `self.mitigation_placed` is set to True. Otherwise, `self.mitigation_placed` is
+        set to False.
 
         Arguments:
             action: An ndarray provided by the agent to update the environment state.
         """
         # Parse the movement and interaction from the action, and store them.
-        self.latest_movement, self.latest_interaction = self._parse_action(action)
+        self._latest_movement, self._latest_interaction = self._parse_action(action)
 
         # Update agent location on map
-        if self.movements[self.latest_movement] != "none":
+        if self.movements[self._latest_movement] != "none":
             # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
             self._update_agent_position()
 
-        # Check if there was an interaction already done on this space
-        # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
-        self._agent_pos_is_empty_space()  # FIXME do we still need this??
-
-        # Interact with the environment
-        # NOTE: It is crucial that we do not attempt to place a mitigation when the
-        # interaction is "none", as this is not a valid interaction within the sim.
-        interact = self.interactions[self.latest_interaction] != "none"
-        if self.agent_pos_is_empty_space and interact:
+        interact = self.interactions[self._latest_interaction] != "none"
+        # Ensure that mitigations are only placed on squares with `UNBURNED` status
+        if self._agent_pos_is_unburned() and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
 
@@ -303,7 +294,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         map_boundary = self.sim.config.area.screen_size[0] - 1
 
         # Update the agent's position based on the provided movement.
-        movement_str = self.movements[self.latest_movement]
+        movement_str = self.movements[self._latest_movement]
         # First, check that the movement string is valid.
         if movement_str not in ["up", "down", "left", "right"]:
             raise ValueError(f"Invalid movement string provided: {movement_str}.")
@@ -333,20 +324,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         point = [self.agent_pos[1], self.agent_pos[0], self.sim_agent_id]
         self.sim.update_agent_positions([point])
 
-    def _agent_pos_is_empty_space(self) -> bool:
+    def _agent_pos_is_unburned(self) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
-        # FIXME Store the value that indicates whether space is empty or not
-        #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
-        self.agent_pos_is_empty_space = (
-            self.state[self.agent_pos[0], self.agent_pos[1], fire_map_idx]
-            == BurnStatus.UNBURNED
-        )
+        pos_0, pos_1 = self.agent_pos[0], self.agent_pos[1]
+        return self.state[pos_0, pos_1, fire_map_idx] == BurnStatus.UNBURNED
 
     def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""
         # Perform interaction on new space
-        sim_interaction = self.harness_to_sim[self.latest_interaction]
+        sim_interaction = self.harness_to_sim[self._latest_interaction]
         # NOTE: Elements of `mitigation_update` should follow (column, row, agent_id)
         # convention.
         mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
@@ -418,7 +405,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
         if self.harness_analytics:
-            self.harness_analytics.reset()
+            render = self._should_render if hasattr(self, "_should_render") else False
+            self.harness_analytics.reset(env_is_rendering=render)
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -459,10 +447,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._has_reset = True
 
         # Reset attributes that help track the agent's actions.
-        self.latest_movement: int = None
-        self.latest_interaction: int = None
+        self._latest_movement: int = None
+        self._latest_interaction: int = None
         # If the square the agent is on is "empty", this is set to True.
-        self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
         # If the agent places a mitigation, this is set to True.
         self.mitigation_placed: bool = False
         # If the agent attempts to move out of bounds, this is set to True.
@@ -601,11 +588,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.harness_analytics: ReactiveHarnessAnalytics
         if harness_analytics_partial:
             try:
-                # sim_ref = weakref.ref(self.sim)
-                # benchmark_sim_ref = weakref.ref(self.benchmark_sim)
-                # self.harness_analytics = harness_analytics_partial(
-                #     sim=sim_ref(), benchmark_sim=benchmark_sim_ref()
-                # )
                 self.harness_analytics = harness_analytics_partial(
                     sim=self.sim, benchmark_sim=self.benchmark_sim
                 )
