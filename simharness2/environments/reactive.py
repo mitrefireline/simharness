@@ -51,8 +51,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     ### Observation Space
     The observation space type is `Box`, and `sample()` returns an `np.ndarray` of shape
     `(A,X,X)`, where `A == len(ReactiveHarness.attributes)` and
-    `X == ReactiveHarness.sim.config.area.screen_size`.
-    - The value of `ReactiveHarness.sim.config.area.screen_size` is determined
+    `X == ReactiveHarness.sim.config.area.screen_size[0]`.
+    - The value of `ReactiveHarness.sim.config.area.screen_size[0]` is determined
       based on the value of the `screen_size` attribute (within the `area` section) of
       the (simulation) config file. See `simharness2/sim_registry.py` to find more info
       about the `register_simulation()` method, which is used to register the simulation
@@ -295,7 +295,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Update the agent's position on the map by performing the provided movement."""
         # Store agent's current position in a temporary variable to avoid overwriting it.
         temp_agent_pos = self.agent_pos.copy()
-        map_boundary = self.sim.config.area.screen_size - 1
+        map_boundary = self.sim.config.area.screen_size[0] - 1
 
         # Update the agent's position based on the provided movement.
         movement_str = self.movements[self.latest_movement]
@@ -485,8 +485,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         nonsim_data["fire_map"] = np.zeros(
             (
-                self.sim.config.area.screen_size,
-                self.sim.config.area.screen_size,
+                self.sim.config.area.screen_size[0],
+                self.sim.config.area.screen_size[0],
             )
         )
 
@@ -505,7 +505,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Set the agent's initial position in the map for the start of the episode."""
         if self.randomize_initial_agent_pos:
             self.agent_pos = self.np_random.integers(
-                0, self.sim.config.area.screen_size, size=2, dtype=int
+                0, self.sim.config.area.screen_size[0], size=2, dtype=int
             )
         else:
             # TODO(afennelly): Verify initial_agent_pos is within the bounds of the map

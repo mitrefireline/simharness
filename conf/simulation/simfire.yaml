@@ -17,3 +17,9 @@ defaults:
 #   seed: 1234
 # wind:
 #   function: simple
+
+# Simfire v1.5.0 supports rectangular screens. The harness is NOT prepared to use a
+# rectangle, so for now we will set height and width using deprecated "screen_size".
+screen_size: 128
+screen_height: ${.screen_size}
+screen_width: ${.screen_size}

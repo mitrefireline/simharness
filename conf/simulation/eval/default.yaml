@@ -1,36 +1,38 @@
 area:
-  screen_size: 128  # ${simulation.screen_size}
+  screen_size:         
+    _target_: builtins.tuple
+    # NOTE: This will initialize the fire at the center of the screen
+    _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
   pixel_scale: 12
 
 display:
   fire_size: 2
   control_line_size: 2
   agent_size: 4
-  rescale_size: 256
+  rescale_factor: 2
 
 simulation:
   update_rate: 1
   runtime: 24hr
   headless: true
-  record: false
+  record: true
   save_data: false
   draw_spread_graph: false
   data_type: "npy"
   # NOTE: Below path isn't used to save gifs; we specify `save_path` via `save_gif(path)`
-  save_path: ${oc.env:HOME}/.simfire/simulation_outputs"
+  sf_home: "${oc.env:HOME}/.simfire"
 
 mitigation:
   ros_attenuation: False
 
 operational:
-  seed: 1
-  latitude: 33.032762267449314
-  longitude: -116.66412470409439
-  height: ${operational_screen_size:${..area.screen_size}}
-  width: ${operational_screen_size:${..area.screen_size}}
+  seed: null
+  latitude: 36.09493 # top left corner
+  longitude: -120.52193 # top left corner
+  height: ${operational_screen_size:${simulation.screen_height}}
+  width: ${operational_screen_size:${simulation.screen_width}}
   resolution: 30
-  path: ${cli.data_dir}/data
-  year: 2020  # ${simulation.operational.year}
+  year: 2019  # ${simulation.operational.year}
 
 terrain:
   topography:
@@ -65,8 +67,8 @@ fire:
         _target_: builtins.tuple
         # NOTE: This will initialize the fire at the center of the screen
         _args_: [[
-          "${calculate_half:${simulation.train.area.screen_size}}",
-          "${calculate_half:${simulation.train.area.screen_size}}"
+          "${calculate_half:${simulation.screen_width}}", # x position
+          "${calculate_half:${simulation.screen_height}}" # y position
         ]]
   max_fire_duration: 4
 

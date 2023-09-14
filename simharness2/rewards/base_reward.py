@@ -17,7 +17,7 @@ class BaseReward(ABC):
         self.harness_analytics = harness_analytics
         # helper variable indicating the total number of squares in the simulation map
         self._sim_area = (
-            self.harness_analytics.sim_analytics.sim.config.area.screen_size**2
+            self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
         )
 
     @abstractmethod
