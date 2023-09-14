@@ -162,13 +162,13 @@ class RLHarness(gym.Env, ABC):
         ).reshape(1, 1, len(self.attributes))
 
         self.low = np.repeat(
-            np.repeat(channel_lows, self.sim.config.area.screen_size, axis=1),
-            self.sim.config.area.screen_size,
+            np.repeat(channel_lows, self.sim.config.area.screen_size[0], axis=1),
+            self.sim.config.area.screen_size[0],
             axis=0,
         )
         self.high = np.repeat(
-            np.repeat(channel_highs, self.sim.config.area.screen_size, axis=1),
-            self.sim.config.area.screen_size,
+            np.repeat(channel_highs, self.sim.config.area.screen_size[0], axis=1),
+            self.sim.config.area.screen_size[0],
             axis=0,
         )
 
