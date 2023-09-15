@@ -10,8 +10,8 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
-import os
 import logging
+import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
@@ -20,9 +20,9 @@ import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
-
 from simfire.enums import BurnStatus
-from simfire.utils.config import SimulationConfig, Config
+from simfire.utils.config import Config
+
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
@@ -516,20 +516,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         that rendering is active when desired. This is especially important when the
         number of eval episodes, specified via `evaluation.evaluation_duration`, is >1.
         """
-        self.sim.config.yaml_data["simulation"].update({"headless": not should_render})
-        sim_config_args = self.sim.config.yaml_data["simulation"]
-        sim_config_args.update({"headless": not should_render})
-        logger.info(
-            f"Updating `self.sim.config.simulation` with new `SimulationConfig`..."
-        )
-        self.sim.config.simulation = SimulationConfig(**sim_config_args)
-
-        # sim_data = self.sim.config.yaml_data
-        # sim_data["simulation"]["headless"] = not should_render
+        sim_data = self.sim.config.yaml_data
+        sim_data["simulation"]["headless"] = not should_render
 
         # Update simulation's config attribute.
-        # logger.info(f"Updating the `self.sim.config` with new `Config` object...")
-        # self.sim.config = Config(config_dict=sim_data)
+        logger.info("Updating the `self.sim.config` with new `Config` object...")
+        self.sim.config = Config(config_dict=sim_data)
 
         # Reset the simulation to ensure that the new config is used.
         logger.info(f"Resetting `self.sim` to configure rendering == {should_render}.")
@@ -544,55 +536,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Indicate whether the environment's `FireSimulation` should be rendered.
         self._should_render = should_render
-
-        # Update both the `Config`, and to be safe, the underlying yaml_data.
-        # self.sim.config.yaml_data["simulation"].update({"headless": not should_render})
-        # sim_config_args = self.sim.config.yaml_data["simulation"]
-        # sim_config_args.update({"headless": not should_render})
-        # self.sim.config.simulation = SimulationConfig(**sim_config_args)
-        # self.sim.config.simulation.headless = not should_render
-        # if should_render:
-        #     self.sim.reset()
-        # base_env.sim.reset()
-
-        # base_env.sim = FireSimulation(Config(config_dict=sim_data))
-        # breakpoint()
-
-        # Set simulation to rendering mode
-        # os.environ["SDL_VIDEODRIVER"] = "dummy"
-        # base_env.sim.rendering = True
-
-    # def prepare_to_render(self) -> None:
-    #     """Prepare the environment to be rendered."""
-
-    #     # breakpoint()
-    #     # Instantiate new simulation object with updated parameters
-    #     # del base_env.sim
-    #     base_env.sim = FireSimulation(Config(config_dict=sim_data))
-    #     # Set simulation to rendering mode
-    #     os.environ["SDL_VIDEODRIVER"] = "dummy"
-    #     base_env.sim.rendering = True
-    #     # Sim is using pygame, so don't delete the object.
-    #     if not self.sim.config.simulation.headless:
-    #         # TODO any logic to implement here?
-    #         pass
-    #     # Sim is not using pygame, so re-create the object.
-    #     else:
-    #         sim_data = self.sim.config.yaml_data
-    #         sim_data["simulation"]["headless"] = False
-
-    #         self._update_sim_object(sim_data)
-
-    #         self.sim.rendering = True
-    #     self.sim.rendering = True
-
-    # def _update_sim_object(self, yaml_data: Dict[str, Any]) -> None:
-    #     """Update the simulation object with the provided YAML data."""
-    #     # Create a new simulation object with the updated parameters
-    #     self.sim = FireSimulation(Config(config_dict=yaml_data))
-    #     # Set simulation to rendering mode
-    #     os.environ["SDL_VIDEODRIVER"] = "dummy"
-    #     self.sim.rendering = True
 
     def _increment_evaluation_iterations(self) -> None:
         """Increment the number of evaluation iterations that have been run."""

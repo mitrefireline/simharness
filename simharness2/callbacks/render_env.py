@@ -88,7 +88,6 @@ class RenderEnv(DefaultCallbacks):
             if env._should_render and not env.sim.rendering:
                 logger.info("Enabling rendering for evaluation env.")
                 # TODO: Refactor below 3 lines into `env.render()` method?
-                # base_env.vector_env.envs[env_index].render(active=True)
                 os.environ["SDL_VIDEODRIVER"] = "dummy"
                 base_env.vector_env.envs[env_index].sim.reset()
                 base_env.vector_env.envs[env_index].sim.rendering = True
@@ -145,7 +144,7 @@ class RenderEnv(DefaultCallbacks):
                 logger.info(f"Saving GIF to {gif_save_path}...")
                 base_env.vector_env.envs[env_index].sim.save_gif(gif_save_path)
                 # Save the gif_path so that we can write image to aim server, if desired
-                # NOTE: `save_path` is a list after the above, so do element access for now
+                # NOTE: `save_path` is a list after the above; do element access for now
                 episode.media.update({"gif": gif_save_path})
             # sim.save_spread_graph(save_dir)
 
