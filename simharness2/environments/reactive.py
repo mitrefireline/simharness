@@ -11,6 +11,7 @@ Typical usage example:
   bar = foo.FunctionBar()
 """
 import logging
+import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
@@ -20,13 +21,14 @@ from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
 from simfire.enums import BurnStatus
+from simfire.utils.config import Config
 
 # from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 
 # from simharness2.rewards.base_reward import BaseReward
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray.rllib")
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -52,8 +54,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     ### Observation Space
     The observation space type is `Box`, and `sample()` returns an `np.ndarray` of shape
     `(A,X,X)`, where `A == len(ReactiveHarness.attributes)` and
-    `X == ReactiveHarness.sim.config.area.screen_size`.
-    - The value of `ReactiveHarness.sim.config.area.screen_size` is determined
+    `X == ReactiveHarness.sim.config.area.screen_size[0]`.
+    - The value of `ReactiveHarness.sim.config.area.screen_size[0]` is determined
       based on the value of the `screen_size` attribute (within the `area` section) of
       the (simulation) config file. See `simharness2/sim_registry.py` to find more info
       about the `register_simulation()` method, which is used to register the simulation
@@ -120,6 +122,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self._total_eval_rounds = eval_duration if eval_duration else 0
 
         self._current_eval_round = 1
+        # Incremented on each call to `RenderEnv.on_evaluate_start()` callback, via the
+        # `_increment_evaluation_iterations()` helper method.
+        self._num_eval_iters = 0
 
         self.fire_scenarios = config.get("scenarios", None)
         # Set the max number of steps that the environment can take before truncation
@@ -175,10 +180,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
         # After every agent action, store the movement and interaction that were taken.
-        self.latest_movement: int = None
-        self.latest_interaction: int = None
+        self._latest_movement: int = None
+        self._latest_interaction: int = None
         # If the square the agent is on is "empty", this is set to True.
-        self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
         # If the agent places a mitigation, this is set to True.
         self.mitigation_placed: bool = False
         # If the agent attempts to move out of bounds, this is set to True.
@@ -197,10 +201,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.harness_analytics:
             self.harness_analytics.update_after_one_agent_step(
                 timestep=self.timesteps,
-                movement=self.latest_movement,
-                interaction=self.latest_interaction,
+                movement=self._latest_movement,
+                interaction=self._latest_interaction,
                 agent_pos=self.agent_pos,
-                valid_movement=not self._moved_off_map,
+                moved_off_map=self._moved_off_map,
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -251,28 +255,29 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Move the agent and interact with the environment.
 
         Within this method, the movement and interaction that the agent takes are stored
-        in `self.latest_movement` and `self.latest_interaction`, respectively. If this
-        movement is not "none", then the agent's position on the map is updated and
-        stored in `self.agent_pos`.
+        in `self._latest_movement` and `self._latest_interaction`, respectively. If this
+        movement is not "none", then the agent's position stored in `self.agent_pos` is
+        updated, as well as the corresponding agent stored in the `self.sim.agents` dict.
 
-        Given some arbitrary method that defines whether a space in the simulation is
-        empty or not (see `_agent_pos_is_empty_space()`), the value of
-        `self.agent_pos_is_empty_space` is updated accordingly. If the space occupied by
-        the agent (`self.agent_pos`) is *empty* and the interaction is not "none", then
-        the agent will place a mitigation on the map and `self.mitigation_placed` is set
-        to True. Otherwise, `self.mitigation_placed` is set to False.
+        If the (new) space occupied by the agent is `UNBURNED` and the interaction is not
+        "none", then the agent will place a mitigation on the map, and
+        `self.mitigation_placed` is set to True. Otherwise, `self.mitigation_placed` is
+        set to False.
 
         Arguments:
             action: An ndarray provided by the agent to update the environment state.
         """
         # Parse the movement and interaction from the action, and store them.
-        self.latest_movement, self.latest_interaction = self._parse_action(action)
+        self._latest_movement, self._latest_interaction = self._parse_action(action)
 
-        # Interact with the environment
-        # NOTE: It is crucial that we do not attempt to place a mitigation when the
-        # interaction is "none", as this is not a valid interaction within the sim.
-        interact = self.interactions[self.latest_interaction] != "none"
-        if self.agent_pos_is_empty_space and interact:
+        # Update agent location on map
+        if self.movements[self._latest_movement] != "none":
+            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
+            self._update_agent_position()
+
+        interact = self.interactions[self._latest_interaction] != "none"
+        # Ensure that mitigations are only placed on squares with `UNBURNED` status
+        if self._agent_pos_is_unburned() and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
 
@@ -301,10 +306,10 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Update the agent's position on the map by performing the provided movement."""
         # Store agent's current position in a temporary variable to avoid overwriting it.
         temp_agent_pos = self.agent_pos.copy()
-        map_boundary = self.sim.config.area.screen_size - 1
+        map_boundary = self.sim.config.area.screen_size[0] - 1
 
         # Update the agent's position based on the provided movement.
-        movement_str = self.movements[self.latest_movement]
+        movement_str = self.movements[self._latest_movement]
         # First, check that the movement string is valid.
         if movement_str not in ["up", "down", "left", "right"]:
             raise ValueError(f"Invalid movement string provided: {movement_str}.")
@@ -334,20 +339,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         point = [self.agent_pos[1], self.agent_pos[0], self.sim_agent_id]
         self.sim.update_agent_positions([point])
 
-    def _agent_pos_is_empty_space(self) -> bool:
+    def _agent_pos_is_unburned(self) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
-        # FIXME Store the value that indicates whether space is empty or not
-        #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
-        self.agent_pos_is_empty_space = (
-            self.state[self.agent_pos[0], self.agent_pos[1], fire_map_idx]
-            == BurnStatus.UNBURNED
-        )
+        pos_0, pos_1 = self.agent_pos[0], self.agent_pos[1]
+        return self.state[pos_0, pos_1, fire_map_idx] == BurnStatus.UNBURNED
 
     def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""
         # Perform interaction on new space
-        sim_interaction = self.harness_to_sim[self.latest_interaction]
+        sim_interaction = self.harness_to_sim[self._latest_interaction]
         # NOTE: Elements of `mitigation_update` should follow (column, row, agent_id)
         # convention.
         mitigation_update = (self.agent_pos[1], self.agent_pos[0], sim_interaction)
@@ -419,7 +420,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
         if self.harness_analytics:
-            self.harness_analytics.reset()
+            render = self._should_render if hasattr(self, "_should_render") else False
+            self.harness_analytics.reset(env_is_rendering=render)
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -460,10 +462,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._has_reset = True
 
         # Reset attributes that help track the agent's actions.
-        self.latest_movement: int = None
-        self.latest_interaction: int = None
+        self._latest_movement: int = None
+        self._latest_interaction: int = None
         # If the square the agent is on is "empty", this is set to True.
-        self.agent_pos_is_empty_space: bool = True  # FIXME what default value?
         # If the agent places a mitigation, this is set to True.
         self.mitigation_placed: bool = False
         # If the agent attempts to move out of bounds, this is set to True.
@@ -491,8 +492,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         nonsim_data["fire_map"] = np.zeros(
             (
-                self.sim.config.area.screen_size,
-                self.sim.config.area.screen_size,
+                self.sim.config.area.screen_size[0],
+                self.sim.config.area.screen_size[0],
             )
         )
 
@@ -507,11 +508,46 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def render(self):  # noqa
         self.sim.rendering = True
 
+    def _configure_env_rendering(self, should_render: bool) -> None:
+        """Configure the environment's `FireSimulation` to be rendered (or not).
+
+        If the simulation should be rendered, then the `headless` parameter in the
+        simulation's config (file) should be set to `False`, enabling the usage of pygame.
+
+        Additionally, the environment's `_should_render` attribute is set to ensure
+        that rendering is active when desired. This is especially important when the
+        number of eval episodes, specified via `evaluation.evaluation_duration`, is >1.
+        """
+        sim_data = self.sim.config.yaml_data
+        sim_data["simulation"]["headless"] = not should_render
+
+        # Update simulation's config attribute.
+        logger.info("Updating the `self.sim.config` with new `Config` object...")
+        self.sim.config = Config(config_dict=sim_data)
+
+        # Reset the simulation to ensure that the new config is used.
+        logger.info(f"Resetting `self.sim` to configure rendering == {should_render}.")
+        self.sim.reset()
+
+        # Update the simulation's rendering attribute to match the provided value.
+        if should_render:
+            logger.info("Setting SDL_VIDEODRIVER environment variable to 'dummy'...")
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+
+        self.sim.rendering = should_render
+
+        # Indicate whether the environment's `FireSimulation` should be rendered.
+        self._should_render = should_render
+
+    def _increment_evaluation_iterations(self) -> None:
+        """Increment the number of evaluation iterations that have been run."""
+        self._num_eval_iters += 1
+
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
         if self.randomize_initial_agent_pos:
             self.agent_pos = self.np_random.integers(
-                0, self.sim.config.area.screen_size, size=2, dtype=int
+                0, self.sim.config.area.screen_size[0], size=2, dtype=int
             )
         else:
             # TODO(afennelly): Verify initial_agent_pos is within the bounds of the map

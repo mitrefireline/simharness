@@ -18,6 +18,9 @@ Development
 :doc:`contributing`
    How to contribute changes to the codebase or to documentation.
 
+:doc:`analytics`
+   How to use the analytics subpackage to monitor training runs.
+
 
 .. Hidden TOCs
 
@@ -36,6 +39,7 @@ Development
 
    developing
    contributing
+   analytics
 
 .. toctree::
    :maxdepth: 1
