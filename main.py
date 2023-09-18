@@ -104,7 +104,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # TODO add this to config
     # Config for the tuning process (used for all trial runs)
     tune_config = tune.TuneConfig(
-        num_samples=12, max_concurrent_trials=3, metric="episode_reward_mean", mode="max"
+        num_samples=20, max_concurrent_trials=2, metric="episode_reward_mean", mode="max"
     )
 
     # Create a Tuner
@@ -265,7 +265,7 @@ def main(cfg: DictConfig) -> None:
             ckpt_path = cfg.algo.checkpoint_path
             LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
 
-            if not os.path.isfile(ckpt_path):
+            if not os.path.isdir(ckpt_path):
                 raise ValueError(f"{ckpt_path} is not a valid file path.")
 
             algo.restore(checkpoint_path=ckpt_path)

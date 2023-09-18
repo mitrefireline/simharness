@@ -9,7 +9,7 @@ display:
   rescale_size: 256
 
 simulation:
-  update_rate: 1
+  update_rate: 0.5
   runtime: 24hr
   headless: true
   record: false
@@ -23,18 +23,18 @@ mitigation:
   ros_attenuation: False
 
 operational:
-  seed: 1
-  latitude: 33.032762267449314
-  longitude: -116.66412470409439
+  seed:
+  latitude: 36.09493
+  longitude: 120.52193
   height: ${operational_screen_size:${..area.screen_size}}
   width: ${operational_screen_size:${..area.screen_size}}
   resolution: 30
   path: ${cli.data_dir}/data
-  year: 2020  # ${simulation.operational.year}
+  year: 2019  # ${simulation.operational.year}
 
 terrain:
   topography:
-    type: functional  # ${simulation.topography.type}
+    type: operational  # ${simulation.topography.type}
     functional:
       function: flat
       perlin:
@@ -51,7 +51,7 @@ terrain:
         sigma_x: 50
         sigma_y: 50
   fuel:
-    type: functional  # ${simulation.fuel.type}
+    type: operational  # ${simulation.fuel.type}
     functional:
       function: chaparral
       chaparral:
@@ -65,8 +65,8 @@ fire:
         _target_: builtins.tuple
         # NOTE: This will initialize the fire at the center of the screen
         _args_: [[
-          0, # "${calculate_half:${simulation.train.area.screen_size}}",
-          0, # "${calculate_half:${simulation.train.area.screen_size}}"
+          5, # "${calculate_half:${simulation.train.area.screen_size}}",
+          5, # "${calculate_half:${simulation.train.area.screen_size}}"
         ]]
     random:
       seed: 1234  # ${simulation.fire_initial_position.seed}

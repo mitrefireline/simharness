@@ -236,7 +236,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
         # if terminated:
-        #     reward += 10
+        #     reward += 1
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
@@ -268,15 +268,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Parse the movement and interaction from the action, and store them.
         self.latest_movement, self.latest_interaction = self._parse_action(action)
 
-        # Update agent location on map
-        if self.movements[self.latest_movement] != "none":
-            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
-            self._update_agent_position()
-
-        # Check if there was an interaction already done on this space
-        # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
-        self._agent_pos_is_empty_space()  # FIXME do we still need this??
-
         # Interact with the environment
         # NOTE: It is crucial that we do not attempt to place a mitigation when the
         # interaction is "none", as this is not a valid interaction within the sim.
@@ -284,6 +275,15 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self.agent_pos_is_empty_space and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
+
+        # Update agent location on map
+        if self.movements[self.latest_movement] != "none":
+            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
+            self._update_agent_position()
+
+        # Check if there was an interaction already done on this space
+        # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
+        # self._agent_pos_is_empty_space()  # FIXME do we still need this??
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
         """Parse the action into movement and interaction."""
@@ -399,14 +399,14 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO(afennelly) Enable selecting attributes to randomize from config file.
         # FIXME this needs to not be hard-coded and moved outside of method logic.
         # if not self.deterministic:
-        #     # Set seeds for randomization
-        #     fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
-        #     elevation_seed = self.simulation.get_seeds()["elevation"]
-        #     seed_dict = {
-        #         "fire_initial_position": fire_init_seed + 1,
-        #         "elevation": elevation_seed + 1,
-        #     }
-        #     self.simulation.set_seeds(seed_dict)
+        # Set seeds for randomization
+        # fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
+        # # elevation_seed = self.simulation.get_seeds()["elevation"]
+        # seed_dict = {
+        #     "fire_initial_position": fire_init_seed + 1,
+        #     # "elevation": elevation_seed + 1,
+        # }
+        # self.sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
