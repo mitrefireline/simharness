@@ -123,8 +123,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.num_agents = config.get("num_agents", default_num_agents)
 
         # FIXME DEFAULTS (set these in the cfg)
-        default_agent_speeds = [1] * default_num_agents
-        self.agent_speeds: int = config.get("agent_speeds", default_agent_speeds)
+        default_agent_speeds = 9
+        self.agent_speed: int = config.get("agent_speeds", default_agent_speeds)
 
         # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
         self.agent_pos: List[List[int]] = [None] * self.num_agents
@@ -160,6 +160,15 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
+
+        # After every agent action, store the movement and interaction that were taken.
+        self._latest_movement: Dict[str, int] = None
+        self._latest_interaction: Dict[str, int] = None
+        # If the square the agent is on is "empty", this is set to True.
+        # If the agent places a mitigation, this is set to True.
+        self.mitigation_placed: Dict[str, bool] = False
+        # If the agent attempts to move out of bounds, this is set to True.
+        self._moved_off_map: Dict[str, bool] = False
 
     def _set_debug_options(self, config: EnvContext):
         """Set the debug options for the environment."""
@@ -230,23 +239,26 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
+        movements, interactions = {}, {}
         for agent_id_num in range(self.num_agents):
             agent_id = f"agent_{agent_id_num}"
             # TODO `agent_step` should return `AgentBehavior` instance
             # We can insert this into
-            movement, interaction = self._do_one_agent_step(
+            movements[agent_id], interactions[agent_id] = self._do_one_agent_step(
                 agent_id_num, actions[agent_id]
             )  # alternatively, self._step_agent(action)
 
-        # FIXME the provided movement, interaction are only for the LAST agent.
-        # This needs to be a Dict of movements, interactions for each agent!
         if self.harness_analytics:
-            self.harness_analytics.update_after_one_agent_step(
-                timestep=self.timesteps,
-                movement=movement,
-                interaction=interaction,
-                agent_pos=self.agent_pos[agent_id_num],
-            )
+            # Naive approach: Iterate over each agent and do (roughly) same as SARL case.
+            for agent_id_num in range(self.num_agents):
+                self.harness_analytics.update_after_one_agent_step(
+                    timestep=self.timesteps,
+                    movement=movements[agent_id],
+                    interaction=interactions[agent_id],
+                    agent_pos=self.agent_pos[agent_id_num],
+                    moved_off_map=self._moved_off_map[agent_id_num],
+                    agent_id=f"agent_{agent_id_num}",
+                )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
         # indicate how to calculate the reward for the current timestep.
@@ -372,17 +384,21 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         else:
             raise NotImplementedError(f"{self.action_space} is not supported.")
 
-    def _update_agent_position(self, agent_id_num: int, movement_id: str) -> None:
+    def _update_agent_position(self, agent_id_num: int) -> None:
         """Update the agent's position on the map by performing the provided movement."""
         # Store agent's current position in a temporary variable to avoid overwriting it.
-
         agent_pos = self.agent_pos[agent_id_num]
         temp_agent_pos = agent_pos.copy()
-        map_boundary = self.sim.config.area.screen_size - 1
+        map_boundary = self.sim.config.area.screen_size[0] - 1
 
         # Update the agent's position based on the provided movement.
-        movement_str = self.movements[movement_id]
-        if movement_str == "up" and not agent_pos[0] == 0:
+        latest_movement = self._latest_movement[agent_id_num]
+        movement_str = self.movements[latest_movement]
+        # First, check that the movement string is valid.
+        if movement_str not in ["up", "down", "left", "right"]:
+            raise ValueError(f"Invalid movement string provided: {movement_str}.")
+        # Then, ensure that the agent will not move off the map.
+        elif movement_str == "up" and not agent_pos[0] == 0:
             temp_agent_pos[0] -= 1
         elif movement_str == "down" and not agent_pos[0] == map_boundary:
             temp_agent_pos[0] += 1
@@ -390,13 +406,13 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             temp_agent_pos[1] -= 1
         elif movement_str == "right" and not agent_pos[1] == map_boundary:
             temp_agent_pos[1] += 1
+        # Movement invalid from current pos, so the agent movement will be ignored.
+        # Depending on `self.reward_cls`, the agent may receive a small penalty.
         else:
-            # FIXME: We are assuming that the agent will never move out of bounds, but
-            # there is no guarantee that this is true. Need to handle this case!!
-            # TODO should we provide a more descriptive error message here?
-            logger.error(
-                f"Invalid movement string provided: {movement_str} at pos {agent_pos}."
-            )
+            # Inform caller that the agent cannot move in the provided direction.
+            logger.debug(f"Agent cannot move {movement_str} from {self.agent_pos}.")
+            logger.debug("Setting `self._moved_off_map = True`...")
+            self._moved_off_map[agent_id_num] = True
 
         # Store the updated agent position.
         self.agent_pos[agent_id_num] = temp_agent_pos
@@ -409,19 +425,13 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self.agent_pos[agent_id_num][0],
             agent_id_num,
         ]
-
         self.sim.update_agent_positions([point])
 
-    def _agent_pos_is_empty_space(self, agent_id_num: int) -> bool:
+    def _agent_pos_is_unburned(self) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
-        # FIXME Store the value that indicates whether space is empty or not
-        #   - Ex. NOT hardcoding `== 0` (which is `== int(BurnStatus.UNBURNED)`)
         fire_map_idx = self.attributes.index("fire_map")
-
-        agent_pos = self.agent_pos[agent_id_num]
-        square_status = self.state[agent_pos[0], agent_pos[1], fire_map_idx]
-
-        return square_status == BurnStatus.UNBURNED
+        pos_0, pos_1 = self.agent_pos[0], self.agent_pos[1]
+        return self.state[pos_0, pos_1, fire_map_idx] == BurnStatus.UNBURNED
 
     def _update_mitigation(self, agent_id_num: int, interaction_id: int) -> None:
         """Interact with the environment by performing the provided interaction."""

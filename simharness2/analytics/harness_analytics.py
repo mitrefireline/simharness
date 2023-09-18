@@ -52,6 +52,7 @@ class RLHarnessAnalytics(ABC):
         interaction: int,
         agent_pos: List[int],
         moved_off_map: bool,
+        agent_id: str,
     ) -> None:
         """See subclass for docstring."""
         pass
@@ -129,6 +130,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         interaction: int,
         agent_pos: List[int],
         moved_off_map: bool,
+        agent_id: str,
     ) -> None:
         """Updates `self.sim_analytics.agent_analytics`, if agents are in the sim.
 
@@ -149,6 +151,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             moved_off_map: A boolean indicating whether the agent's latest movement was
                 valid. Expect the value to be `True` if the agent attempted to move to a
                 position that is not contained within the `FireSimulation.fire_map`.
+            agent_id: TODO
         """
         if self.sim_analytics.agent_analytics:
             self.sim_analytics.agent_analytics.update(
