@@ -1,0 +1,78 @@
+defaults:
+  - simulation: simfire
+  - training: simfire
+  - environment: default
+  - framework: default
+  - rollouts: default
+  - evaluation: default
+  - exploration: default
+  # - debugging: default
+  - resources: default
+  - hydra: default
+  - tunables: default
+  - _self_
+
+# Specify configuration pass to the `AimLoggerCallback`
+aim:
+  run_hash: null
+  repo: ${cli.data_dir}/simharness/aim
+  experiment: debug_alex
+  system_tracking_interval: null
+  log_system_params: true
+  capture_terminal_logs: true
+  log_hydra_config: false
+cli:
+  # Specify the run mode. Supported options: train, tune, view
+  mode: ??? # Force command-line override
+  # Specify the root directory used to save data for the experiment.
+  # TODO: Ensure any values that use `data_dir` are properly updated to use
+  # /nfs/lslab2/fireline/simharness
+  data_dir: /nfs/lslab2/fireline
+algo:
+  name: DQN
+  # The path (str) to the checkpoint directory to use.
+  checkpoint_path: null
+# Specify configuration used to create the ray.air.RunConfig object
+runtime:
+  # Name of the training run (directory name)
+  name: null
+  # Directory to store results in (will be local_dir/name)
+  local_dir: ${hydra:run.dir}
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: 20
+  # Number of checkpoints to keep
+  num_to_keep: null
+stop_conditions:
+  training_iteration: 4
+  timesteps_total: 2000000000
+  # episodes_total: 1000000
+  episode_reward_mean: 10000000
+debugging:
+  log_level: INFO
+  log_sys_usage: True
+  seed: 2000
+  # Prepare debugging settings
+  # If no `type` is given, tune's `UnifiedLogger` is used as follows:
+  # DEFAULT_LOGGERS = (JsonLogger, CSVLogger, TBXLogger)
+  # `UnifiedLogger(config, self._logdir, loggers=DEFAULT_LOGGERS)`
+  # - The `logger_config` defined below is used here:
+  # https://github.com/ray-project/ray/blob/863928c4f13b66465399d63e01df3c446b4536d9/rllib/algorithms/algorithm.py#L423
+  # - The `Trainable._create_logger` method can be found here:
+  # https://github.com/ray-project/ray/blob/8d2dc9a3997482100034b60568b06aad7fd9fc59/python/ray/tune/trainable/trainable.py#L1067
+  # debug_settings = OmegaConf.to_container(cfg.debugging)
+  # TODO make options passed to `logger_config` configurable from the CLI
+  # debug_settings.update(
+  #     {
+  #         "logger_config": {
+  #             "type": tune.logger.TBXLogger,
+  #             "logdir": cfg.runtime.local_dir,
+  #         }
+  #     }
+  # )
+  logger_config:
+    type:
+      _target_: hydra.utils.get_class
+      path: ray.tune.logger.TBXLogger
+    logdir: ${hydra:run.dir}
