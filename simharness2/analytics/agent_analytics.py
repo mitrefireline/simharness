@@ -3,17 +3,62 @@
 TODO: Add a list of any classes, exception, functions, and any other objects exported by
 the module.
 """
-import math
+import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from collections import deque
+from dataclasses import InitVar, dataclass
+from typing import List
 
 import numpy as np
-import pandas as pd
-from pandas.api.types import CategoricalDtype
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
-from simharness2.analytics.utils import reset_df
+logger = logging.getLogger("ray.rllib")
+
+
+@dataclass
+class AgentData:
+    """Docstring.
+
+    FIXME: Alt. names - `AgentBehavior`, `AgentEpisodeBehavior`, etc. ??
+    """
+
+    save_history: InitVar[bool] = False
+
+    def __post_init__(self, save_history):
+        """TODO"""
+        # Create a deque that is (optionally) used to aggregate data across timesteps.
+        if save_history:
+            self._history = deque()
+        else:
+            self._history = None
+
+    def update(self, timestep_dict):
+        """
+        Regardless of whether we save history, we want to store:
+        - movement
+        - interaction
+        - moved_off_map
+        - connected_mitigation (TODO later)
+        - near_fire
+        - burn_status
+        - timestep
+        """
+        # Store the current timestep's data in the history deque.
+        if self._history is not None:
+            self._history.append(timestep_dict)
+
+        # Update the attributes that store the agent's behavior.
+        self.movement = timestep_dict["movement"]
+        self.interaction = timestep_dict["interaction"]
+        self.moved_off_map = timestep_dict["moved_off_map"]
+        # self.connected_mitigation = timestep_dict["connected_mitigation"]
+        self.near_fire = timestep_dict["near_fire"]
+        self.burn_status = timestep_dict["burn_status"]
+
+    def collect_episode_history(self, args):
+        """Aggregate data from self._history and write to file?"""
+        raise NotImplementedError
 
 
 class AgentAnalytics(ABC):
@@ -23,10 +68,6 @@ class AgentAnalytics(ABC):
         sim: TODO
         movement_types: TODO
         interaction_types: TODO
-        df: TODO
-        df_cols: TODO
-        df_dtypes: TODO
-        df_index: TODO
 
     TODO: Add section for anything related to the interface for subclassers.
     """
@@ -59,22 +100,16 @@ class AgentAnalytics(ABC):
         self.sim = sim
 
         # Store the movement and interaction types that are available to the agent.
-        self.movement_types = movement_types
-        self.interaction_types = interaction_types
+        self._movement_types = movement_types
+        self._interaction_types = interaction_types
 
         # Store the danger level (in tiles) for the agent.
         self._danger_level = danger_level
 
-        # Define stubs for the class attributes.
-        self.df: pd.DataFrame = None
-        self.df_cols: List[str]
-        self.df_dtypes: Dict[str, Any]
-        self.df_index: str
-
-        self.prepare_df_metadata()
-
-        # NOTE: `self.df` will be initialized in `self._reset_df()`.
-        self.reset()
+    @abstractmethod
+    def reset(self, env_is_rendering: bool = False):
+        """Reset the attributes of `AgentAnalytics` to initial values."""
+        pass
 
     @abstractmethod
     def reset_after_one_simulation_step(self) -> None:
@@ -88,14 +123,9 @@ class AgentAnalytics(ABC):
         movement: int,
         interaction: int,
         agent_pos: List[int],
-        valid_movement: bool,
+        moved_off_map: bool,
     ) -> None:
         """Update the AgentMetricsTracker object variables after each agent action."""
-        pass
-
-    @abstractmethod
-    def prepare_df_metadata(self):
-        """Define the metadata (column names, dtypes, etc.) used for `self.df`."""
         pass
 
     def agent_near_fire(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
@@ -112,18 +142,13 @@ class AgentAnalytics(ABC):
         col_end = min(fire_map.shape[1], agent_pos[1] + self._danger_level + 1)
         near_agent_arr = fire_map[row_start:row_end, col_start:col_end]
 
+        logging.debug(f"near_agent_arr:\n {near_agent_arr}")
         # Check if any tiles surrounding the agent have value `BurnStatus.BURNING`.
         return np.any(near_agent_arr == BurnStatus.BURNING).astype(bool)
 
-    def reset(self):
-        """Reset the attributes of `BaseAgentAnalytics` to initial values.
-
-        Note that this is intended to be called within `FireSimulationAnalytics.reset()`.
-        """
-        # Reset attributes used to store the agent's behavior across a single episode.
-        self.df = reset_df(self.df, self.df_cols, self.df_dtypes, self.df_index)
-        # Reset attributes used to store the agent's behavior between each sim step.
-        self.reset_after_one_simulation_step()
+    def connected_mitigation(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
+        """TODO docstring."""
+        pass
 
 
 class ReactiveAgentAnalytics(AgentAnalytics):
@@ -141,6 +166,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
     TODO: Add section for anything related to the interface for subclassers.
     """
 
+    # NOTE: This is called from within the init of FireSimulationAnalytics !!
     def __init__(
         self,
         *,
@@ -148,6 +174,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         movement_types: List[str],
         interaction_types: List[str],
         danger_level: int = 2,
+        save_history: bool = False,
     ):
         """TODO: A brief description of what the method is and what it's used for.
 
@@ -176,52 +203,9 @@ class ReactiveAgentAnalytics(AgentAnalytics):
             danger_level=danger_level,
         )
 
-    def prepare_df_metadata(self):
-        """Prepares the metadata (column names, dtypes, etc.) for the agent dataframe.
-
-        Within this method, the default names and dtypes for the columns of the agent
-        dataframe are defined and stored in `self.df_cols` and
-        `self.df_dtypes`, respectively. These values are used to initialize the
-        `self.df` dataframe within the `reset_df()` method.
-
-        Columns used to store the agent's behavior:
-            - `timestep`: current timestep in the episode.
-            - `movement`: string id for the movement that the agent selected.
-            - `valid_movement`: bool indicating if the agent's movement was valid.
-            - `interaction`: string id for the interaction that the agent selected.
-            - `near_fire`: bool indicating if the agent is near the fire.
-            - `burn_status`: name (str) of the BurnStatus value at the agent's current
-                position.
-            - `x_pos`: int indicating the x-value of the agent's position within the sim.
-            - `y_pos`: int indicating the y-value of the agent's position within the sim.
-        """
-        # Define the columns that will be used to store the agent's behavior.
-        self.df_cols = [
-            "timestep",
-            "movement",
-            "valid_movement",
-            "interaction",
-            "near_fire",
-            "burn_status",
-            "x_pos",
-            "y_pos",
-        ]
-
-        movement_types = CategoricalDtype(categories=self.movement_types)
-        interaction_types = CategoricalDtype(categories=self.interaction_types)
-        status_types = CategoricalDtype(categories=[s.name for s in BurnStatus])
-        self.df_dtypes = {
-            "timestep": np.uint16,
-            "movement": movement_types,
-            "valid_movement": "boolean",
-            "interaction": interaction_types,
-            "near_fire": "boolean",
-            "burn_status": status_types,
-            "x_pos": np.uint8,
-            "y_pos": np.uint8,
-        }
-
-        self.df_index = "timestep"
+        # Indicates if data from each timestep will be stored across the entire episode.
+        self.save_history = save_history
+        self.data = AgentData(save_history)
 
     def update(
         self,
@@ -229,44 +213,41 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         movement: int,
         interaction: int,
         agent_pos: List[int],
-        valid_movement: bool,
+        moved_off_map: bool,
     ) -> None:
         """Update the AgentAnalytics object variables after each agent action.
 
         Args:
-            timestep (int): Current timestep during the episode.
-            movement (int): Movement ID for the agent
-            interaction (int): Interaction ID for the agent
-            agent_pos (List[int]): Current agent position
-            valid_movement: A boolean indicating whether the agent's latest movement was
-                valid. Expect the value to be `False` if the agent attempted to move to a
-                position not contained within the `FireSimulation.fire_map`.
+            timestep: An integer indicating the current timestep of the episode.
+            movement: An integer indicating the index of the latest movement that the
+                agent selected.
+            interaction: An integer indicating the index of the latest interaction that
+                the agent selected.
+            agent_pos: A list of integers indicating the current position of the agent.
+            moved_off_map: A boolean indicating whether the agent's latest movement was
+                valid. Expect the value to be `True` if the agent attempted to move to a
+                position that is not contained within the `FireSimulation.fire_map`.
         """
-        # NOTE: These are stored in the corresponding `FireSimulationData.df`.
-        if self.interaction_types[interaction] != "none":
+        # NOTE: These are stored in the corresponding FireSimulationAnalytics.data obj.
+        if self._interaction_types[interaction] != "none":
             self.num_interactions_since_last_sim_step += 1
-        if self.movement_types[movement] != "none":
+        if self._movement_types[movement] != "none":
             self.num_movements_since_last_sim_step += 1
 
         fire_map, agent_pos = self.sim.fire_map, agent_pos
 
-        # Add the current timestep's data to the dataframe.
-        # TODO: Is there a better alternative to this df build approach?
-        agent_data = [
-            [timestep],
-            [self.movement_types[movement]],
-            [valid_movement],
-            [self.interaction_types[interaction]],
-            [self.agent_near_fire(fire_map, agent_pos)],
-            [BurnStatus(fire_map[agent_pos[0], agent_pos[1]]).name],
-            [agent_pos[1]],
-            [agent_pos[0]],
-        ]
-        agent_data_dict = dict(zip(self.df_cols, agent_data))
-        timestep_df = (
-            pd.DataFrame(agent_data_dict).astype(self.df_dtypes).set_index(self.df_index)
-        )
-        self.df = pd.concat([self.df, timestep_df])
+        # Prepare current timestep data.
+        agent_timestep_dict = {
+            "timestep": timestep,
+            "movement": self._movement_types[movement],
+            "interaction": self._interaction_types[interaction],
+            "moved_off_map": moved_off_map,
+            # "connected_mitigation": self.connected_mitigation(fire_map, agent_pos),
+            "near_fire": self.agent_near_fire(fire_map, agent_pos),
+            "burn_status": BurnStatus(fire_map[agent_pos[0], agent_pos[1]]).name,
+        }
+        # Store agent behavior for the current timestep in the dataclass
+        self.data.update(agent_timestep_dict)
 
     def reset_after_one_simulation_step(self) -> None:
         """Reset values that are tracked between each simulation step."""
@@ -274,144 +255,14 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         self.num_interactions_since_last_sim_step = 0
         self.num_movements_since_last_sim_step = 0
 
+    def reset(self, env_is_rendering: bool = False):
+        """Reset the attributes of `BaseAgentAnalytics` to initial values.
 
-class AgentMetricsTracker:
-    """Monitors and tracks the behavior of a single agent within the simulation."""
-
-    def __init__(self, sim: FireSimulation):
-        """TODO: Docstring for __init__."""
-        # Store a reference to the agent's world, the `FireSimulation` object.
-        self._sim = sim
-        self.reset()
-
-        # number of actions that the agent has taken within this timestep
-        self.num_agent_actions = 0
-
-        # bool for if the agent has placed a mitigation within this timestep
-        self.mitigation_placed = False
-
-        # the number of mitigations that the agent has places within this timestep
-        self.new_mitigations = 0
-
-        # bool for if the agent is currently within the burning squares (is on fire)
-        self.agent_is_burning = False
-
-        # bool for if the agent is currently operating within area that is already burned
-        self.agent_in_burned_area = False
-
-        # bool for if the agent is nearby the active fire
-        self.agent_near_fire = False
-
-        # TODO create a tracker variable to store the latest action(s) taken
-
-        # TODO create a tracker variable to store the list of actions taken with respect
-        # to the timesteps
-
-        # ----------------------
-
-    def update(
-        self,
-        mitigation_placed: bool,
-        movements: List[str],
-        movement: int,
-        interaction: int,
-        agent_pos: List[int],
-        agent_pos_is_empty_space: bool,
-    ) -> None:
-        """Update the AgentMetricsTracker object variables after each agent action.
-
-        Args:
-            mitigation_placed (bool): Was a mitigation placed
-            movements (List[str]): All possible movement strs
-            movement (int): Movement ID
-            interaction (int): Interaction ID
-            agent_pos (List[int]): Current agent position
-            agent_pos_is_empty_space (bool): Is the agent on an empty space
+        Note that this is intended to be called within `FireSimulationAnalytics.reset()`.
         """
-        # NOTE: Attribute (s) useful for debugging; may be removed later.
-        if mitigation_placed:
-            self.num_interactions_since_last_sim_step += 1
-            self.mitigation_placed = True
-        if movements[movement] != "none":
-            self.num_movements_since_last_sim_step += 1
-
-        # Update interaction-specific attributes.
-        self.agent_interactions.append(interaction)
-
-        # Update movement-specific attributes.
-        self.agent_movements.append(movement)
-        self.agent_positions.append(agent_pos)
-
-        fire_map, agent_pos = self._sim.fire_map, agent_pos
-        self.agent_is_burning = self._agent_is_burning(fire_map, agent_pos)
-        self.agent_in_burned_area = self._agent_in_burned_area(fire_map, agent_pos)
-        self.agent_nearby_fire = self._agent_nearby_fire(fire_map, agent_pos)
-
-        # NOTE: We may want to penalize the agent for moving into a non-empty space.
-        self.agent_pos_is_empty_space = agent_pos_is_empty_space
-
-    def reset_after_one_simulation_step(self) -> None:
-        """Reset values that are tracked between each simulation step."""
-        self.num_agent_actions = 0
-        # For debugging, and potentially, timestep intermediate reward calculation.
-        self.num_interactions_since_last_sim_step = 0
-        self.num_movements_since_last_sim_step = 0
-
-        # Movement-specific attributes that can be utilized during reward calculation.
-        self.agent_is_burning = False
-        self.agent_in_burned_area = False
-        self.agent_near_fire = False
-        self.agent_pos_is_empty_space = False
-
-    def reset(self):
-        """Reset the AgentMetricsTracker to initial values."""
-        # reset the agent_datas previous reset func
+        # Reset attributes used to store the agent's behavior across a single episode.
+        # NOTE: either create new object or use dataclasses.replace()
+        save_history = env_is_rendering and self.save_history
+        self.data = AgentData(save_history)
+        # Reset attributes used to store the agent's behavior between each sim step.
         self.reset_after_one_simulation_step()
-
-        # Attributes used to store the agent's behavior across a single episode.
-        self.agent_interactions: List[int] = []
-        self.agent_movements: List[int] = []
-        self.agent_positions: List[List[int]] = []
-
-    def _agent_nearby_fire(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
-        """Check if the agent is adjacent to a space that is currently burning.
-
-        Returns:
-            nearby_fire: A boolean indicating if there is a burning space adjacent to the
-            agent.
-        """
-        nearby_locs = []
-        screen_size = math.sqrt(fire_map.shape[0])
-        # Get all spaces surrounding agent - here we are setting 2 as the danger level
-        # distance in squares
-        for i in range(agent_pos[0] - 1, agent_pos[0] + 2):
-            for j in range(agent_pos[1] - 1, agent_pos[1] + 2):
-                if (
-                    i < 0
-                    or i >= screen_size
-                    or j < 0
-                    or j >= screen_size
-                    or [i, j] == agent_pos
-                ):
-                    pass
-                else:
-                    nearby_locs.append((i, j))
-
-        for i, j in nearby_locs:
-            if fire_map[i][j] == BurnStatus.BURNING:
-                return True
-        return False
-
-    def _agent_is_burning(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
-        # return true if the agent is in a burning square
-        if (fire_map[agent_pos[1], agent_pos[0]]) == BurnStatus.BURNING:
-            return True
-
-        return False
-
-    def _agent_in_burned_area(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
-        # return true if the agent is in a burning square
-        if (fire_map[agent_pos[1], agent_pos[0]]) == BurnStatus.BURNED:
-            return True
-
-        return False

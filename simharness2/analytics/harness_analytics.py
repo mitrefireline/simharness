@@ -1,5 +1,5 @@
 """Base AnalyticsTracker for SimHarness and BaseReward."""
-
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
@@ -8,6 +8,8 @@ from typing import List, Optional
 from simfire.sim.simulation import FireSimulation
 
 from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
+
+logger = logging.getLogger("ray.rllib")
 
 
 class RLHarnessAnalytics(ABC):
@@ -18,6 +20,7 @@ class RLHarnessAnalytics(ABC):
         *,
         sim: FireSimulation,
         sim_analytics_partial: partial,
+        # use_benchmark_sim: bool = False
         benchmark_sim: FireSimulation = None,
     ) -> None:
         """TODO: Add docstring."""
@@ -48,7 +51,7 @@ class RLHarnessAnalytics(ABC):
         movement: int,
         interaction: int,
         agent_pos: List[int],
-        valid_movement: bool,
+        moved_off_map: bool,
     ) -> None:
         """See subclass for docstring."""
         pass
@@ -97,6 +100,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             `agent_analytics_partial` key with value of type `functools.partial`.
 
         """
+        # Initialize sim_analytics object (s) and best_episode_performance attribute.
         super().__init__(
             sim=sim,
             sim_analytics_partial=sim_analytics_partial,
@@ -124,7 +128,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         movement: int,
         interaction: int,
         agent_pos: List[int],
-        valid_movement: bool,
+        moved_off_map: bool,
     ) -> None:
         """Updates `self.sim_analytics.agent_analytics`, if agents are in the sim.
 
@@ -132,19 +136,23 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         `ReactiveHarness._do_one_agent_step()` (within `ReactiveHarness.step()`).
 
         Arguments:
+            sim: The underlying `FireSimulation` object that contains the agent (s) that
+                are being trained. The agent (s) will place mitigation lines, and the
+                simulation will spread the fire. An episode terminates when the fire is
+                finished spreading. (FIXME later)
             timestep: An integer indicating the current timestep of the episode.
             movement: An integer indicating the index of the latest movement that the
                 agent selected.
             interaction: An integer indicating the index of the latest interaction that
                 the agent selected.
             agent_pos: A list of integers indicating the current position of the agent.
-            valid_movement: A boolean indicating whether the agent's latest movement was
-                valid. Expect the value to be `False` if the agent attempted to move to a
-                position not contained within the `FireSimulation.fire_map`.
+            moved_off_map: A boolean indicating whether the agent's latest movement was
+                valid. Expect the value to be `True` if the agent attempted to move to a
+                position that is not contained within the `FireSimulation.fire_map`.
         """
         if self.sim_analytics.agent_analytics:
             self.sim_analytics.agent_analytics.update(
-                timestep, movement, interaction, agent_pos, valid_movement
+                timestep, movement, interaction, agent_pos, moved_off_map
             )
 
     def update_after_one_simulation_step(self, *, timestep: int) -> None:
@@ -164,7 +172,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         sim_area = self.sim_analytics.sim.fire_map.size
         # FIXME mention in docstring that this logic is performed. need to condense!!
         benchsim_active = self.benchmark_sim_analytics.active
-        benchsim_undamaged = self.benchmark_sim_analytics.df.iloc[-1]["unburned_total"]
+        benchsim_undamaged = self.benchmark_sim_analytics.data.unburned
         # Use this to update the self.bench_timesteps and the self.bench_damage
         if benchsim_active is False and self.bench_estimated is False:
             # if the benchsim has reached it's end, then use this to set the values of
@@ -202,12 +210,8 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         # Once episode has terminated, check if episode performance is the best so far.
         if terminated:
             self.episodes_total += 1
-            # log.info(f"Episode {self.episodes_total} has terminated.")
 
-            sim_df = self.sim_analytics.df
-            current_unburned = (
-                0 if len(sim_df) == 0 else sim_df.iloc[-1]["unburned_total"]
-            )
+            current_unburned = self.sim_analytics.data.unburned
             update_best_episode_performance = True
             if self.best_episode_performance:
                 max_unburned = self.best_episode_performance.max_unburned
@@ -223,17 +227,37 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
                     reward=reward,
                 )
 
-    def reset(self):
+    def reset(self, env_is_rendering: bool = False):
         """Resets attributes that track data within each episode.
 
         This method is intended to be called within after the call to
         `ReactiveHarness._do_one_agent_step()` (within `ReactiveHarness.step()`).
 
         """
-        self.sim_analytics.reset()
+
+        self.sim_analytics.reset(env_is_rendering)
 
         if self.benchmark_sim_analytics:
-            self.benchmark_sim_analytics.reset()
+            self.benchmark_sim_analytics.reset(env_is_rendering)
+
+    def save_sim_history(self, logdir: str, total_iters: int) -> None:
+        """TODO Add docstring."""
+        self.sim_analytics.data.save_episode_history(logdir, total_iters)
+
+        if self.benchmark_sim_analytics:
+            self.benchmark_sim_analytics.data.save_episode_history(logdir, total_iters)
+
+    # def log_dfs(self):
+    #     """Log the dataframes that are being tracked by the analytics."""
+    #     logger.info("sim_analytics.df")
+    #     logger.info(self.sim_analytics.df.to_markdown())
+    #     if self.benchmark_sim_analytics:
+    #         logger.info("benchmark_sim_analytics.df")
+    #         logger.info(self.benchmark_sim_analytics.df.to_markdown())
+
+    #     if self.sim_analytics.agent_analytics:
+    #         logger.info("sim_analytics.agent_analytics.df")
+    #         logger.info(self.sim_analytics.agent_analytics.df.to_markdown())
 
 
 @dataclass

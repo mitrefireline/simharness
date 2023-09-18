@@ -5,3 +5,24 @@ sim:
 benchmark_sim: ${.sim}
 is_evaluation_env: True
 evaluation_duration: ${evaluation.evaluation_duration}
+# Defines the class that will be used to monitor and track `ReactiveHarness`.
+# NOTE: Override train settings to enable saving of data during evaluation.
+harness_analytics_partial:
+  _target_: simharness2.analytics.harness_analytics.ReactiveHarnessAnalytics
+  _partial_: true
+  # Defines the class that will be used to monitor and track `FireSimulation`.
+  sim_analytics_partial:
+    _target_: simharness2.analytics.simulation_analytics.FireSimulationAnalytics
+    _partial_: true
+    # TODO: Only saves when environment is rendering, ie `_should_render == True`
+    save_history: true
+    # Defines the class that will be used to monitor and track agent behavior.
+    agent_analytics_partial:
+      _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
+      _partial_: true
+      movement_types: ${....movements}
+      interaction_types: ${....interactions}
+      # TODO: Only saves when environment is rendering, ie `_should_render == True`
+      save_history: true
+      # history_length
+      # save_data_on: render_only # always, train_only, eval_only
