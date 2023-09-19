@@ -27,11 +27,9 @@ from typing import (
 )
 
 import numpy as np
-from gymnasium import spaces
+from gymnasium.spaces import Box, Dict
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simfire.sim.simulation import FireSimulation
-
-# import gymnasium as gym
 
 
 class RLHarness(MultiAgentEnv, ABC):
@@ -130,6 +128,7 @@ class RLHarness(MultiAgentEnv, ABC):
         #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
         #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
         #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
+        
         self.sim_agent_id = 3 + len(self.interactions) + 1
 
         # Before verifying that all interactions are supported by the simulator, we need
@@ -163,26 +162,28 @@ class RLHarness(MultiAgentEnv, ABC):
             [[[self.min_maxes[channel]["max"]]] for channel in self.attributes]
         ).reshape(1, 1, len(self.attributes))
 
-        self.low = np.repeat(
+        self._low = np.repeat(
             np.repeat(channel_lows, self.sim.config.area.screen_size[0], axis=1),
             self.sim.config.area.screen_size[0],
             axis=0,
         )
-        self.high = np.repeat(
+        self._high = np.repeat(
             np.repeat(channel_highs, self.sim.config.area.screen_size[0], axis=1),
             self.sim.config.area.screen_size[0],
             axis=0,
         )
 
-        # NOTE: Should we pass `seed` to seed the RNG used to sample from the space?
-        self.observation_space = spaces.Box(
-            self.low,
-            self.high,
-            dtype=np.float32,
-        )
+        # Provide full (preferred format) observation- and action-spaces as Dicts
+        # mapping agent IDs to the individual agents' spaces.
+        # TODO: Should we pass `seed` to seed the RNG used to sample from the space?
+        self._obs_space_in_preferred_format = True
+        obs_space = Box(self._low, self._high, dtype=np.float32)
+        self.observation_space = Dict({id: obs_space for id in self._agent_ids})
 
+        self._action_space_in_preferred_format = True
         action_shape = self._get_action_space_shape(space_type=action_space_cls)
-        self.action_space = action_space_cls(action_shape)
+        action_space = action_space_cls(action_shape)
+        self.action_space = Dict({id: action_space for id in self._agent_ids})
 
     @no_type_check
     @abstractmethod

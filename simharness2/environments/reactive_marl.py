@@ -10,22 +10,29 @@ The reward function used is configurable depending on the fire manager intent di
 within the training config and corresponding reward class.
 """
 import logging
+import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
+from dataclasses import dataclass
 
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
-from simfire.enums import BurnStatus, GameStatus
+from simfire.enums import BurnStatus
+from simfire.utils.config import Config
 
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
 
+# FIXME: Update logger configuration.
 logger = logging.getLogger(__name__)
 
+
+@dataclass
+class ReactiveAgent:
 
 class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     """
@@ -116,27 +123,13 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 f"`functools.partial`, but got {type(action_space_partial)}."
             )
 
-        self._log_env_init()
-
-        # --- MARL SPECIFIC ---
-        default_num_agents = 1
-        self.num_agents = config.get("num_agents", default_num_agents)
-
-        # FIXME DEFAULTS (set these in the cfg)
-        default_agent_speeds = 9
-        self.agent_speed: int = config.get("agent_speeds", default_agent_speeds)
-
+        # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
+        # self.num_agents = config.get("num_agents", 1) FIXME: do we need elsewhere?
+        self.agent_speed: int = config.get("agent_speed")
+        self._agent_ids = set(range(config.get("num_agents", 1)))
+        self.agent_pos: Dict[int, Tuple[int, int]] = {}
+        # self.agents = {i: Agent(i) for i in range(self.num_agents)}
         # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
-        self.agent_pos: List[List[int]] = [None] * self.num_agents
-        default_pos_list = [[15, 15], [15, 15], [15, 15], [15, 15]]
-        self.initial_agent_pos: List[int] = config.get(
-            "initial_agent_pos", default_pos_list
-        )
-
-        default_randomize_init = [False] * self.num_agents
-        self.randomize_initial_agent_pos = config.get(
-            "randomize_initial_agent_pos", default_randomize_init
-        )
 
         super().__init__(
             sim=config.get("sim"),
@@ -148,6 +141,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             deterministic=config.get("deterministic"),
             benchmark_sim=config.get("benchmark_sim"),
         )
+
+        self._log_env_init()
 
         # Set the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -208,6 +203,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self._total_eval_rounds = eval_duration if eval_duration else 0
 
         self._current_eval_round = 1
+        # Incremented on each call to `RenderEnv.on_evaluate_start()` callback, via the
+        # `_increment_evaluation_iterations()` helper method.
+        self._num_eval_iters = 0
 
         self.fire_scenarios = config.get("scenarios", None)
 
@@ -632,9 +630,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Check that value is in the correct range
         if (
             start_pos[0] < 0
-            or start_pos[0] >= self.sim.config.area.screen_size
+            or start_pos[0] >= self.sim.config.area.screen_size[0]
             or start_pos[1] < 0
-            or start_pos[1] >= self.sim.config.area.screen_size
+            or start_pos[1] >= self.sim.config.area.screen_size[0]
         ):
             return False
 
@@ -646,28 +644,17 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
-        for agent_id in range(self.num_agents):
-            # If initial position is given
-            if self._check_start_pos(self.initial_agent_pos[agent_id]):
-                self.agent_pos[agent_id] = self.initial_agent_pos[agent_id]
-            else:
-                raise ValueError(
-                    f"Initial position {self.initial_agent_pos[agent_id]} "
-                    f"for agent {agent_id} is not valid."
+        for agent_id in self._agent_ids:
+            valid_pos = False
+            # Keep looping until we get a valid position
+            while not valid_pos:
+                random_pos = self.np_random.integers(
+                    0, self.sim.config.area.screen_size, size=2, dtype=int
                 )
 
-            # If initial position is random
-            if self.randomize_initial_agent_pos[agent_id]:
-                valid_pos = False
-                # Keep looping until we get a valid position
-                while not valid_pos:
-                    random_pos = self.np_random.integers(
-                        0, self.sim.config.area.screen_size, size=2, dtype=int
-                    )
+                valid_pos = self._check_start_pos(random_pos)
 
-                    valid_pos = self._check_start_pos(random_pos)
-
-                self.agent_pos[agent_id] = random_pos
+            self.agent_pos[agent_id] = random_pos
 
     def _log_env_init(self):
         """Log information about the environment that is being initialized."""
@@ -691,7 +678,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # TODO: What log level should we use here?
         for idx, feat in enumerate(self.attributes):
-            low, high = self.low[..., idx].min(), self.high[..., idx].max()
+            low, high = self._low[..., idx].min(), self._high[..., idx].max()
             obs_min = round(self.state[..., idx].min(), 2)
             obs_max = round(self.state[..., idx].max(), 2)
             # Log lower bound of the (obs space) and max returned obs for each attribute.

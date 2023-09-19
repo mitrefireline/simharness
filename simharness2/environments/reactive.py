@@ -560,7 +560,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # TODO: What log level should we use here?
         for idx, feat in enumerate(self.attributes):
-            low, high = self.low[..., idx].min(), self.high[..., idx].max()
+            low, high = self._low[..., idx].min(), self._high[..., idx].max()
             obs_min = round(self.state[..., idx].min(), 2)
             obs_max = round(self.state[..., idx].max(), 2)
             # Log lower bound of the (obs space) and max returned obs for each attribute.
