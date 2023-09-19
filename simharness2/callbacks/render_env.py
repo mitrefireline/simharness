@@ -96,6 +96,60 @@ class RenderEnv(DefaultCallbacks):
                     "Simulation is in rendering mode, but `env._should_render` is False."
                 )
 
+    def on_episode_step(
+        self,
+        *,
+        worker: "RolloutWorker",
+        base_env: BaseEnv,
+        policies: Optional[Dict[PolicyID, Policy]] = None,
+        episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
+        **kwargs,
+    ) -> None:
+        """Runs on each episode step.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env: BaseEnv running the episode. The underlying
+                sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            policies: Mapping of policy id to policy objects.
+                In single agent mode there will only be a single
+                "default_policy".
+            episode: Episode object which contains episode
+                state. You can use the `episode.user_data` dict to store
+                temporary data, and `episode.custom_metrics` to store custom
+                metrics for the episode.
+            env_index: The index of the sub-environment that stepped the episode
+                (within the vector of sub-environments of the BaseEnv).
+            kwargs: Forward compatibility placeholder.
+        """
+        env = base_env.vector_env.envs[env_index]
+        analytics = env.harness_analytics
+        agent_data = analytics.sim_analytics.agent_analytics.data
+        sim_data = analytics.sim_analytics.data
+        bench_sim_data = analytics.benchmark_sim_analytics.data
+        if worker.config.in_evaluation:
+            # Save agent specific data
+            episode.custom_metrics["movement"] = agent_data.movement
+            episode.custom_metrics["interaction"] = agent_data.interaction
+            episode.custom_metrics["moved_off_map"] = agent_data.moved_off_map
+            episode.custom_metrics["near_fire"] = agent_data.near_fire
+            episode.custom_metrics["burn_status"] = agent_data.burn_status
+
+            # Save sim specific data
+            episode.custom_metrics["sim/burned"] = sim_data.burned
+            episode.custom_metrics["sim/unburned"] = sim_data.unburned
+            episode.custom_metrics["sim/burning"] = sim_data.burning
+            episode.custom_metrics["mitigated"] = sim_data.mitigated
+            episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
+            episode.custom_metrics["agent_movements"] = sim_data.agent_movements
+
+            # Save benchmark sim specific data
+            episode.custom_metrics["bench_sim/burned"] = bench_sim_data.burned
+            episode.custom_metrics["bench_sim/unburned"] = bench_sim_data.unburned
+            episode.custom_metrics["bench_sim/burning"] = bench_sim_data.burning
+
     def on_episode_end(
         self,
         *,
