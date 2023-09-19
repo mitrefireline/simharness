@@ -11,6 +11,8 @@ from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
 from ray.rllib.utils.typing import PolicyID  # AgentID, EnvType,
 
+from simfire.enums import BurnStatus
+
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
 
@@ -129,26 +131,35 @@ class RenderEnv(DefaultCallbacks):
         agent_data = analytics.sim_analytics.agent_analytics.data
         sim_data = analytics.sim_analytics.data
         bench_sim_data = analytics.benchmark_sim_analytics.data
-        if worker.config.in_evaluation:
-            # Save agent specific data
-            episode.custom_metrics["movement"] = agent_data.movement
-            episode.custom_metrics["interaction"] = agent_data.interaction
-            episode.custom_metrics["moved_off_map"] = agent_data.moved_off_map
-            episode.custom_metrics["near_fire"] = agent_data.near_fire
-            episode.custom_metrics["burn_status"] = agent_data.burn_status
+        # if worker.config.in_evaluation:
+        # Save agent specific data
+        episode.custom_metrics["movement"] = env.movements.index(agent_data.movement)
+        episode.custom_metrics["interaction"] = env.interactions.index(
+            agent_data.interaction
+        )
+        episode.custom_metrics["moved_off_map"] = agent_data.moved_off_map
+        episode.custom_metrics["near_fire"] = agent_data.near_fire
+        # FIXME: "burn_status" is a string and we can't log it to Aim UI
+        burn_status = [x.name for x in BurnStatus].index(agent_data.burn_status)
+        episode.custom_metrics["burn_status"] = burn_status
+        # Save sim specific data
+        episode.custom_metrics["sim/burned"] = sim_data.burned
+        episode.custom_metrics["sim/unburned"] = sim_data.unburned
+        episode.custom_metrics["sim/burning"] = sim_data.burning
+        episode.custom_metrics["mitigated"] = sim_data.mitigated
+        episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
+        episode.custom_metrics["agent_movements"] = sim_data.agent_movements
 
-            # Save sim specific data
-            episode.custom_metrics["sim/burned"] = sim_data.burned
-            episode.custom_metrics["sim/unburned"] = sim_data.unburned
-            episode.custom_metrics["sim/burning"] = sim_data.burning
-            episode.custom_metrics["mitigated"] = sim_data.mitigated
-            episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
-            episode.custom_metrics["agent_movements"] = sim_data.agent_movements
+        # Save benchmark sim specific data
+        episode.custom_metrics["bench_sim/burned"] = bench_sim_data.burned
+        episode.custom_metrics["bench_sim/unburned"] = bench_sim_data.unburned
+        episode.custom_metrics["bench_sim/burning"] = bench_sim_data.burning
 
-            # Save benchmark sim specific data
-            episode.custom_metrics["bench_sim/burned"] = bench_sim_data.burned
-            episode.custom_metrics["bench_sim/unburned"] = bench_sim_data.unburned
-            episode.custom_metrics["bench_sim/burning"] = bench_sim_data.burning
+        # Ensure all custom metrics are ints
+        for k, v in episode.custom_metrics.items():
+            episode.custom_metrics[k] = int(v)
+            # elif "numpy.bool" in str(type(v)):
+            #     episode.custom_metrics[k] = bool(v)
 
     def on_episode_end(
         self,
