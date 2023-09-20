@@ -16,7 +16,7 @@ import pandas as pd
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
-from simharness2.analytics import ReactiveAgentAnalytics
+from simharness2.analytics.agent_analytics import ReactiveAgentAnalytics
 
 logger = logging.getLogger(__name__)
 
