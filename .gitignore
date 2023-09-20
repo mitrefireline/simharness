@@ -1,7 +1,8 @@
 **/.empty
 **/*cache
 **/__pycache__
-**/launch.json
+**/.vscode
 **/outputs
 **/ckpts
 **/gifs
+**/.DS_Store
