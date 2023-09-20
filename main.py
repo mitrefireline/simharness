@@ -231,7 +231,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
-        .reporting(keep_per_episode_custom_metrics=True)
+        # .reporting(keep_per_episode_custom_metrics=True)
     )
 
     return algo_cfg

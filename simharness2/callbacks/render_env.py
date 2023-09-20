@@ -126,13 +126,30 @@ class RenderEnv(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env = base_env.vector_env.envs[env_index]
+        env: ReactiveHarness = base_env.vector_env.envs[env_index]
         analytics = env.harness_analytics
         agent_data = analytics.sim_analytics.agent_analytics.data
         sim_data = analytics.sim_analytics.data
         bench_sim_data = analytics.benchmark_sim_analytics.data
         # if worker.config.in_evaluation:
         # Save agent specific data
+        # Instead of logging each value to custom_metrics, write to log file
+        logger.info(f"env timestep: {env.timesteps}")
+        logger.info(f"movement: {agent_data.movement}")
+        logger.info(f"interaction: {agent_data.interaction}")
+        logger.info(f"moved_off_map: {agent_data.moved_off_map}")
+        logger.info(f"near_fire: {agent_data.near_fire}")
+        logger.info(f"burn_status: {agent_data.burn_status}")
+        logger.info(f"sim/burned: {sim_data.burned}")
+        logger.info(f"sim/unburned: {sim_data.unburned}")
+        logger.info(f"sim/burning: {sim_data.burning}")
+        logger.info(f"mitigated: {sim_data.mitigated}")
+        logger.info(f"agent_interactions: {sim_data.agent_interactions}")
+        logger.info(f"agent_movements: {sim_data.agent_movements}")
+        logger.info(f"bench_sim/burned: {bench_sim_data.burned}")
+        logger.info(f"bench_sim/unburned: {bench_sim_data.unburned}")
+        logger.info(f"bench_sim/burning: {bench_sim_data.burning}")
+
         episode.custom_metrics["movement"] = env.movements.index(agent_data.movement)
         episode.custom_metrics["interaction"] = env.interactions.index(
             agent_data.interaction
