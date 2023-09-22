@@ -22,7 +22,7 @@ class AgentData:
 
     FIXME: Alt. names - `AgentBehavior`, `AgentEpisodeBehavior`, etc. ??
     """
-
+    agent_id: str
     save_history: InitVar[bool] = False
 
     def __post_init__(self, save_history):
@@ -56,9 +56,26 @@ class AgentData:
         self.near_fire = timestep_dict["near_fire"]
         self.burn_status = timestep_dict["burn_status"]
 
-    def collect_episode_history(self, args):
-        """Aggregate data from self._history and write to file?"""
-        raise NotImplementedError
+    def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
+        """Save episode history to CSV file."""
+        if self._history is None:
+            return
+
+        # TODO: Add logic to save history from multiple episodes (run concurrently).
+        # Maybe we can use the PID to create a unique file name for each episode?
+        # Prepare to save
+        subdir = os.path.join("agent_data", self.agent_id)
+
+        # TODO: Update logic to handle saving history from training episodes too.
+        data_save_path = os.path.join(
+            output_dir, subdir, f"eval_iter_{total_eval_iters}.csv"
+        )
+        # Converts deque to list of dicts, then to DataFrame.
+        df = pd.DataFrame(list(self._history))
+        # Write to CSV file.
+        logger.info(f"Saving episode history to {data_save_path}...")
+        os.makedirs(os.path.dirname(data_save_path), exist_ok=True)
+        df.to_csv(data_save_path, index=False)
 
 
 class AgentAnalytics(ABC):
@@ -175,6 +192,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         interaction_types: List[str],
         danger_level: int = 2,
         save_history: bool = False,
+        num_agents: int = 1,
     ):
         """TODO: A brief description of what the method is and what it's used for.
 
@@ -192,9 +210,11 @@ class ReactiveAgentAnalytics(AgentAnalytics):
                 agent.
             interaction_types: A list of strings indicating the available interactions
                 for the agent.
+            num_agents: TODO
             danger_level: An integer indicating the minimum distance (in tiles) between
                 the agent and a tile with value `BurnStatus.BURNING` for the agent to be
                 considered "in danger" (maybe a better name is `near_fire_threshold`?).
+            save_history: TODO
         """
         super().__init__(
             sim=sim,
@@ -205,7 +225,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
 
         # Indicates if data from each timestep will be stored across the entire episode.
         self.save_history = save_history
-        self.data = AgentData(save_history)
+        self.data = [AgentData(f"agent_{i}", save_history) for i in num_agents]
 
     def update(
         self,

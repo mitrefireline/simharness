@@ -1,6 +1,6 @@
 """ReactiveHarness with support for mutiple agents operating simulanteously.
 
-This file contains the environment file for MARLReactiveHarness which is an environment
+This file contains the environment file for `MARLReactiveHarness` which is an environment
 with multiple agents operating at the same time within the same environment. The code
 is very similar to the single agent case, just multiplied for each agents action. Agents
 can be monogomous or heterogenous depending on the training run - meaning agents can
@@ -14,7 +14,7 @@ import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 from gymnasium import spaces
@@ -31,8 +31,29 @@ from simharness2.rewards.base_reward import BaseReward
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ReactiveAgent:
+# @dataclass
+# class ReactiveAgent:
+#     # Attrs that should be specified on initialization
+#     agent_id: str # ex: "dozer_0", "handcrew_0", "ff_0", etc.
+#     sim_id: int # should be contained within sim.agents.keys()
+#     x: int
+#     y: int
+
+#     # NOTE: Omit `agent_speed`; only used within `_do_one_simulation_step`
+
+
+
+#     # Store the movement and interaction for the current timestep
+#     latest_movement: int = None
+#     latest_interaction: int = None
+#     # If the agent places a mitigation, this is set to True.
+#     mitigation_placed: bool = False
+#     # If the agent attempts to move out of bounds, this is set to True.
+#     moved_off_map: Dict[str, bool] = False
+
+#     def __post_init__(self):
+#         # FIXME use namedtuple? want to expose both x,y and col,row access
+#         self.pos = (x,y)
 
 class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     """
@@ -123,13 +144,15 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 f"`functools.partial`, but got {type(action_space_partial)}."
             )
 
-        # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
-        # self.num_agents = config.get("num_agents", 1) FIXME: do we need elsewhere?
+        # NOTE: only used in `_do_one_simulation_step`, so keep as harness attr
         self.agent_speed: int = config.get("agent_speed")
-        self._agent_ids = set(range(config.get("num_agents", 1)))
-        self.agent_pos: Dict[int, Tuple[int, int]] = {}
-        # self.agents = {i: Agent(i) for i in range(self.num_agents)}
+        # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
+        self.num_agents = config.get("num_agents", 1)
+        
+        self._agent_ids = {f"agent_{i}" for i in range(self.num_agents)}
         # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
+        self.agent_pos: Dict[str, List[int]] = {}
+        # self.agents = {i: Agent(i) for i in range(self.num_agents)}
 
         super().__init__(
             sim=config.get("sim"),
@@ -144,8 +167,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self._log_env_init()
 
-        # Set the agent's initial position on the map
-        self._set_agent_pos_for_episode_start()
+        # Create the agent (s) that will interact with the simulation
+        self._create_agents()
 
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         # FIXME Move into RLHarness
@@ -602,7 +625,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #   - X: self.sim_agent_id (value is set in RLHarness.__init__)
         nonsim_min_maxes["fire_map"] = {
             "min": 0,
-            "max": self.sim_agent_id + self.num_agents,
+            "max": max(self._sim_agent_ids),
         }
         return nonsim_min_maxes
 
@@ -612,7 +635,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         nonsim_data = ordered_dict()
 
         nonsim_data["fire_map"] = np.zeros(
-            (self.sim.config.area.screen_size, self.sim.config.area.screen_size)
+            # FIXME: can just do area.screen_size without indexing?
+            (self.sim.config.area.screen_size[0], self.sim.config.area.screen_size[0])
         )
 
         for agent_id in range(self.num_agents):
@@ -641,6 +665,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 return False
 
         return True
+
+    def _create_agents(self):
+        """Initialize agents."""
+        self.agents = []
 
     def _set_agent_pos_for_episode_start(self):
         """Set the agent's initial position in the map for the start of the episode."""
