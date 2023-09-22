@@ -376,11 +376,11 @@ class AimLoggerCallback(LoggerCallback):
         cfg.evaluation_config = eval_cfg_settings
         run["evaluation"] = cfg
 
-    def _get_partial_targets(self, dict_cfg: DictConfig) -> Set:
+    def _get_partial_targets(self, dict_cfg: DictConfig) -> set:
         """Retrieve values in `cfg` that will be functools.partial objects."""
         is_partial = set()
         cfg = OmegaConf.to_container(dict_cfg)
-        for k,v in flatten_dict(cfg).items():
+        for k, v in flatten_dict(cfg).items():
             if "_partial_" in k:
                 is_partial.add(k.split("/")[-2])
 
