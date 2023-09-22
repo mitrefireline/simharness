@@ -4,12 +4,15 @@ TODO: Add a list of any classes, exception, functions, and any other objects exp
 the module.
 """
 import logging
+import os
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import InitVar, dataclass
 from typing import List
 
 import numpy as np
+import pandas as pd
+
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
@@ -22,6 +25,7 @@ class AgentData:
 
     FIXME: Alt. names - `AgentBehavior`, `AgentEpisodeBehavior`, etc. ??
     """
+
     agent_id: str
     save_history: InitVar[bool] = False
 
