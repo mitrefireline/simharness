@@ -153,8 +153,8 @@ class RenderEnv(DefaultCallbacks):
                 episode.media.update({"gif": gif_save_path})
 
                 # Try to collect and log episode history, if it was saved.
-                if env.harness_analytics.sim_analytics.save_history:
-                    env.harness_analytics.save_sim_history(logdir, eval_iters)
+                # if env.harness_analytics.sim_analytics.save_history:
+                #     env.harness_analytics.save_sim_history(logdir, eval_iters)
 
             # sim.save_spread_graph(save_dir)
 

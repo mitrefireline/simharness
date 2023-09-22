@@ -2,10 +2,10 @@ defaults:
   - model: screen_size_64
 
 # train_batch_size: 4000
-v_min: -1
-v_max: 1
+v_min: -10
+v_max: 10
 # num_atoms: 51
-# noisy: true
+noisy: true
 # lr: 0.00173477
 # n_step: 3
 # num_atoms: 10

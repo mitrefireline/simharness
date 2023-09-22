@@ -16,7 +16,7 @@ defaults:
 aim:
   run_hash: null
   repo: ${cli.data_dir}/simharness/aim
-  experiment: 20-trials-operational-17cpu
+  experiment: 20-trials-operational-baron-explore
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true
@@ -27,7 +27,7 @@ cli:
   # Specify the root directory used to save data for the experiment.
   # TODO: Ensure any values that use `data_dir` are properly updated to use
   # /nfs/lslab2/fireline/simharness
-  data_dir: /nfs/lslab2/fireline
+  data_dir: /data/lslab2/fireline
 algo:
   name: DQN
   # The path (str) to the checkpoint directory to use.
@@ -41,11 +41,11 @@ runtime:
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
-  checkpoint_frequency: 2005
+  checkpoint_frequency: 3005
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 2000
+  training_iteration: 1000 #4000
   timesteps_total: 20000000000
   # episodes_total: 1000000
   episode_reward_mean: 10

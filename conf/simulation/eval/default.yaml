@@ -1,15 +1,18 @@
 area:
-  screen_size: 64  # ${simulation.screen_size}
-  pixel_scale: 8
+  screen_size:
+    _target_: builtins.tuple
+    # NOTE: This will initialize the fire at the center of the screen
+    _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
+  pixel_scale: 16
 
 display:
   fire_size: 2
   control_line_size: 2
   agent_size: 2
-  rescale_size: 256
+  rescale_factor: 4
 
 simulation:
-  update_rate: 0.5
+  update_rate: 1
   runtime: 24hr
   headless: true
   record: true
@@ -24,19 +27,20 @@ mitigation:
 
 operational:
   seed:
-  latitude: 36.09493
-  longitude: 120.52193
-  height: ${operational_screen_size:${..area.screen_size}}
-  width: ${operational_screen_size:${..area.screen_size}}
+  latitude: 36.09493 # top left corner
+  longitude: -120.52193 # top left corner
+  height: ${operational_screen_size:${simulation.screen_height}}
+  width: ${operational_screen_size:${simulation.screen_width}}
+  # height: 4000
+  # width: 4000
   resolution: 30
-  path: ${cli.data_dir}/data
   year: 2019  # ${simulation.operational.year}
 
 terrain:
   topography:
     type: operational  # ${simulation.topography.type}
     functional:
-      function: flat
+      function: perlin
       perlin:
         octaves: 3
         persistence: 0.7
@@ -59,14 +63,14 @@ terrain:
 
 fire:
   fire_initial_position:
-    type: static  # ${simulation.fire_initial_position.type}
+    type: random  # ${simulation.fire_initial_position.type}
     static:
       position:
         _target_: builtins.tuple
         # NOTE: This will initialize the fire at the center of the screen
         _args_: [[
-          5, # "${calculate_half:${simulation.train.area.screen_size}}",
-          5, # "${calculate_half:${simulation.train.area.screen_size}}"
+          5,
+          5
         ]]
     random:
       seed: 1234  # ${simulation.fire_initial_position.seed}

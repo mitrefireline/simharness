@@ -234,7 +234,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         burning = np.count_nonzero(self.state[0] == 1)
         reward = -(
             burning
-            / (self.sim.config.area.screen_size * self.sim.config.area.screen_size)
+            / (self.sim.config.area.screen_size[0] * self.sim.config.area.screen_size[1])
         )
 
         # TODO account for below updates in the reward_cls.calculate_reward() method
@@ -256,8 +256,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             savedir = os.path.join(outdir, "fire_map", subdir)
             os.makedirs(savedir, exist_ok=True)
             # Make file name used for saving the fire map
-            episodes_total = self.harness_analytics.episodes_total
-            fname = f"{os.getpid()}-episode-{episodes_total}-fire_map"
+            fname = f"{os.getpid()}-episode-{self._current_eval_round}-fire_map"
             save_path = os.path.join(savedir, fname)
             logger.info(f"Saving fire map to {save_path}...")
             np.save(save_path, self.sim.fire_map)
@@ -288,16 +287,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
             self._update_agent_position()
 
+        # Update agent location on map
+        if self.movements[self._latest_movement] != "none":
+            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
+            self._update_agent_position()
+
         interact = self.interactions[self._latest_interaction] != "none"
         # Ensure that mitigations are only placed on squares with `UNBURNED` status
         if self._agent_pos_is_unburned() and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
-
-        # Update agent location on map
-        if self.movements[self.latest_movement] != "none":
-            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
-            self._update_agent_position()
 
         # Check if there was an interaction already done on this space
         # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
@@ -414,13 +413,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # FIXME this needs to not be hard-coded and moved outside of method logic.
         # if not self.deterministic:
         # Set seeds for randomization
-        # fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
-        # # elevation_seed = self.simulation.get_seeds()["elevation"]
-        # seed_dict = {
-        #     "fire_initial_position": fire_init_seed + 1,
-        #     # "elevation": elevation_seed + 1,
-        # }
-        # self.sim.set_seeds(seed_dict)
+        fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
+        # elevation_seed = self.simulation.get_seeds()["elevation"]
+        seed_dict = {
+            "fire_initial_position": fire_init_seed + 1,
+            # "elevation": elevation_seed + 1,
+        }
+        self.sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
