@@ -229,7 +229,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
 
         # Indicates if data from each timestep will be stored across the entire episode.
         self.save_history = save_history
-        self.data = [AgentData(f"agent_{i}", save_history) for i in num_agents]
+        self.data = [AgentData(f"agent_{i}", save_history) for i in range(num_agents)]
 
     def update(
         self,

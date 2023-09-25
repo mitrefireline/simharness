@@ -27,7 +27,8 @@ from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
 
-logger = logging.getLogger("ray.rllib")
+logger = logging.getLogger(__name__)
+# logger = logging.getLogger("ray.rllib")
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415

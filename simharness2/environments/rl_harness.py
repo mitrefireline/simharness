@@ -27,7 +27,7 @@ from typing import (
 )
 
 import numpy as np
-from gymnasium.spaces import Box, Dict
+from gymnasium import spaces
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simfire.sim.simulation import FireSimulation
 
@@ -77,6 +77,7 @@ class RLHarness(MultiAgentEnv, ABC):
         action_space_cls: Callable,
         deterministic: bool = False,
         benchmark_sim: FireSimulation = None,
+        num_agents: int = 1,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -122,14 +123,17 @@ class RLHarness(MultiAgentEnv, ABC):
         sim_attributes = self.sim.get_attribute_data()
         sim_actions = self.sim.get_actions()
 
-        # FIXME(afennelly) provide a better explanation (below) for sim_agent_id
+        self.num_agents = num_agents
+        # FIXME(afennelly) provide a better explanation (below) for _min_sim_agent_id
         # Make ID of agent +1 of the max value returned by the simulation for a location
         # NOTE: Assume that every simulator will support 3 base scenarios:
         #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
         #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
         #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
-        min_agent_id = 3 + len(self.interactions) + 1
-        self._sim_agent_ids = {min_agent_id + i for i,_ in enumerate(self._agent_ids)}
+        self._min_sim_agent_id = start_id = 3 + len(self.interactions) + 1
+        # min_agent_id = 3 + len(self.interactions) + 1
+        # self._sim_agent_ids = {min_agent_id + i for i, _ in enumerate(self._agent_ids)}
+        self._agent_ids = {f"agent_{i}" for i in range(self.num_agents, start=start_id)}
 
         # Before verifying that all interactions are supported by the simulator, we need
         # to remove the "none" interaction (if it exists).
@@ -177,13 +181,17 @@ class RLHarness(MultiAgentEnv, ABC):
         # mapping agent IDs to the individual agents' spaces.
         # TODO: Should we pass `seed` to seed the RNG used to sample from the space?
         self._obs_space_in_preferred_format = True
-        obs_space = Box(self._low, self._high, dtype=np.float32)
-        self.observation_space = Dict({agent_id: obs_space for id in self._agent_ids})
+        obs_space = spaces.Box(self._low, self._high, dtype=np.float32)
+        self.observation_space = spaces.Dict(
+            {agent_id: obs_space for agent_id in self._agent_ids}
+        )
 
         self._action_space_in_preferred_format = True
         action_shape = self._get_action_space_shape(space_type=action_space_cls)
         action_space = action_space_cls(action_shape)
-        self.action_space = Dict({agent_id: action_space for id in self._agent_ids})
+        self.action_space = spaces.Dict(
+            {agent_id: action_space for agent_id in self._agent_ids}
+        )
 
     @no_type_check
     @abstractmethod

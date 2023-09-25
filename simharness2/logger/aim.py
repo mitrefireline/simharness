@@ -5,7 +5,7 @@ from functools import partial
 
 import numpy as np
 from hydra.utils import instantiate
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from ray.tune.logger.logger import LoggerCallback
 from ray.tune.result import (
     EPISODES_TOTAL,

@@ -31,29 +31,53 @@ from simharness2.rewards.base_reward import BaseReward
 logger = logging.getLogger(__name__)
 
 
-# @dataclass
-# class ReactiveAgent:
-#     # Attrs that should be specified on initialization
-#     agent_id: str # ex: "dozer_0", "handcrew_0", "ff_0", etc.
-#     sim_id: int # should be contained within sim.agents.keys()
-#     x: int
-#     y: int
+@dataclass
+class ReactiveAgent:
+    # NOTE: `agent_speed` ommitted, only used within `_do_one_simulation_step`
+    # Attrs that should be specified on initialization
+    agent_id: str  # ex: "agent_0", "dozer_0", "handcrew_0", "ff_0", etc.
+    sim_id: int  # should be contained within sim.agents.keys()
+    initial_position: Tuple[int, int]
 
-#     # NOTE: Omit `agent_speed`; only used within `_do_one_simulation_step`
+    # Attributes with default values
+    latest_movement: Optional[int] = None
+    latest_interaction: Optional[int] = None
+    mitigation_placed: bool = False
+    moved_off_map: bool = False
 
+    def __post_init__(self):
+        self.current_position = self.initial_position
+        # x,y pos, where (0,0) is top-left corner and (max_x, max_y) is bottom-right
+        self.x, self.y = self.current_position
+        self.row, self.col = self.y, self.x
 
+        # Store the movement and interaction for the current timestep
+        self.latest_movement: int = None
+        self.latest_interaction: int = None
+        # If the agent places a mitigation, this is set to True.
+        self.mitigation_placed: bool = False
+        # If the agent attempts to move out of bounds, this is set to True.
+        self.moved_off_map: bool = False
 
-#     # Store the movement and interaction for the current timestep
-#     latest_movement: int = None
-#     latest_interaction: int = None
-#     # If the agent places a mitigation, this is set to True.
-#     mitigation_placed: bool = False
-#     # If the agent attempts to move out of bounds, this is set to True.
-#     moved_off_map: Dict[str, bool] = False
+        # actions: np.ndarray
+        # reward: float = 0
 
-#     def __post_init__(self):
-#         # FIXME use namedtuple? want to expose both x,y and col,row access
-#         self.pos = (x,y)
+    def reset(self):
+        self.current_position = self.initial_position
+        self.reward = 0
+
+    # def move(self, env: np.ndarray, direction: int) -> bool:
+    #     """Moves the agent in the given direction if possible."""
+    #     current_x, current_y = self.current_position
+    #     dx, dy = self.actions[direction]
+    #     next_x, next_y = current_x + dx, current_y + dy
+
+    #     if env[next_y][next_x] == "_":
+    #         self.current_position = (next_x, next_y)
+    #         return True
+    #     else:
+    #         return False
+
 
 class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     """
@@ -146,13 +170,6 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # NOTE: only used in `_do_one_simulation_step`, so keep as harness attr
         self.agent_speed: int = config.get("agent_speed")
-        # Store parameters relevant to the agent; for use in `step()`, `reset()`, etc.
-        self.num_agents = config.get("num_agents", 1)
-        
-        self._agent_ids = {f"agent_{i}" for i in range(self.num_agents)}
-        # NOTE: Assume convention of agent_pos[0] == y (row), agent_pos[1] == x (col).
-        self.agent_pos: Dict[str, List[int]] = {}
-        # self.agents = {i: Agent(i) for i in range(self.num_agents)}
 
         super().__init__(
             sim=config.get("sim"),
@@ -163,12 +180,13 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             action_space_cls=action_space_partial.func,
             deterministic=config.get("deterministic"),
             benchmark_sim=config.get("benchmark_sim"),
+            num_agents=config.get("num_agents", 1),
         )
 
         self._log_env_init()
 
-        # Create the agent (s) that will interact with the simulation
-        self._create_agents()
+        # Spawn the agent (s) that will interact with the simulation
+        self._spawn_agents()
 
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         # FIXME Move into RLHarness
@@ -178,15 +196,6 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
-
-        # After every agent action, store the movement and interaction that were taken.
-        self._latest_movement: Dict[str, int] = None
-        self._latest_interaction: Dict[str, int] = None
-        # If the square the agent is on is "empty", this is set to True.
-        # If the agent places a mitigation, this is set to True.
-        self.mitigation_placed: Dict[str, bool] = False
-        # If the agent attempts to move out of bounds, this is set to True.
-        self._moved_off_map: Dict[str, bool] = False
 
     def _set_debug_options(self, config: EnvContext):
         """Set the debug options for the environment."""
@@ -261,12 +270,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
         movements, interactions = {}, {}
-        for agent_id_num in range(self.num_agents):
-            agent_id = f"agent_{agent_id_num}"
-            # TODO `agent_step` should return `AgentBehavior` instance
-            # We can insert this into
-            movements[agent_id], interactions[agent_id] = self._do_one_agent_step(
-                agent_id_num, actions[agent_id]
+        for agent_id, agent in self.agents.items():
+            agent.latest_movement, agent.latest_interaction = self._do_one_agent_step(
+                agent_id, actions[agent_id]
             )  # alternatively, self._step_agent(action)
 
         if self.harness_analytics:
@@ -295,7 +301,12 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         truncated = False
         # FIXME `fire_status` is set in `FireSimulation.__init__()`, while `active` is
         # set in `FireSimulation.run()`, so attribute DNE prior to first call to `run()`.
-        terminated = self.sim.fire_status == GameStatus.QUIT
+        # terminated = self.sim.fire_status == GameStatus.QUIT
+        # The simulation has not yet been run via `run()`
+        if self.sim.elapsed_steps == 0:
+            terminated = False
+        else:
+            terminated = not self.sim.active
 
         # Calculate the reward for the current timestep
         # TODO pass `terminated` into `get_reward` method
@@ -405,15 +416,16 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         else:
             raise NotImplementedError(f"{self.action_space} is not supported.")
 
-    def _update_agent_position(self, agent_id_num: int) -> None:
+    def _update_agent_position(self, agent_id: str) -> None:
         """Update the agent's position on the map by performing the provided movement."""
+        agent = self.agents[agent_id]
         # Store agent's current position in a temporary variable to avoid overwriting it.
-        agent_pos = self.agent_pos[agent_id_num]
+        agent_pos = agent.current_position
         temp_agent_pos = agent_pos.copy()
         map_boundary = self.sim.config.area.screen_size[0] - 1
 
         # Update the agent's position based on the provided movement.
-        latest_movement = self._latest_movement[agent_id_num]
+        latest_movement = agent.latest_movement
         movement_str = self.movements[latest_movement]
         # First, check that the movement string is valid.
         if movement_str not in ["up", "down", "left", "right"]:
@@ -431,37 +443,38 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Depending on `self.reward_cls`, the agent may receive a small penalty.
         else:
             # Inform caller that the agent cannot move in the provided direction.
-            logger.debug(f"Agent cannot move {movement_str} from {self.agent_pos}.")
+            logger.debug(
+                f"Agent cannot move {movement_str} from {agent.current_position}."
+            )
             logger.debug("Setting `self._moved_off_map = True`...")
-            self._moved_off_map[agent_id_num] = True
+            agent.moved_off_map = True
 
         # Store the updated agent position.
-        self.agent_pos[agent_id_num] = temp_agent_pos
+        # TODO: Probably want a setter method for this?
+        self.agents[agent_id].current_position = temp_agent_pos
 
         # Update the Simulation with new agent position (s).
         # NOTE: We assume the single-agent case here, so agent ID == 0.
         # NOTE: Elements of `point` should follow (column, row, agent_id) convention.
         point = [
-            self.agent_pos[agent_id_num][1],
-            self.agent_pos[agent_id_num][0],
-            agent_id_num,
+            self.agents[agent_id].col,
+            self.agents[agent_id].row,
+            self.agents[agent_id].sim_id,
         ]
         self.sim.update_agent_positions([point])
 
-    def _agent_pos_is_unburned(self) -> bool:
+    def _agent_pos_is_unburned(self, agent_id: str) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
-        fire_map_idx = self.attributes.index("fire_map")
-        pos_0, pos_1 = self.agent_pos[0], self.agent_pos[1]
-        return self.state[pos_0, pos_1, fire_map_idx] == BurnStatus.UNBURNED
+        pos_0, pos_1 = self.agents[agent_id].current_position
+        return self.sim.fire_map[pos_0, pos_1] == BurnStatus.UNBURNED
 
-    def _update_mitigation(self, agent_id_num: int, interaction_id: int) -> None:
+    def _update_mitigation(self, agent_id: str, interaction_id: int) -> None:
         """Interact with the environment by performing the provided interaction."""
         # Perform interaction on new space
         sim_interaction = self.harness_to_sim[interaction_id]
-        # NOTE: Elements of `mitigation_update` should follow (column, row, agent_id)
-        # convention.
-        agent_pos = self.agent_pos[agent_id_num]
-        mitigation_update = (agent_pos[1], agent_pos[0], sim_interaction)
+        # NOTE: Elements of `mitigation_update` should be (col, row, id) convention.
+        agent = self.agents[agent_id]
+        mitigation_update = (agent.col, agent.row, sim_interaction)
         self.sim.update_mitigation([mitigation_update])
 
     def _do_one_simulation_step(self) -> bool:
@@ -483,9 +496,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Copy the fire map from the simulation so we don't overwrite it.
         fire_map = np.copy(self.sim.fire_map)
         # Update the fire map with the numeric identifier for the agent.
-        for agent_id in range(self.num_agents):
-            agent_pos = self.agent_pos[agent_id]
-            fire_map[agent_pos[1], agent_pos[0]] = self.sim_agent_id + agent_id
+        for agent_id in self._agent_ids:
+            agent = self.agents[agent_id]
+            fire_map[agent.x, agent.y] = agent.sim_id
         # Modify the state to contain the updated fire map
         fire_map_idx = self.attributes.index("fire_map")
         self.state[..., fire_map_idx] = fire_map
@@ -622,10 +635,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #   - 3: BurnStatus.FIRELINE (if "fireline" in self.interactions)
         #   - 4: BurnStatus.SCRATCHLINE (if "scratchline" in self.interactions)
         #   - 5: BurnStatus.WETLINE (if "wetline" in self.interactions)
-        #   - X: self.sim_agent_id (value is set in RLHarness.__init__)
+        #   - X: self._min_sim_agent_id + self.num_agents (value is set in RLHarness.__init__)
         nonsim_min_maxes["fire_map"] = {
             "min": 0,
-            "max": max(self._sim_agent_ids),
+            "max": self._min_sim_agent_id + self.num_agents,
         }
         return nonsim_min_maxes
 
@@ -641,7 +654,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         for agent_id in range(self.num_agents):
             agent_pos = self.agent_pos[agent_id]
-            sim_agent_id = self.sim_agent_id + agent_id
+            sim_agent_id = self._min_sim_agent_id + agent_id
             # Place the agent on the fire map using the agent ID.
             nonsim_data["fire_map"][agent_pos[1]][agent_pos[0]] = sim_agent_id
 
@@ -666,23 +679,37 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         return True
 
-    def _create_agents(self):
-        """Initialize agents."""
-        self.agents = []
+    def _spawn_agents(self, method="random"):
+        """Initialize agent positions."""
+        if method != "random":
+            raise NotImplementedError(f"Agent spawn method {method} not implemented.")
 
-    def _set_agent_pos_for_episode_start(self):
-        """Set the agent's initial position in the map for the start of the episode."""
-        for agent_id in self._agent_ids:
-            valid_pos = False
-            # Keep looping until we get a valid position
-            while not valid_pos:
-                random_pos = self.np_random.integers(
-                    0, self.sim.config.area.screen_size, size=2, dtype=int
-                )
+        self.agents: Dict[str, ReactiveAgent] = {}
+        # Generate random agent locations for the start of the episode.
+        agent_locs = self.np_random.choice(
+            # FIXME: Not robust for rectangular maps
+            np.arange(self.sim.fire_map.size),
+            size=(self.num_agents, 2),
+            replace=False,
+        )  # .reshape(-1, 2)
+        sim_agent_ids = np.arange(self.num_agents, start=self._min_sim_agent_id)
+        for agent_str, sim_id, loc in zip(self._agent_ids, sim_agent_ids, agent_locs):
+            agent = ReactiveAgent(agent_str, sim_id, tuple(loc))
+            self.agents[agent_str] = agent
 
-                valid_pos = self._check_start_pos(random_pos)
+    # def _set_agent_pos_for_episode_start(self):
+    #     """Set the agent's initial position in the map for the start of the episode."""
+    #     for agent_id in self._agent_ids:
+    #         valid_pos = False
+    #         # Keep looping until we get a valid position
+    #         while not valid_pos:
+    #             random_pos = self.np_random.integers(
+    #                 0, self.sim.config.area.screen_size, size=2, dtype=int
+    #             )
 
-            self.agent_pos[agent_id] = random_pos
+    #             valid_pos = self._check_start_pos(random_pos)
+
+    #         self.agent_pos[agent_id] = random_pos
 
     def _log_env_init(self):
         """Log information about the environment that is being initialized."""
