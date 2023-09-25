@@ -196,7 +196,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
-        breakpoint()
+        # breakpoint()
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
         if self.harness_analytics:
@@ -250,7 +250,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
-        breakpoint()
+        # breakpoint()
         # FIXME: When in debug mode, always write sim.fire_map to file.
         if terminated and self._debug_mode:
             outdir = self._trial_results_path
