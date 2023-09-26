@@ -3,13 +3,20 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from simfire.sim.simulation import FireSimulation
 
 from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
+from simharness2.agents import ReactiveAgent
 
-logger = logging.getLogger("ray.rllib")
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class RLHarnessAnalytics(ABC):
@@ -130,7 +137,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         interaction: int,
         agent_pos: List[int],
         moved_off_map: bool,
-        agent_id: str,
+        agents: Dict[str, ReactiveAgent],
     ) -> None:
         """Updates `self.sim_analytics.agent_analytics`, if agents are in the sim.
 

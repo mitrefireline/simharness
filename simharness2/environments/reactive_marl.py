@@ -29,6 +29,12 @@ from simharness2.rewards.base_reward import BaseReward
 
 # FIXME: Update logger configuration.
 logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 @dataclass
@@ -168,9 +174,6 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 f"`functools.partial`, but got {type(action_space_partial)}."
             )
 
-        # NOTE: only used in `_do_one_simulation_step`, so keep as harness attr
-        self.agent_speed: int = config.get("agent_speed")
-
         super().__init__(
             sim=config.get("sim"),
             movements=config.get("movements"),
@@ -185,11 +188,29 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self._log_env_init()
 
+        # NOTE: only used in `_do_one_simulation_step`, so keep as harness attr
+        self.agent_speed: int = config.get("agent_speed")
         # Spawn the agent (s) that will interact with the simulation
-        self._spawn_agents()
+        logger.debug("Spawning agents...")
+        agent_init_method = config.get("agent_initialization_method", "automatic")
+        if agent_init_method == "manual":
+            agent_init_positions = config.get("initial_agent_positions", None)
+            if agent_init_positions is None:
+                raise ValueError(
+                    "Must provide 'initial_agent_positions' when using 'manual' agent initialization method."
+                )
+            self._spawn_agents(method="manual", pos_list=agent_init_positions)
+        elif agent_init_method == "automatic":
+            self._spawn_agents(method="random")
+        else:
+            raise ValueError(
+                "Invalid agent initialization method. Must be either 'automatic' or 'manual'."
+            )
 
+        breakpoint()
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         # FIXME Move into RLHarness
+
         self._setup_harness_analytics(
             harness_analytics_partial=config.get("harness_analytics_partial")
         )
@@ -638,7 +659,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #   - X: self._min_sim_agent_id + self.num_agents (value is set in RLHarness.__init__)
         nonsim_min_maxes["fire_map"] = {
             "min": 0,
-            "max": self._min_sim_agent_id + self.num_agents,
+            "max": max(self._sim_agent_ids),
         }
         return nonsim_min_maxes
 
@@ -663,39 +684,116 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def render(self):  # noqa
         self.sim.rendering = True
 
-    def _check_start_pos(self, start_pos: Tuple[int, int]) -> bool:
-        # Check that value is in the correct range
-        if (
-            start_pos[0] < 0
-            or start_pos[0] >= self.sim.config.area.screen_size[0]
-            or start_pos[1] < 0
-            or start_pos[1] >= self.sim.config.area.screen_size[0]
-        ):
-            return False
+    # TODO: Finish code to allow manually specifying agent positions.
+    # def _check_start_pos(self, start_pos: Tuple[int, int]) -> bool:
+    #     # Check that value is in the correct range
+    #     if (
+    #         start_pos[0] < 0
+    #         or start_pos[0] >= self.sim.config.area.screen_size[0]
+    #         or start_pos[1] < 0
+    #         or start_pos[1] >= self.sim.config.area.screen_size[0]
+    #     ):
+    #         return False
 
-        for pos in self.agent_pos:
-            if np.array_equal(pos, start_pos):
-                return False
+    #     for pos in self.agent_pos:
+    #         if np.array_equal(pos, start_pos):
+    #             return False
 
-        return True
+    #     return True
 
-    def _spawn_agents(self, method="random"):
+    # def _validate_position(self, x, y):
+    #     """Check whether (x,y) is within the bounds of the environment."""
+    #     return all([x >= 0, x < self.width, y >= 0, y < self.height])
+
+    # def _check_collision(self, pos1, pos2):
+    #     """Check whether two positions overlap."""
+    #     return pos1[0] == pos2[0] and pos1[1] == pos2[1]
+
+    # def _spawn_agents(self, method='random', pos_list=None):
+    #     """Spawn agents according to the given method and position list."""
+
+    #     # Initialize empty lists for holding agent objects and positions
+    #     self.agents = []
+    #     self.agent_positions = {}
+
+    #     if method == 'manual':
+    #         # Validate and assign positions from the input list
+    #         assert len(pos_list) == len(self.agent_ids), \
+    #             f"Number of positions ({len(pos_list)}) does not match number of agents ({len(self.agent_ids)})."
+
+    #         for i, pos in enumerate(pos_list):
+    #             assert len(pos) == 3, f"Position {i} has invalid length ({len(pos)}, expected 3)"
+
+    #             agent_id, x, y = pos
+    #             assert agent_id in self.agent_ids, f"Agent ID '{agent_id}' is not recognized."
+
+    #             assert self._validate_position(x, y), f"Position {pos} is out of bounds."
+
+    #             for j in range(i+1, len(pos_list)):
+    #                 assert not self._check_collision(pos, pos_list[j]), f"Position collision detected between {pos} and {pos_list[j]}."
+
+    #             self.agents.append(ReactiveAgent(agent_id))
+    #             self.agent_positions[agent_id] = (x, y)
+
+    # if method == "manual":
+    #     if len(pos_list) < self.num_agents:
+    #         # Pad with default positions
+    #         num_missing = self.num_agents - len(pos_list)
+    #         logger.warning(
+    #             "%d manual agent position(s) provided; padding with %d defaults.",
+    #             len(pos_list),
+    #             num_missing,
+    #         )
+    #         pos_list += [(f"default{i}", 0, 0) for i in range(num_missing)]
+    #     elif len(pos_list) > self.num_agents:
+    #         # Truncate the list
+    #         num_extra = len(pos_list) - self.num_agents
+    #         logger.warning(
+    #             "%d manual agent position(s) provided; ignoring %d extra.",
+    #             len(pos_list),
+    #             num_extra,
+    #         )
+    #         pos_list = pos_list[: self.num_agents]
+
+    def _spawn_agents(self, method: str = "random", pos_list: List = None):
         """Initialize agent positions."""
-        if method != "random":
-            raise NotImplementedError(f"Agent spawn method {method} not implemented.")
-
         self.agents: Dict[str, ReactiveAgent] = {}
+        max_sim_agent_id = self._min_sim_agent_id + self.num_agents
+        sim_agent_ids = np.arange(start=self._min_sim_agent_id, stop=max_sim_agent_id)
+        logger.debug(f"sim_agent_ids: {sim_agent_ids}")
+        # Use the user-provided agent positions to initialize the agents on the map.
+        if method == "manual":
+            # NOTE: The provided pos_list must be the same length as the number of agents
+            # TODO: Allow option to randomly generate any "missing" agent positions.
+            if len(pos_list) != self.num_agents:
+                raise ValueError(
+                    f"Expected {self.num_agents} agent positions; got {len(pos_list)}."
+                )
+
+            # FIXME: We assume provided pos are valid wrt map dims and agent collisions.
+            # FIXME: Finish logic HERE to create `self.agents` dict
+            raise NotImplementedError  # adding so I don't forget!
+            # for agent_info, sim_id in zip(pos_list, sim_agent_ids):
+            #     agent_str, x, y = agent_info
+            #     agent = ReactiveAgent(agent_str, sim_id, (x, y))
+            #     self.agents[agent_str] = agent
+
         # Generate random agent locations for the start of the episode.
-        agent_locs = self.np_random.choice(
-            # FIXME: Not robust for rectangular maps
-            np.arange(self.sim.fire_map.size),
-            size=(self.num_agents, 2),
-            replace=False,
-        )  # .reshape(-1, 2)
-        sim_agent_ids = np.arange(self.num_agents, start=self._min_sim_agent_id)
-        for agent_str, sim_id, loc in zip(self._agent_ids, sim_agent_ids, agent_locs):
-            agent = ReactiveAgent(agent_str, sim_id, tuple(loc))
-            self.agents[agent_str] = agent
+        elif method == "random":
+            agent_locs = self.np_random.choice(
+                # FIXME: Not robust for rectangular maps
+                np.arange(self.sim.fire_map.size),
+                size=(self.num_agents, 2),
+                replace=False,
+            )  # .reshape(-1, 2)
+            agent_locs = np.unravel_index(agent_locs, self.sim.fire_map.size)
+            # Populate the `self.agents` dict with `ReactiveAgent` object (s).
+            for agent_str, sim_id, loc in zip(self._agent_ids, sim_agent_ids, agent_locs):
+                agent = ReactiveAgent(agent_str, sim_id, tuple(loc))
+                self.agents[agent_str] = agent
+        # This should be caught within the init. To be safe, also raise error here.
+        else:
+            raise NotImplementedError(f"Agent spawn method {method} not implemented.")
 
     # def _set_agent_pos_for_episode_start(self):
     #     """Set the agent's initial position in the map for the start of the episode."""
@@ -744,11 +842,11 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Increment the number of episodes that have been debugged.
         self._episodes_debugged += 1
 
-    def _setup_harness_analytics(self, harness_analytics_partial: partial) -> None:
-        """Instantiates the harness_analytics used to monitor this `ReactiveHarness` obj.
+    def _setup_harness_analytics(self, analytics_partial: partial) -> None:
+        """Instantiates the `harness_analytics` used to monitor this `ReactiveHarness` obj.
 
         Arguments:
-            harness_analytics_partial:
+            analytics_partial:
                 A `functools.partial` object that indicates the top-level
                 class that will be used to monitor the `ReactiveHarness` object. The user
                 is expected to provide the `sim_data_partial` keyword argument, along
@@ -760,10 +858,12 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         """
         self.harness_analytics: ReactiveHarnessAnalytics
-        if harness_analytics_partial:
+        if analytics_partial:
             try:
-                self.harness_analytics = harness_analytics_partial(
-                    sim=self.sim, benchmark_sim=self.benchmark_sim
+                self.harness_analytics = analytics_partial(
+                    sim=self.sim,
+                    benchmark_sim=self.benchmark_sim,
+                    agents=self.agents,
                 )
             except Exception as e:
                 raise e

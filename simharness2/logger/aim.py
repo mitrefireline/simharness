@@ -26,6 +26,12 @@ except ImportError:
     Repo, Run = None, None
 
 logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 VALID_SUMMARY_TYPES = [int, float, np.float32, np.float64, np.int32, np.int64]
 

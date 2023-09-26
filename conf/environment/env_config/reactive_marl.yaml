@@ -6,16 +6,12 @@ sim:
 benchmark_sim: ${.sim}
 
 movements: [none, up, down, left, right]
-interactions: [none, fireline]
+interactions: [none, fireline, scratchline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 # For now, assume that agent speed is the same for all agents.
 agent_speed: 9
-num_agents: 2
-# For now, assume that agents are spawned at random locations.
-# initial_agent_pos: [40, 55]
-# For now, assume that the initial position of each agent is fixed across episodes.
-# randomize_initial_agent_pos: false
+num_agents: 20
 
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 harness_analytics_partial:

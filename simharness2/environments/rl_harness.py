@@ -10,6 +10,7 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+import logging
 import copy
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
@@ -30,6 +31,14 @@ import numpy as np
 from gymnasium import spaces
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simfire.sim.simulation import FireSimulation
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class RLHarness(MultiAgentEnv, ABC):
@@ -123,18 +132,6 @@ class RLHarness(MultiAgentEnv, ABC):
         sim_attributes = self.sim.get_attribute_data()
         sim_actions = self.sim.get_actions()
 
-        self.num_agents = num_agents
-        # FIXME(afennelly) provide a better explanation (below) for _min_sim_agent_id
-        # Make ID of agent +1 of the max value returned by the simulation for a location
-        # NOTE: Assume that every simulator will support 3 base scenarios:
-        #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
-        #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
-        #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
-        self._min_sim_agent_id = start_id = 3 + len(self.interactions) + 1
-        # min_agent_id = 3 + len(self.interactions) + 1
-        # self._sim_agent_ids = {min_agent_id + i for i, _ in enumerate(self._agent_ids)}
-        self._agent_ids = {f"agent_{i}" for i in range(self.num_agents, start=start_id)}
-
         # Before verifying that all interactions are supported by the simulator, we need
         # to remove the "none" interaction (if it exists).
         if "none" in self.interactions:
@@ -151,13 +148,27 @@ class RLHarness(MultiAgentEnv, ABC):
                 f"in the simulator's actions ({str(list(sim_actions.keys()))})!"
             )
 
-        # FIXME review purpose of sim_nonsim conversions + add brief comment
-        self._separate_sim_nonsim(sim_attributes)
         # NOTE: `self.harness_to_sim` used in `ReactiveHarness._update_mitigation()`.
         # FIXME `self.sim_to_harness` is NOT used anywhere else.
+        self._separate_sim_nonsim(sim_attributes)
         self.harness_to_sim, self.sim_to_harness = self._sim_harness_conv(sim_actions)
+        self.num_agents = num_agents
+        # Each sim_agent_id is used to "encode" the agent position within the `fire_map`
+        # dimension of the returned observation of the environment. The intention is to
+        # help the model learn/use the location of the respective agent on the fire_map.
+        # NOTE: Assume that every simulator will support 3 base scenarios:
+        #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
+        #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
+        #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
+        # The max value is +1 of the max mitigation value available (wrt the sim).
+        self._agent_id_start = max(self.harness_to_sim.values()) + 1
+        self._agent_id_stop = self._agent_id_start + self.num_agents
+        self._sim_agent_ids = np.arange(self._agent_id_start, self._agent_id_stop)
+        # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
+        self._agent_ids = {f"agent_{i}" for i in self._sim_agent_ids}
         self.min_maxes = self._get_min_maxes()
 
+        breakpoint()
         # NOTE: calling `reshape()` to switch to channel-minor format.
         channel_lows = np.array(
             [[[self.min_maxes[channel]["min"]]] for channel in self.attributes]

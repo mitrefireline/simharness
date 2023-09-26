@@ -16,7 +16,13 @@ if TYPE_CHECKING:
 
     from simharness2.environments.reactive import ReactiveHarness
 
-logger = logging.getLogger("ray.rllib")
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class RenderEnv(DefaultCallbacks):

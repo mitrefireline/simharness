@@ -28,7 +28,12 @@ from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
 
 logger = logging.getLogger(__name__)
-# logger = logging.getLogger("ray.rllib")
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415

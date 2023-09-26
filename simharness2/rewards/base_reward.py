@@ -4,8 +4,17 @@ Reward Classes to be called in the main environment that derive rewards from the
 ReactiveHarnessAnalytics object.
 """
 from abc import ABC, abstractmethod
+import logging
 
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class BaseReward(ABC):
