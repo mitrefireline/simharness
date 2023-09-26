@@ -21,11 +21,11 @@ from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
 from simfire.enums import BurnStatus
-from simfire.utils.config import Config
 
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
+from simharness2.agents import ReactiveAgent
 
 # FIXME: Update logger configuration.
 logger = logging.getLogger(__name__)
@@ -35,54 +35,6 @@ handler.setFormatter(
 )
 logger.addHandler(handler)
 logger.propagate = False
-
-
-@dataclass
-class ReactiveAgent:
-    # NOTE: `agent_speed` ommitted, only used within `_do_one_simulation_step`
-    # Attrs that should be specified on initialization
-    agent_id: str  # ex: "agent_0", "dozer_0", "handcrew_0", "ff_0", etc.
-    sim_id: int  # should be contained within sim.agents.keys()
-    initial_position: Tuple[int, int]
-
-    # Attributes with default values
-    latest_movement: Optional[int] = None
-    latest_interaction: Optional[int] = None
-    mitigation_placed: bool = False
-    moved_off_map: bool = False
-
-    def __post_init__(self):
-        self.current_position = self.initial_position
-        # x,y pos, where (0,0) is top-left corner and (max_x, max_y) is bottom-right
-        self.x, self.y = self.current_position
-        self.row, self.col = self.y, self.x
-
-        # Store the movement and interaction for the current timestep
-        self.latest_movement: int = None
-        self.latest_interaction: int = None
-        # If the agent places a mitigation, this is set to True.
-        self.mitigation_placed: bool = False
-        # If the agent attempts to move out of bounds, this is set to True.
-        self.moved_off_map: bool = False
-
-        # actions: np.ndarray
-        # reward: float = 0
-
-    def reset(self):
-        self.current_position = self.initial_position
-        self.reward = 0
-
-    # def move(self, env: np.ndarray, direction: int) -> bool:
-    #     """Moves the agent in the given direction if possible."""
-    #     current_x, current_y = self.current_position
-    #     dx, dy = self.actions[direction]
-    #     next_x, next_y = current_x + dx, current_y + dy
-
-    #     if env[next_y][next_x] == "_":
-    #         self.current_position = (next_x, next_y)
-    #         return True
-    #     else:
-    #         return False
 
 
 class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -758,9 +710,6 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def _spawn_agents(self, method: str = "random", pos_list: List = None):
         """Initialize agent positions."""
         self.agents: Dict[str, ReactiveAgent] = {}
-        max_sim_agent_id = self._min_sim_agent_id + self.num_agents
-        sim_agent_ids = np.arange(start=self._min_sim_agent_id, stop=max_sim_agent_id)
-        logger.debug(f"sim_agent_ids: {sim_agent_ids}")
         # Use the user-provided agent positions to initialize the agents on the map.
         if method == "manual":
             # NOTE: The provided pos_list must be the same length as the number of agents
@@ -788,7 +737,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             )  # .reshape(-1, 2)
             agent_locs = np.unravel_index(agent_locs, self.sim.fire_map.size)
             # Populate the `self.agents` dict with `ReactiveAgent` object (s).
-            for agent_str, sim_id, loc in zip(self._agent_ids, sim_agent_ids, agent_locs):
+            agent_ids, sim_ids = self._agent_ids, self._sim_agent_ids
+            for agent_str, sim_id, loc in zip(agent_ids, sim_ids, agent_locs):
                 agent = ReactiveAgent(agent_str, sim_id, tuple(loc))
                 self.agents[agent_str] = agent
         # This should be caught within the init. To be safe, also raise error here.
