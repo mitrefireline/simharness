@@ -68,8 +68,8 @@ class SimulationData:
 
         if not self.is_benchmark:
             self.mitigated = timestep_dict["mitigated"]
-            self.agent_interactions = timestep_dict["agent_interactions"]
-            self.agent_movements = timestep_dict["agent_movements"]
+            # self.agent_interactions = timestep_dict["agent_interactions"]
+            # self.agent_movements = timestep_dict["agent_movements"]
 
     def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
         """Save episode history to CSV file."""
@@ -225,8 +225,9 @@ class FireSimulationAnalytics(SimulationAnalytics):
             sim_timestep_dict.update(
                 {
                     "mitigated": fire_map.size - non_mitigated_total,
-                    "agent_interactions": self.agent_analytics.num_interactions_since_last_sim_step,  # noqa: E501
-                    "agent_movements": self.agent_analytics.num_movements_since_last_sim_step,  # noqa: E501
+                    # FIXME: Update for MARL case.
+                    # "agent_interactions": self.agent_analytics.num_interactions_since_last_sim_step,  # noqa: E501
+                    # "agent_movements": self.agent_analytics.num_movements_since_last_sim_step,  # noqa: E501
                 }
             )
 

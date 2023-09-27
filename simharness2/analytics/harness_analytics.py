@@ -3,7 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
-from typing import List, Optional, Dict
+from typing import Any, Optional, Dict
 
 from simfire.sim.simulation import FireSimulation
 
@@ -55,11 +55,6 @@ class RLHarnessAnalytics(ABC):
         self,
         *,
         timestep: int,
-        movement: int,
-        interaction: int,
-        agent_pos: List[int],
-        moved_off_map: bool,
-        agent_id: str,
     ) -> None:
         """See subclass for docstring."""
         pass
@@ -85,6 +80,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         *,
         sim: FireSimulation,
         sim_analytics_partial: partial,
+        agent_ids: set,
         benchmark_sim: FireSimulation = None,
     ) -> None:
         """TODO Add summary line.
@@ -99,6 +95,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
                 `self.benchmark_sim`, if the optional `benchmark_sim` is provided. The
                 user is expected to provide the `agent_analytics_partial` keyword
                 argument, along with a valid value.
+            agent_ids: TODO
             benchmark_sim: A separate `FireSimulation` object, identical to
                 `sim` (after initialization). No mitigation lines will be placed in this
                 simulation, as it does not contain any agent (s).
@@ -108,6 +105,11 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             `agent_analytics_partial` key with value of type `functools.partial`.
 
         """
+        # NOTE: Below is a hacky way to specify agent ids; Fix later
+        # Inject `agent_ids` into keywords of `agent_analytics_partial`
+        agent_partial: partial = sim_analytics_partial.keywords["agent_analytics_partial"]
+        agent_partial.keywords.update({"agent_ids": agent_ids})
+        sim_analytics_partial.keywords["agent_analytics_partial"] = agent_partial
         # Initialize sim_analytics object (s) and best_episode_performance attribute.
         super().__init__(
             sim=sim,
@@ -133,11 +135,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         self,
         *,
         timestep: int,
-        movement: int,
-        interaction: int,
-        agent_pos: List[int],
-        moved_off_map: bool,
-        agents: Dict[str, ReactiveAgent],
+        agents: Dict[Any, ReactiveAgent],
     ) -> None:
         """Updates `self.sim_analytics.agent_analytics`, if agents are in the sim.
 
@@ -145,25 +143,11 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         `ReactiveHarness._do_one_agent_step()` (within `ReactiveHarness.step()`).
 
         Arguments:
-            sim: The underlying `FireSimulation` object that contains the agent (s) that
-                are being trained. The agent (s) will place mitigation lines, and the
-                simulation will spread the fire. An episode terminates when the fire is
-                finished spreading. (FIXME later)
             timestep: An integer indicating the current timestep of the episode.
-            movement: An integer indicating the index of the latest movement that the
-                agent selected.
-            interaction: An integer indicating the index of the latest interaction that
-                the agent selected.
-            agent_pos: A list of integers indicating the current position of the agent.
-            moved_off_map: A boolean indicating whether the agent's latest movement was
-                valid. Expect the value to be `True` if the agent attempted to move to a
-                position that is not contained within the `FireSimulation.fire_map`.
-            agent_id: TODO
+            agents: TODO
         """
         if self.sim_analytics.agent_analytics:
-            self.sim_analytics.agent_analytics.update(
-                timestep, movement, interaction, agent_pos, moved_off_map
-            )
+            self.sim_analytics.agent_analytics.update(timestep, agents)
 
     def update_after_one_simulation_step(self, *, timestep: int) -> None:
         """Updates `self.sim_analytics` (and `self.benchmark_sim_analytics`, if exists).

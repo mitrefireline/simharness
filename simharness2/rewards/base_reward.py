@@ -244,16 +244,22 @@ class ComprehensiveReward(BaseReward):
         #   For Case 2., this reward will yield a large positive reward
         reward = ((timestep_number_squares_saved) / self._sim_area) * self.fixed_reward
 
+        # FIXME handle MARL case
+        agent_id = next(
+            iter(self.harness_analytics.sim_analytics.agent_analytics.data.keys())
+        )
         # AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
         # use static reward so RL easily learns what causes this reward
         # TODO: determine best amount for this reward
-        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+        if self.harness_analytics.sim_analytics.agent_analytics.data[agent_id].near_fire:
             # set the reward to be -1.0 * static_penalty
             reward = -self.static_penalty
 
         # Penalize agent if chosen movement would result in an invalid map position.
         # if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
-        if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
+        if self.harness_analytics.sim_analytics.agent_analytics.data[
+            agent_id
+        ].moved_off_map:
             reward -= self.invalid_movement_penalty
 
         # TODO add very large negative reward if agent steps into fire
@@ -270,13 +276,14 @@ class ComprehensiveReward(BaseReward):
         inter_reward = self.harness_analytics.latest_reward
 
         # add a slight reward to the agent for placing a mitigation not in a burned area
-        # FIXME: should we index with `-1` or `timestep - 1`?
-        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
-            inter_reward += 1
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+        #     inter_reward += 1
 
         # Penalize agent if chosen movement would result in an invalid map position.
-        if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
-            inter_reward -= self.invalid_movement_penalty
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
+        #     inter_reward -= self.invalid_movement_penalty
 
         # update self.latest_reward and then return the intermediate reward
         # self.latest_reward = inter_reward
@@ -398,8 +405,9 @@ class ComprehensiveRewardV2(BaseReward):
 
         # Penalize agent if chosen movement would result in an invalid map position.
         # if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
-        if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
-            reward -= self.invalid_movement_penalty
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
+        #     reward -= self.invalid_movement_penalty
 
         # TODO add very large negative reward if agent steps into fire
         # (or end the simulation)
@@ -416,12 +424,14 @@ class ComprehensiveRewardV2(BaseReward):
 
         # add a slight reward to the agent for placing a mitigation not in a burned area
         # FIXME: should we index with `-1` or `timestep - 1`?
-        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
-            inter_reward += 1
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+        #     inter_reward += 1
 
         # Penalize agent if chosen movement would result in an invalid map position.
-        if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
-            inter_reward -= self.invalid_movement_penalty
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
+        #     inter_reward -= self.invalid_movement_penalty
 
         # update self.latest_reward and then return the intermediate reward
         # self.latest_reward = inter_reward

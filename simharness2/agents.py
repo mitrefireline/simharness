@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -15,36 +15,67 @@ logger.propagate = False
 class ReactiveAgent:
     # NOTE: `agent_speed` ommitted, only used within `_do_one_simulation_step`
     # Attrs that should be specified on initialization
-    agent_id: str  # ex: "agent_0", "dozer_0", "handcrew_0", "ff_0", etc.
+    agent_id: Any  # ex: "agent_0", "dozer_0", "handcrew_0", "ff_0", etc.
     sim_id: int  # should be contained within sim.agents.keys()
     initial_position: Tuple[int, int]
 
     # Attributes with default values
-    latest_movement: Optional[int] = None
-    latest_interaction: Optional[int] = None
+    latest_movement: int = None
+    latest_interaction: int = None
     mitigation_placed: bool = False
     moved_off_map: bool = False
 
     def __post_init__(self):
-        self.current_position = self.initial_position
-        # x,y pos, where (0,0) is top-left corner and (max_x, max_y) is bottom-right
-        self.x, self.y = self.current_position
+        self._current_position = self.initial_position
+        self.x, self.y = self.initial_position
         self.row, self.col = self.y, self.x
 
-        # Store the movement and interaction for the current timestep
-        self.latest_movement: int = None
-        self.latest_interaction: int = None
-        # If the agent places a mitigation, this is set to True.
-        self.mitigation_placed: bool = False
-        # If the agent attempts to move out of bounds, this is set to True.
-        self.moved_off_map: bool = False
+    @property
+    def current_position(self) -> Tuple[int, int]:
+        return self._current_position
 
-        # actions: np.ndarray
-        # reward: float = 0
+    @current_position.setter
+    def current_position(self, value: Tuple[int, int]):
+        self._current_position = value
+        self.x, self.y = value
+        self.row, self.col = self.y, self.x
+
+    @property
+    def x(self) -> int:
+        return self._current_position[0]
+
+    @x.setter
+    def x(self, value: int):
+        self._current_position = (value, self.y)
+
+    @property
+    def y(self) -> int:
+        return self._current_position[1]
+
+    @y.setter
+    def y(self, value: int):
+        self._current_position = (self.x, value)
+
+    @property
+    def row(self) -> int:
+        return self._current_position[1]
+
+    @row.setter
+    def row(self, value: int):
+        self._current_position = (self.x, value)
+
+    @property
+    def col(self) -> int:
+        return self._current_position[0]
+
+    @col.setter
+    def col(self, value: int):
+        self._current_position = (value, self.y)
 
     def reset(self):
-        self.current_position = self.initial_position
-        self.reward = 0
+        self.__post_init__()
+        # self.current_position = self.initial_position
+        # self.reward = 0
 
     # def move(self, env: np.ndarray, direction: int) -> bool:
     #     """Moves the agent in the given direction if possible."""

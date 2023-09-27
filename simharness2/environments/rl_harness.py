@@ -152,6 +152,7 @@ class RLHarness(MultiAgentEnv, ABC):
         # FIXME `self.sim_to_harness` is NOT used anywhere else.
         self._separate_sim_nonsim(sim_attributes)
         self.harness_to_sim, self.sim_to_harness = self._sim_harness_conv(sim_actions)
+
         self.num_agents = num_agents
         # Each sim_agent_id is used to "encode" the agent position within the `fire_map`
         # dimension of the returned observation of the environment. The intention is to
@@ -166,9 +167,8 @@ class RLHarness(MultiAgentEnv, ABC):
         self._sim_agent_ids = np.arange(self._agent_id_start, self._agent_id_stop)
         # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
         self._agent_ids = {f"agent_{i}" for i in self._sim_agent_ids}
-        self.min_maxes = self._get_min_maxes()
 
-        breakpoint()
+        self.min_maxes = self._get_min_maxes()
         # NOTE: calling `reshape()` to switch to channel-minor format.
         channel_lows = np.array(
             [[[self.min_maxes[channel]["min"]]] for channel in self.attributes]
@@ -211,7 +211,7 @@ class RLHarness(MultiAgentEnv, ABC):
         *,
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[Any, Any]]:
+    ) -> Tuple[Dict[Any, np.ndarray], Dict[Any, Dict[Any, Any]]]:
         """Resets the environment to an initial state.
 
         This method generates a new starting state often with some randomness to ensure
@@ -233,12 +233,18 @@ class RLHarness(MultiAgentEnv, ABC):
         Returns:
             An ndarray containing the initial state of the environment.
         """
-        super().reset(seed=seed)
+        super().reset(seed=seed, options=options)
 
     @abstractmethod
     def step(
-        self, action: np.ndarray
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+        self, action_dict: Dict[Any, np.ndarray]
+    ) -> Tuple[
+        Dict[Any, np.ndarray],
+        Dict[Any, float],
+        Dict[Any, bool],
+        Dict[Any, bool],
+        Dict[Any, Dict[Any, Any]],
+    ]:
         """Run one timestep of the environment's dynamics.
 
         When end of episode is reached (`terminated or truncated` is True), you are
