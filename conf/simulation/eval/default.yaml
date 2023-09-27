@@ -36,9 +36,9 @@ operational:
 
 terrain:
   topography:
-    type: operational  # ${simulation.topography.type}
+    type: functional # ${simulation.topography.type}
     functional:
-      function: perlin
+      function: flat
       perlin:
         octaves: 3
         persistence: 0.7
@@ -53,7 +53,7 @@ terrain:
         sigma_x: 50
         sigma_y: 50
   fuel:
-    type: operational  # ${simulation.fuel.type}
+    type: functional # ${simulation.fuel.type}
     functional:
       function: chaparral
       chaparral:
@@ -67,10 +67,11 @@ fire:
         _target_: builtins.tuple
         # NOTE: This will initialize the fire at the center of the screen
         _args_: [[
-          "${calculate_half:${simulation.screen_width}}", # x position
-          "${calculate_half:${simulation.screen_height}}" # y position
+          0, # x position
+          0 # y position
         ]]
   max_fire_duration: 4
+  diagonal_spread: false
 
 environment:
   moisture: 0.03

@@ -16,7 +16,7 @@ defaults:
 aim:
   run_hash: null
   repo: ${cli.data_dir}/simharness/aim
-  experiment: debug_alex
+  experiment: Validate_Reward_DG
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true

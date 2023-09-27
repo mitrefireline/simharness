@@ -264,16 +264,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Parse the movement and interaction from the action, and store them.
         self._latest_movement, self._latest_interaction = self._parse_action(action)
 
-        # Update agent location on map
-        if self.movements[self._latest_movement] != "none":
-            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
-            self._update_agent_position()
-
         interact = self.interactions[self._latest_interaction] != "none"
         # Ensure that mitigations are only placed on squares with `UNBURNED` status
         if self._agent_pos_is_unburned() and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
+
+        # Update agent location on map
+        if self.movements[self._latest_movement] != "none":
+            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
+            self._update_agent_position()
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
         """Parse the action into movement and interaction."""
