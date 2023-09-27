@@ -196,6 +196,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
+        # breakpoint()
         self._do_one_agent_step(action)  # alternatively, self._step_agent(action)
 
         if self.harness_analytics:
@@ -249,6 +250,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
+        # breakpoint()
         # FIXME: When in debug mode, always write sim.fire_map to file.
         if terminated and self._debug_mode:
             outdir = self._trial_results_path
@@ -348,7 +350,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _agent_pos_is_unburned(self) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
-        # fire_map_idx = self.attributes.index("fire_map")
         pos_0, pos_1 = self.agent_pos[0], self.agent_pos[1]
         return self.sim.fire_map[pos_0, pos_1] == BurnStatus.UNBURNED
 
@@ -415,6 +416,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # "elevation": elevation_seed + 1,
         }
         self.sim.set_seeds(seed_dict)
+
+        # breakpoint()
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
