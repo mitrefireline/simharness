@@ -14,13 +14,13 @@ import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
-from dataclasses import dataclass, replace
 
 import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.registration import EnvSpec
 from ray.rllib.env.env_context import EnvContext
 from simfire.enums import BurnStatus
+from simfire.utils.config import Config
 
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
@@ -746,6 +746,41 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # This should be caught within the init. To be safe, also raise error here.
         else:
             raise NotImplementedError(f"Agent spawn method {method} not implemented.")
+
+    def _configure_env_rendering(self, should_render: bool) -> None:
+        """Configure the environment's `FireSimulation` to be rendered (or not).
+
+        If the simulation should be rendered, then the `headless` parameter in the
+        simulation's config (file) should be set to `False`, enabling the usage of pygame.
+
+        Additionally, the environment's `_should_render` attribute is set to ensure
+        that rendering is active when desired. This is especially important when the
+        number of eval episodes, specified via `evaluation.evaluation_duration`, is >1.
+        """
+        sim_data = self.sim.config.yaml_data
+        sim_data["simulation"]["headless"] = not should_render
+
+        # Update simulation's config attribute.
+        logger.info("Updating the `self.sim.config` with new `Config` object...")
+        self.sim.config = Config(config_dict=sim_data)
+
+        # Reset the simulation to ensure that the new config is used.
+        logger.info(f"Resetting `self.sim` to configure rendering == {should_render}.")
+        self.sim.reset()
+
+        # Update the simulation's rendering attribute to match the provided value.
+        if should_render:
+            logger.info("Setting SDL_VIDEODRIVER environment variable to 'dummy'...")
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+
+        self.sim.rendering = should_render
+
+        # Indicate whether the environment's `FireSimulation` should be rendered.
+        self._should_render = should_render
+
+    def _increment_evaluation_iterations(self) -> None:
+        """Increment the number of evaluation iterations that have been run."""
+        self._num_eval_iters += 1
 
     # def _set_agent_pos_for_episode_start(self):
     #     """Set the agent's initial position in the map for the start of the episode."""
