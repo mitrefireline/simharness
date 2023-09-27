@@ -1,5 +1,5 @@
 defaults:
-  - model: screen_size_64
+  - model: screen_size_128
 
 # train_batch_size: 4000
 v_min: -10

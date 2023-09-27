@@ -104,7 +104,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # TODO add this to config
     # Config for the tuning process (used for all trial runs)
     tune_config = tune.TuneConfig(
-        num_samples=2, max_concurrent_trials=2, metric="episode_reward_mean", mode="max"
+        num_samples=20, max_concurrent_trials=2, metric="episode_reward_mean", mode="max"
     )
 
     # Create a Tuner

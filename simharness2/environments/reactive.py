@@ -282,21 +282,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Parse the movement and interaction from the action, and store them.
         self._latest_movement, self._latest_interaction = self._parse_action(action)
 
-        # Update agent location on map
-        if self.movements[self._latest_movement] != "none":
-            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
-            self._update_agent_position()
-
-        # Update agent location on map
-        if self.movements[self._latest_movement] != "none":
-            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
-            self._update_agent_position()
-
         interact = self.interactions[self._latest_interaction] != "none"
         # Ensure that mitigations are only placed on squares with `UNBURNED` status
         if self._agent_pos_is_unburned() and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
+
+        # Update agent location on map
+        if self.movements[self._latest_movement] != "none":
+            # NOTE: `self.agent_pos` is updated in `_update_agent_position()`.
+            self._update_agent_position()
 
         # Check if there was an interaction already done on this space
         # NOTE: `self.agent_pos_is_empty_space` will be updated in below method.
@@ -353,9 +348,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _agent_pos_is_unburned(self) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
-        fire_map_idx = self.attributes.index("fire_map")
+        # fire_map_idx = self.attributes.index("fire_map")
         pos_0, pos_1 = self.agent_pos[0], self.agent_pos[1]
-        return self.state[pos_0, pos_1, fire_map_idx] == BurnStatus.UNBURNED
+        return self.sim.fire_map[pos_0, pos_1] == BurnStatus.UNBURNED
 
     def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""

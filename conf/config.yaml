@@ -41,11 +41,11 @@ runtime:
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
-  checkpoint_frequency: 3005
+  checkpoint_frequency: 4005
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 1000 #4000
+  training_iteration: 4000
   timesteps_total: 20000000000
   # episodes_total: 1000000
   episode_reward_mean: 10

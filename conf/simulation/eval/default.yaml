@@ -3,12 +3,12 @@ area:
     _target_: builtins.tuple
     # NOTE: This will initialize the fire at the center of the screen
     _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
-  pixel_scale: 16
+  pixel_scale: 50
 
 display:
-  fire_size: 2
-  control_line_size: 2
-  agent_size: 2
+  fire_size: 1
+  control_line_size: 3
+  agent_size: 4
   rescale_factor: 4
 
 simulation:
