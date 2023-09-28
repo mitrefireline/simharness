@@ -4,8 +4,17 @@ Reward Classes to be called in the main environment that derive rewards from the
 ReactiveHarnessAnalytics object.
 """
 from abc import ABC, abstractmethod
+import logging
 
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class BaseReward(ABC):
@@ -40,22 +49,12 @@ class SimpleReward(BaseReward):
 
     def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
-        # if Simulation was not run this timestep, return intermediate reward
         if not sim_run:
             # No intermediate reward calculation used currently, so 0.0 is returned.
             return self.get_timestep_intermediate_reward(timestep)
 
-        # Use the data stored in harness_analytics object to calculate timestep reward
-
-        # set the simplereward to be the number of new_damaged squares in the main sim
-        new_damaged = self.harness_analytics.sim_analytics.num_new_damaged  # FIXME
-
-        # total = self.simulation.config.area.screen_size**2
-
-        # get the total area from the sim_tracker
-        # total = self.tracker.sim_tracker.sim_area
-
-        reward = -(new_damaged / self._sim_area) * 100
+        burning = self.harness_analytics.sim_analytics.data.burning
+        reward = -(burning / self._sim_area)
 
         # update self.latest_reward and then return the reward
         self.latest_reward = reward
@@ -235,16 +234,22 @@ class ComprehensiveReward(BaseReward):
         #   For Case 2., this reward will yield a large positive reward
         reward = ((timestep_number_squares_saved) / self._sim_area) * self.fixed_reward
 
+        # FIXME handle MARL case
+        agent_id = next(
+            iter(self.harness_analytics.sim_analytics.agent_analytics.data.keys())
+        )
         # AUGMENT THE REWARD IF AGENT GETS TOO CLOSE TO THE FIRE
         # use static reward so RL easily learns what causes this reward
         # TODO: determine best amount for this reward
-        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+        if self.harness_analytics.sim_analytics.agent_analytics.data[agent_id].near_fire:
             # set the reward to be -1.0 * static_penalty
             reward = -self.static_penalty
 
         # Penalize agent if chosen movement would result in an invalid map position.
         # if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
-        if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
+        if self.harness_analytics.sim_analytics.agent_analytics.data[
+            agent_id
+        ].moved_off_map:
             reward -= self.invalid_movement_penalty
 
         # TODO add very large negative reward if agent steps into fire
@@ -261,13 +266,14 @@ class ComprehensiveReward(BaseReward):
         inter_reward = self.harness_analytics.latest_reward
 
         # add a slight reward to the agent for placing a mitigation not in a burned area
-        # FIXME: should we index with `-1` or `timestep - 1`?
-        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
-            inter_reward += 1
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+        #     inter_reward += 1
 
         # Penalize agent if chosen movement would result in an invalid map position.
-        if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
-            inter_reward -= self.invalid_movement_penalty
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.moved_off_map:
+        #     inter_reward -= self.invalid_movement_penalty
 
         # update self.latest_reward and then return the intermediate reward
         # self.latest_reward = inter_reward
@@ -389,8 +395,9 @@ class ComprehensiveRewardV2(BaseReward):
 
         # Penalize agent if chosen movement would result in an invalid map position.
         # if not self.harness_analytics.sim_analytics.agent_analytics.df.iloc[-1][
-        if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
-            reward -= self.invalid_movement_penalty
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
+        #     reward -= self.invalid_movement_penalty
 
         # TODO add very large negative reward if agent steps into fire
         # (or end the simulation)
@@ -407,12 +414,14 @@ class ComprehensiveRewardV2(BaseReward):
 
         # add a slight reward to the agent for placing a mitigation not in a burned area
         # FIXME: should we index with `-1` or `timestep - 1`?
-        if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
-            inter_reward += 1
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.near_fire:
+        #     inter_reward += 1
 
         # Penalize agent if chosen movement would result in an invalid map position.
-        if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
-            inter_reward -= self.invalid_movement_penalty
+        # FIXME handle MARL case
+        # if self.harness_analytics.sim_analytics.agent_analytics.data.valid_movement:
+        #     inter_reward -= self.invalid_movement_penalty
 
         # update self.latest_reward and then return the intermediate reward
         # self.latest_reward = inter_reward

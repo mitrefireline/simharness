@@ -385,13 +385,12 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # FIXME this needs to not be hard-coded and moved outside of method logic.
         # if not self.deterministic:
         #     # Set seeds for randomization
-        #     fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
-        #     elevation_seed = self.simulation.get_seeds()["elevation"]
-        #     seed_dict = {
-        #         "fire_initial_position": fire_init_seed + 1,
-        #         "elevation": elevation_seed + 1,
-        #     }
-        #     self.simulation.set_seeds(seed_dict)
+        fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
+        #elevation_seed = self.simulation.get_seeds()["elevation"]
+        seed_dict = {
+                 "fire_initial_position": fire_init_seed + 1,
+        }
+        self.sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.

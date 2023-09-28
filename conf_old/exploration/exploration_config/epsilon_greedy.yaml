@@ -1,0 +1,6 @@
+type: EpsilonGreedy
+initial_epsilon: 1.0
+final_epsilon: 0.05
+warmup_timesteps: 1000000
+epsilon_timesteps: 5000000
+

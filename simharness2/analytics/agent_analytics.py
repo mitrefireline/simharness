@@ -12,8 +12,12 @@ from typing import List
 import numpy as np
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
+import os
+import pandas as pd
 
 logger = logging.getLogger("ray.rllib")
+
+
 
 
 @dataclass
@@ -55,6 +59,28 @@ class AgentData:
         # self.connected_mitigation = timestep_dict["connected_mitigation"]
         self.near_fire = timestep_dict["near_fire"]
         self.burn_status = timestep_dict["burn_status"]
+
+    def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
+        """Save episode history to CSV file."""
+        if self._history is None:
+            return
+
+        # TODO: Add logic to save history from multiple episodes (run concurrently).
+        # Maybe we can use the PID to create a unique file name for each episode?
+        # Prepare to save
+        #subdir = os.path.join("agent_data", self.agent_id)
+
+        # TODO: Update logic to handle saving history from training episodes too.
+        data_save_path = os.path.join(
+            output_dir, "agent_data", f"eval_iter_{total_eval_iters}.csv"
+        )
+        # Converts deque to list of dicts, then to DataFrame.
+        df = pd.DataFrame(list(self._history))
+        # Write to CSV file.
+        logger.info(f"Saving episode history to {data_save_path}...")
+        os.makedirs(os.path.dirname(data_save_path), exist_ok=True)
+        df.to_csv(data_save_path, index=False)
+
 
     def collect_episode_history(self, args):
         """Aggregate data from self._history and write to file?"""

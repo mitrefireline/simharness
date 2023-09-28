@@ -1,0 +1,113 @@
+area:
+  screen_size:         
+    _target_: builtins.tuple
+    # NOTE: This will initialize the fire at the center of the screen
+    _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
+  pixel_scale: 12
+
+display:
+  fire_size: 2
+  control_line_size: 2
+  agent_size: 4
+  rescale_factor: 2
+
+simulation:
+  update_rate: 1
+  runtime: 24hr
+  headless: true
+  record: true
+  save_data: false
+  draw_spread_graph: false
+  data_type: "npy"
+  # NOTE: Below path isn't used to save gifs; we specify `save_path` via `save_gif(path)`
+  sf_home: "${oc.env:HOME}/.simfire"
+
+mitigation:
+  ros_attenuation: False
+
+operational:
+  seed:
+  latitude: 36.09493 # top left corner
+  longitude: -120.52193 # top left corner
+  height: ${operational_screen_size:${simulation.screen_height}}
+  width: ${operational_screen_size:${simulation.screen_width}}
+  # height: 4000
+  # width: 4000
+  resolution: 30
+  year: 2019  # ${simulation.operational.year}
+
+terrain:
+  topography:
+    type: functional # ${simulation.topography.type}
+    functional:
+      function: flat
+      perlin:
+        octaves: 3
+        persistence: 0.7
+        lacunarity: 2.0
+        seed: 827
+        range_min: 100.0
+        range_max: 300.0
+      gaussian:
+        amplitude: 500
+        mu_x: 50
+        mu_y: 50
+        sigma_x: 50
+        sigma_y: 50
+  fuel:
+    type: functional  # ${simulation.fuel.type}
+    functional:
+      function: chaparral
+      chaparral:
+        seed: 1113
+
+fire:
+  fire_initial_position:
+    type: static  # ${simulation.fire_initial_position.type}
+    static:
+      position:
+        _target_: builtins.tuple
+        # NOTE: This will initialize the fire at the center of the screen
+        _args_: [[
+          0, # x position
+          0 # y position
+        ]]
+    random:
+      seed: 1234  # ${simulation.fire_initial_position.seed}
+  max_fire_duration: 4
+  diagonal_spread: false
+
+environment:
+  moisture: 0.03
+
+wind:
+  function: simple  # ${simulation.wind.function}
+  cfd:
+    time_to_train: 1000
+    iterations: 1
+    scale: 1
+    timestep_dt: 1.0
+    diffusion: 0.0
+    viscosity: 0.0000001
+    speed: 19
+    direction: north
+  simple:
+    speed: 1
+    direction: 135.0
+  perlin:
+    speed:
+      seed: 2345
+      scale: 400
+      octaves: 3
+      persistence: 0.7
+      lacunarity: 2.0
+      min: 7
+      max: 47
+    direction:
+      seed: 650
+      scale: 1500
+      octaves: 2
+      persistence: 0.9
+      lacunarity: 1.0
+      min: 0.0
+      max: 360.0

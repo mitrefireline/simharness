@@ -130,7 +130,8 @@ class RenderEnv(DefaultCallbacks):
         analytics = env.harness_analytics
         agent_data = analytics.sim_analytics.agent_analytics.data
         sim_data = analytics.sim_analytics.data
-        bench_sim_data = analytics.benchmark_sim_analytics.data
+        if env.benchmark_sim:
+            bench_sim_data = analytics.benchmark_sim_analytics.data
         # if worker.config.in_evaluation:
         # Save agent specific data
         # Instead of logging each value to custom_metrics, write to log file
@@ -146,9 +147,10 @@ class RenderEnv(DefaultCallbacks):
         logger.info(f"mitigated: {sim_data.mitigated}")
         logger.info(f"agent_interactions: {sim_data.agent_interactions}")
         logger.info(f"agent_movements: {sim_data.agent_movements}")
-        logger.info(f"bench_sim/burned: {bench_sim_data.burned}")
-        logger.info(f"bench_sim/unburned: {bench_sim_data.unburned}")
-        logger.info(f"bench_sim/burning: {bench_sim_data.burning}")
+        if env.benchmark_sim:
+            logger.info(f"bench_sim/burned: {bench_sim_data.burned}")
+            logger.info(f"bench_sim/unburned: {bench_sim_data.unburned}")
+            logger.info(f"bench_sim/burning: {bench_sim_data.burning}")
 
         episode.custom_metrics["movement"] = env.movements.index(agent_data.movement)
         episode.custom_metrics["interaction"] = env.interactions.index(
@@ -167,10 +169,11 @@ class RenderEnv(DefaultCallbacks):
         episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
         episode.custom_metrics["agent_movements"] = sim_data.agent_movements
 
+        if env.benchmark_sim:
         # Save benchmark sim specific data
-        episode.custom_metrics["bench_sim/burned"] = bench_sim_data.burned
-        episode.custom_metrics["bench_sim/unburned"] = bench_sim_data.unburned
-        episode.custom_metrics["bench_sim/burning"] = bench_sim_data.burning
+            episode.custom_metrics["bench_sim/burned"] = bench_sim_data.burned
+            episode.custom_metrics["bench_sim/unburned"] = bench_sim_data.unburned
+            episode.custom_metrics["bench_sim/burning"] = bench_sim_data.burning
 
         # Ensure all custom metrics are ints
         for k, v in episode.custom_metrics.items():
