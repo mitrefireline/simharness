@@ -3,14 +3,14 @@ sim:
   config:
     _target_: simfire.utils.config.Config
     config_dict: ${simulation.train}
-benchmark_sim: ${.sim}
+benchmark_sim: null
 
-movements: [none, up, down, left, right]
-interactions: [none, fireline, scratchline]
+movements: [up, down, left, right]
+interactions: [fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
 # For now, assume that agent speed is the same for all agents.
-agent_speed: 9
+agent_speed: 4
 num_agents: 4
 
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
@@ -29,11 +29,8 @@ harness_analytics_partial:
       interaction_types: ${....interactions}
 # Defines the class that will be used to perform reward calculation at each timestep.
 reward_cls_partial:
-  _target_: simharness2.rewards.base_reward.ComprehensiveReward
+  _target_: simharness2.rewards.base_reward.SimpleReward
   _partial_: true
-  fixed_reward: 1
-  static_penalty: 0.05
-  invalid_movement_penalty: 0.01
 action_space_partial:
   _partial_: true
   _target_: gymnasium.spaces.Discrete

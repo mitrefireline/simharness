@@ -1,5 +1,5 @@
 # Number of GPUs to allocate to the algorithm process.
-num_gpus: 0
+num_gpus: 0.4
 # Number of CPUs to allocate per worker.
 num_cpus_per_worker: 1
 # Number of GPUs to allocate per worker. This can be fractional. This is usually needed

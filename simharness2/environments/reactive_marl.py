@@ -261,6 +261,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Calculate the reward for the current timestep
         # TODO pass `terminated` into `get_reward` method
         # FIXME: Update reward for MARL case!!
+        # TODO: Give each agent the "same" simple reward for now.
         reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
         # TODO account for below updates in the reward_cls.calculate_reward() method
@@ -341,7 +342,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         interact = self.interactions[agent.latest_interaction] != "none"
         # Ensure that mitigations are only placed on squares with `UNBURNED` status
-        if self._agent_pos_is_unburned(agent.agent_id) and interact:
+        if self._agent_pos_is_unburned(agent) and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation(agent)
         else:
@@ -426,6 +427,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         agent.mitigation_placed = True
 
     def _do_one_simulation_step(self) -> bool:
+        """Check if the simulation should be run, and then run it if necessary."""
         run_sim = self.timesteps % self.agent_speed == 0
         # The simulation WILL NOT be run every step, unless `self.agent_speed` == 1.
         if run_sim:
@@ -451,43 +453,6 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Modify the state to contain the updated fire map
         self.state[..., self.attributes.index("fire_map")] = fire_map
 
-    def _nearby_fire(self) -> bool:
-        """Check if the agent is adjacent to a space that is currently burning.
-
-        Returns:
-            nearby_fire: A boolean indicating if there is a burning space adjacent to the
-              agent.
-        """
-        # TODO: This method MUST be tested to ensure it returns the correct boolean!!
-
-        nearby_fire = [False] * self.num_agents
-        for agent_id in range(self.num_agents):
-            agent_pos = self.agent_pos[agent_id]
-            # Get all squares nearby this agent
-            nearby_locs = []
-            screen_size = self.sim.config.area.screen_size
-            # Get all spaces surrounding agent
-            for i in range(agent_pos[0] - 1, agent_pos[0] + 2):
-                for j in range(agent_pos[1] - 1, agent_pos[1] + 2):
-                    if (
-                        i < 0
-                        or i >= screen_size
-                        or j < 0
-                        or j >= screen_size
-                        or [i, j] == self.agent_pos
-                    ):
-                        pass
-                    else:
-                        nearby_locs.append((i, j))
-
-            # Mark if a nearby location is on fire
-            for i, j in nearby_locs:
-                if self.state[i][j][self.attributes.index("fire_map")] == 1:
-                    nearby_fire[agent_id] = True
-                    break
-
-        return nearby_fire
-
     def reset(
         self,
         *,
@@ -497,23 +462,6 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # log.info("Resetting environment")
         # Use the following line to seed `self.np_random`
         super().reset(seed=seed)
-        # If the environment is stochastic, set the seeds for randomization parameters.
-        # An evaluation environment will generally be set as deterministic.
-        # NOTE: Other randomization parameters include "fuel", "wind_speed", and
-        # "wind_direction". For reference with `FireSimulation`, see
-        # https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/d70358ec960af5cfbf1855ef78218475cc569247/simfire/sim/simulation.py#L672-718
-        # TODO(afennelly) Enable selecting attributes to randomize from config file.
-        # FIXME this needs to not be hard-coded and moved outside of method logic.
-        # if not self.deterministic:
-        #     # Set seeds for randomization
-        #     fire_init_seed = self.simulation.get_seeds()["fire_initial_position"]
-        #     elevation_seed = self.simulation.get_seeds()["elevation"]
-        #     seed_dict = {
-        #         "fire_initial_position": fire_init_seed + 1,
-        #         "elevation": elevation_seed + 1,
-        #     }
-        #     self.simulation.set_seeds(seed_dict)
-
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         logger.debug("Resetting `self.sim`...")

@@ -39,7 +39,7 @@ class RLHarnessAnalytics(ABC):
                     sim_analytics_partial(sim=benchmark_sim, is_benchmark=True)
                 )
             else:
-                self.benchmark_sim_analytics
+                self.benchmark_sim_analytics: FireSimulationAnalytics = None
         except TypeError as e:
             raise e
 
@@ -158,33 +158,33 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         Arguments:
             timestep: An integer indicating the current timestep of the episode.
         """
+        sim_area = self.sim_analytics.sim.fire_map.size
         self.sim_analytics.update(timestep)
 
         if self.benchmark_sim_analytics:
             self.benchmark_sim_analytics.update(timestep)
 
-        sim_area = self.sim_analytics.sim.fire_map.size
-        # FIXME mention in docstring that this logic is performed. need to condense!!
-        benchsim_active = self.benchmark_sim_analytics.active
-        benchsim_undamaged = self.benchmark_sim_analytics.data.unburned
-        # Use this to update the self.bench_timesteps and the self.bench_damage
-        if benchsim_active is False and self.bench_estimated is False:
-            # if the benchsim has reached it's end, then use this to set the values of
-            # the variables
-            self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps
-            self.bench_damage = sim_area - benchsim_undamaged
-            self.bench_estimated = True
+            # FIXME mention in docstring that this logic is performed. need to condense!!
+            benchsim_active = self.benchmark_sim_analytics.active
+            benchsim_undamaged = self.benchmark_sim_analytics.data.unburned
+            # Use this to update the self.bench_timesteps and the self.bench_damage
+            if benchsim_active is False and self.bench_estimated is False:
+                # if the benchsim has reached it's end, then use this to set the values of
+                # the variables
+                self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps
+                self.bench_damage = sim_area - benchsim_undamaged
+                self.bench_estimated = True
 
-        # use this to initialize the self.bench_timesteps and the self.bench_damage if
-        # the bench_sim has not ended before the main_sim yet
-        # TODO make this more efficient or just have the benchsim run once before the
-        # agent makes any actions
-        elif self.bench_estimated is False:
-            if self.benchmark_sim_analytics.num_sim_steps > self.bench_timesteps:
-                self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps + 1
+            # use this to initialize the self.bench_timesteps and the self.bench_damage if
+            # the bench_sim has not ended before the main_sim yet
+            # TODO make this more efficient or just have the benchsim run once before the
+            # agent makes any actions
+            elif self.bench_estimated is False:
+                if self.benchmark_sim_analytics.num_sim_steps > self.bench_timesteps:
+                    self.bench_timesteps = self.benchmark_sim_analytics.num_sim_steps + 1
 
-            if sim_area - benchsim_undamaged > self.bench_damage:
-                self.bench_damage = sim_area - benchsim_undamaged + 1
+                if sim_area - benchsim_undamaged > self.bench_damage:
+                    self.bench_damage = sim_area - benchsim_undamaged + 1
 
     def update_after_one_harness_step(
         self, sim_run: bool, terminated: bool, reward: float, *, timestep: int
@@ -220,6 +220,8 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
                     episode=self.episodes_total,
                     reward=reward,
                 )
+            perf = self.best_episode_performance
+            logger.info(f"Episode {self.episodes_total}: {perf}")
 
     def reset(self, env_is_rendering: bool = False):
         """Resets attributes that track data within each episode.
