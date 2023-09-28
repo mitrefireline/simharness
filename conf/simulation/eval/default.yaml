@@ -9,7 +9,7 @@ display:
   fire_size: 2
   control_line_size: 2
   agent_size: 4
-  rescale_factor: 2
+  rescale_factor: 100
 
 simulation:
   update_rate: 1
@@ -71,6 +71,7 @@ fire:
           "${calculate_half:${simulation.screen_height}}" # y position
         ]]
   max_fire_duration: 4
+  diagonal_spread: false
 
 environment:
   moisture: 0.03

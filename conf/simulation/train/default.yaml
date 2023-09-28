@@ -75,6 +75,7 @@ fire:
     random:
       seed: 1234  # ${simulation.fire_initial_position.seed}
   max_fire_duration: 4
+  diagonal_spread: false
 
 environment:
   moisture: 0.03
