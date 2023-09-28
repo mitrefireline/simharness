@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Tuple, Any
+from typing import Tuple, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -13,6 +13,40 @@ logger.propagate = False
 
 @dataclass
 class ReactiveAgent:
+    """A simple agent that reacts to its environment.
+
+    FIXME: update docstring style, using llama2 suggestion for now.
+    Parameters
+    ----------
+    agent_id : int
+        The unique ID of this agent.
+    sim_id : int
+        The unique ID of the simulation this agent belongs to.
+    initial_position : tuple[int, int]
+        The (x,y) starting position of the agent, where (0,0) is the top-left corner of
+        the map and (max_x, max_y) is the bottom-right corner of the map.
+
+    Properties
+    ----------
+    x : int
+        The current X coordinate of the agent.
+    y : int
+        The current Y coordinate of the agent.
+    row : int
+        The current row number where the agent resides.
+    col : int
+        The current column number where the agent resides.
+    latest_movement : str or None
+        The last movement made by the agent, if applicable.
+    latest_interaction : str or None
+        The last interaction had by the agent, if applicable.
+    mitigation_placed : bool
+        Whether the agent has placed any mitigations recently.
+    moved_off_map : bool
+        Whether the agent has moved off the map recently.
+
+    """
+
     # NOTE: `agent_speed` ommitted, only used within `_do_one_simulation_step`
     # Attrs that should be specified on initialization
     agent_id: Any  # ex: "agent_0", "dozer_0", "handcrew_0", "ff_0", etc.
@@ -73,6 +107,10 @@ class ReactiveAgent:
         self._current_position = (value, self.y)
 
     def reset(self):
+        self.latest_movement = None
+        self.latest_interaction = None
+        self.mitigation_placed = False
+        self.moved_off_map = False
         self.__post_init__()
         # self.current_position = self.initial_position
         # self.reward = 0
