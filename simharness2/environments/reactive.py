@@ -243,6 +243,19 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
+        # FIXME: When in debug mode, always write sim.fire_map to file.
+        if terminated and self._debug_mode:
+            outdir = self._trial_results_path
+            subdir = "eval" if self._is_eval_env else "train"
+            savedir = os.path.join(outdir, "fire_map", subdir)
+            os.makedirs(savedir, exist_ok=True)
+            # Make file name used for saving the fire map
+            episodes_total = self.harness_analytics.episodes_total
+            fname = f"{os.getpid()}-episode-{episodes_total}-fire_map"
+            save_path = os.path.join(savedir, fname)
+            logger.info(f"Saving fire map to {save_path}...")
+            np.save(save_path, self.sim.fire_map)
+
         return self.state, reward, terminated, truncated, {}
 
     def _do_one_agent_step(self, action: np.ndarray) -> None:
