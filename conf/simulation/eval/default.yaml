@@ -71,6 +71,7 @@ fire:
           "${calculate_half:${simulation.screen_height}}" # y position
         ]]
   max_fire_duration: 4
+  diagonal_spread: false
 
 environment:
   moisture: 0.03
