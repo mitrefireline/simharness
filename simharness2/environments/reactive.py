@@ -339,9 +339,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _agent_pos_is_unburned(self) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
-        fire_map_idx = self.attributes.index("fire_map")
         pos_0, pos_1 = self.agent_pos[0], self.agent_pos[1]
-        return self.state[pos_0, pos_1, fire_map_idx] == BurnStatus.UNBURNED
+        return self.sim.fire_map[pos_0, pos_1] == BurnStatus.UNBURNED
 
     def _update_mitigation(self) -> None:
         """Interact with the environment by performing the provided interaction."""
