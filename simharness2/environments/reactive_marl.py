@@ -22,10 +22,10 @@ from ray.rllib.env.env_context import EnvContext
 from simfire.enums import BurnStatus
 from simfire.utils.config import Config
 
+from simharness2.agents import ReactiveAgent
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
-from simharness2.agents import ReactiveAgent
 
 # FIXME: Update logger configuration.
 logger = logging.getLogger(__name__)
@@ -147,14 +147,16 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             agent_init_positions = config.get("initial_agent_positions", None)
             if agent_init_positions is None:
                 raise ValueError(
-                    "Must provide 'initial_agent_positions' when using 'manual' agent initialization method."
+                    "Must provide 'initial_agent_positions' when using 'manual' agent "
+                    "initialization method."
                 )
             self._create_agents(method="manual", pos_list=agent_init_positions)
         elif agent_init_method == "automatic":
             self._create_agents(method="random")
         else:
             raise ValueError(
-                "Invalid agent initialization method. Must be either 'automatic' or 'manual'."
+                "Invalid agent initialization method. Must be either 'automatic' or "
+                "'manual'."
             )
             # NOTE: only used in `_do_one_simulation_step`, so keep as harness attr
         self.agent_speed: int = config.get("agent_speed")
@@ -459,12 +461,28 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
     ) -> Tuple[Dict[Any, np.ndarray], Dict[Any, Dict[Any, Any]]]:
+        """TODO.
+
+        Args:
+            seed (Optional[int], optional): TODO. Defaults to None.
+            options (Optional[Dict[Any, Any]], optional): TODO. Defaults to None.
+
+        Raises:
+            AssertionError: TODO
+
+        Returns:
+            Tuple[Dict[Any, np.ndarray], Dict[Any, Dict[Any, Any]]]: TODO
+        """
         # log.info("Resetting environment")
         # Use the following line to seed `self.np_random`
         super().reset(seed=seed)
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         logger.debug("Resetting `self.sim`...")
+
+        fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
+        seed_dict = {"fire_initial_position": fire_init_seed + 1}
+        self.sim.set_seeds(seed_dict)
         self.sim.reset()
         if self.benchmark_sim:
             logger.debug("Resetting `self.benchmark_sim`...")
@@ -507,7 +525,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         for agent in self.agents.values():
             points.append([agent.col, agent.row, agent.sim_id])
 
-        logger.debug(f"Updating `self.sim` with (new) initial agent positions...")
+        logger.debug("Updating `self.sim` with (new) initial agent positions...")
         self.sim.update_agent_positions(points)
 
         self.timesteps = 0
@@ -528,7 +546,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #   - 3: BurnStatus.FIRELINE (if "fireline" in self.interactions)
         #   - 4: BurnStatus.SCRATCHLINE (if "scratchline" in self.interactions)
         #   - 5: BurnStatus.WETLINE (if "wetline" in self.interactions)
-        #   - X: self._min_sim_agent_id + self.num_agents (value is set in RLHarness.__init__)
+        #   - X: self._min_sim_agent_id + self.num_agents (value is set in
+        #           RLHarness.__init__)
         nonsim_min_maxes["fire_map"] = {
             "min": 0,
             "max": max(self._sim_agent_ids),
@@ -578,18 +597,23 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     #     if method == 'manual':
     #         # Validate and assign positions from the input list
     #         assert len(pos_list) == len(self.agent_ids), \
-    #             f"Number of positions ({len(pos_list)}) does not match number of agents ({len(self.agent_ids)})."
+    #             f"Number of positions ({len(pos_list)}) does not match number of
+    #                   agents ({len(self.agent_ids)})."
 
     #         for i, pos in enumerate(pos_list):
-    #             assert len(pos) == 3, f"Position {i} has invalid length ({len(pos)}, expected 3)"
+    #             assert len(pos) == 3, f"Position {i} has invalid length ({len(pos)},
+    #                   expected 3)"
 
     #             agent_id, x, y = pos
-    #             assert agent_id in self.agent_ids, f"Agent ID '{agent_id}' is not recognized."
+    #             assert agent_id in self.agent_ids, f"Agent ID '{agent_id}' is not
+    #                   recognized."
 
-    #             assert self._validate_position(x, y), f"Position {pos} is out of bounds."
+    #             assert self._validate_position(x, y), f"Position {pos} is out of
+    #                   bounds."
 
     #             for j in range(i+1, len(pos_list)):
-    #                 assert not self._check_collision(pos, pos_list[j]), f"Position collision detected between {pos} and {pos_list[j]}."
+    #                 assert not self._check_collision(pos, pos_list[j]),
+    #                   f"Position collision detected between {pos} and {pos_list[j]}."
 
     #             self.agents.append(ReactiveAgent(agent_id))
     #             self.agent_positions[agent_id] = (x, y)
@@ -639,7 +663,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         return fire_map
 
     def _create_agents(self, method: str = "random", pos_list: List = None):
-        """Create the `ReactiveAgent` objects that will interact with the `FireSimulation`.
+        """Create `ReactiveAgent` objects that will interact with the `FireSimulation".
 
         This method will create and populate the `agents` attribute.
 
@@ -660,11 +684,15 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
             # FIXME: We assume provided pos are valid wrt map dims and agent collisions.
             # FIXME: Finish logic HERE to create `self.agents` dict
-            raise NotImplementedError  # adding so I don't forget!
-            # for agent_info, sim_id in zip(pos_list, sim_agent_ids):
-            #     agent_str, x, y = agent_info
-            #     agent = ReactiveAgent(agent_str, sim_id, (x, y))
-            #     self.agents[agent_str] = agent
+            # raise NotImplementedError  # adding so I don't forget!
+            agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
+            for agent_str, agent_info, sim_id in zip(
+                agent_ids, pos_list, range(len(pos_list))
+            ):
+                x, y = agent_info
+                # agent_str = f"agent_{sim_id}"
+                agent = ReactiveAgent(agent_str, sim_id, (x, y))
+                self.agents[agent_str] = agent
 
         # Generate random agent locations for the start of the episode.
         elif method == "random":
@@ -772,7 +800,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._episodes_debugged += 1
 
     def _setup_harness_analytics(self, analytics_partial: partial) -> None:
-        """Instantiates the `harness_analytics` used to monitor this `ReactiveHarness` obj.
+        """Instantiates `harness_analytics` used to monitor this `ReactiveHarness` obj.
 
         Arguments:
             analytics_partial:
