@@ -17,6 +17,7 @@ from typing import Any, Dict, Tuple
 
 import hydra
 import ray
+import numpy as np
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
@@ -31,6 +32,8 @@ from ray.tune.result_grid import ResultGrid
 import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
+
+from simfire.enums import BurnStatus
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
@@ -96,7 +99,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
         failure_config=None,
         sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
         checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
-        log_to_file=cfg.run.log_to_file
+        log_to_file=cfg.run.log_to_file,
     )
 
     # TODO make sure 'reward' is reported with tune.report()
@@ -220,6 +223,23 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     # Instantiate everything necessary for creating the algorithm config.
     env_settings, eval_settings, debug_settings, explor_cfg = _instantiate_config(cfg)
 
+    # Manually prepare agent_ids using same logic as within environments/rl_harness.py
+    num_agents = env_settings["env_config"].get("num_agents", 1)
+    interacts = env_settings["env_config"]["interactions"]
+    # map sh2 interactions to underlying BurnStatus category
+    interacts_map = {
+        "fireline": BurnStatus.FIRELINE,
+        "wetline": BurnStatus.WETLINE,
+        "scratchline": BurnStatus.SCRATCHLINE,
+    }
+    agent_id_start = (
+        max(set([int(v) for k, v in interacts_map.items() if k in interacts])) + 1
+    )
+    agent_id_stop = agent_id_start + num_agents
+    sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
+    # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
+    agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+
     algo_cfg = (
         get_trainable_cls(cfg.algo.name)
         .get_default_config()
@@ -232,6 +252,10 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
+        .multi_agent(
+            policies=agent_ids,
+            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+        )
     )
 
     return algo_cfg
