@@ -63,17 +63,17 @@ terrain:
 
 fire:
   fire_initial_position:
-    type: random  # ${simulation.fire_initial_position.type}
+    type: static  # ${simulation.fire_initial_position.type}
     static:
       position:
         _target_: builtins.tuple
         # NOTE: This will initialize the fire at the center of the screen
         _args_: [[
-          5,
-          5
+          122,
+          118
         ]]
     random:
-      seed: 1234  # ${simulation.fire_initial_position.seed}
+      seed: 1234
   max_fire_duration: 4
   diagonal_spread: false
 
