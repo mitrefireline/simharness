@@ -29,7 +29,7 @@ from ray.tune.result_grid import ResultGrid
 
 # from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
-from simharness2.callbacks.render_env import RenderEnv
+from simharness2.callbacks.saliency import RenderSaliencyEnv
 from simharness2.logger.aim import AimLoggerCallback
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
@@ -230,7 +230,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(RenderEnv)
+        .callbacks(RenderSaliencyEnv)
     )
 
     return algo_cfg
