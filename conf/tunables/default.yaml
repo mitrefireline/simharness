@@ -8,3 +8,19 @@ training:
   train_batch_size:
     type: choice
     values: [16, 32, 64, 128]
+
+environment:
+  agent_speed:
+    type: choice
+    values: [1, 2, 4]
+  initial_agent_positions:
+    type: choice
+    values: [
+      [
+        [0,0], [0,64], [0,127]
+      ],
+      [
+        [32,32],[64,127],[120,120]
+      ],
+      []
+    ]

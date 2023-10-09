@@ -1,7 +1,7 @@
 # Number of rollout worker actors to create for parallel sampling. Setting this to 0 will
 # force rollouts to be done in the local worker (driver process or the Algorithm’s actor
 # when using Tune).
-num_rollout_workers: 8
+num_rollout_workers: 0
 
 # Number of environments to evaluate vector-wise per worker. This enables model inference
 # batching, which can improve performance for inference bottlenecked workloads.
@@ -42,7 +42,7 @@ rollout_fragment_length: "auto"
 # batch size. Note that when `num_envs_per_worker > 1`, episode steps will be buffered
 # until the episode completes, and hence batches may contain significant amounts of
 # off-policy data.
-batch_mode: "truncate_episodes"
+batch_mode: "complete_episodes"
 
 # Whether to validate that each created remote worker is healthy after its construction
 # process.

@@ -1,5 +1,5 @@
 area:
-  screen_size:         
+  screen_size:
     _target_: builtins.tuple
     # NOTE: This will initialize the fire at the center of the screen
     _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
@@ -79,7 +79,7 @@ fire:
     random:
       seed: ${simulation.fire_start_seed}
   max_fire_duration: 4
-  diagonal_spread: false
+  diagonal_spread: True
 
 environment:
   moisture: 0.03

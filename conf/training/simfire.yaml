@@ -1,4 +1,12 @@
 defaults:
   - model: screen_size_128
 
-train_batch_size: 1000
+# v_min: -10
+# v_max: 0
+
+lr: 0.00454119
+# n_step: 8
+# num_atoms: 10
+# num_steps_sampled_before_learning_starts: 2000
+# target_network_update_freq: 3000
+train_batch_size: 512

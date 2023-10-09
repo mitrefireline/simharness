@@ -234,6 +234,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
+
         for agent_id, agent in self.agents.items():
             self._do_one_agent_step(agent, action_dict[agent_id])
 
@@ -268,8 +269,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        if terminated:
-            reward += 10
+        # if terminated:
+        #     reward += 10
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
@@ -375,11 +376,11 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # FIXME: Decide what to do with the SARL action parsing; keep for now.
         # Handle the MultiDiscrete case
-        elif isinstance(self.action_space, spaces.MultiDiscrete):
-            return action[0], action[1]
-        # Handle the Discrete case
-        elif isinstance(self.action_space, spaces.Discrete):
-            return action % len(self.movements), int(action / len(self.movements))
+        # elif isinstance(self.action_space, spaces.MultiDiscrete):
+        #     return action[0], action[1]
+        # # Handle the Discrete case
+        # elif isinstance(self.action_space, spaces.Discrete):
+        #     return action % len(self.movements), int(action / len(self.movements))
         else:
             raise NotImplementedError(f"{self.action_space} is not supported.")
 
@@ -687,10 +688,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # raise NotImplementedError  # adding so I don't forget!
             agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
             for agent_str, agent_info, sim_id in zip(
-                agent_ids, pos_list, range(len(pos_list))
+                agent_ids, pos_list, self._sim_agent_ids
             ):
                 x, y = agent_info
-                # agent_str = f"agent_{sim_id}"
                 agent = ReactiveAgent(agent_str, sim_id, (x, y))
                 self.agents[agent_str] = agent
 

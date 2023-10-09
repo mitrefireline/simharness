@@ -3,8 +3,8 @@
 Reward Classes to be called in the main environment that derive rewards from the
 ReactiveHarnessAnalytics object.
 """
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
 
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 
@@ -49,9 +49,9 @@ class SimpleReward(BaseReward):
 
     def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add function docstring."""
-        if not sim_run:
-            # No intermediate reward calculation used currently, so 0.0 is returned.
-            return self.get_timestep_intermediate_reward(timestep)
+        # if not sim_run:
+        #     # No intermediate reward calculation used currently, so 0.0 is returned.
+        #     return self.get_timestep_intermediate_reward(timestep)
 
         burning = self.harness_analytics.sim_analytics.data.burning
         reward = -(burning / self._sim_area)

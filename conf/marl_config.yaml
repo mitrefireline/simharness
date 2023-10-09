@@ -1,7 +1,7 @@
 defaults:
   - simulation: simfire
   - training: simfire
-  - environment: default
+  - environment: marl
   - framework: default
   - rollouts: default
   - evaluation: default
@@ -29,7 +29,7 @@ cli:
   # /nfs/lslab2/fireline/simharness
   data_dir: /nfs/lslab2/fireline
 algo:
-  name: DQN
+  name: PPO
   # The path (str) to the checkpoint directory to use.
   checkpoint_path: null
 # Specify configuration used to create the ray.air.RunConfig object
@@ -40,18 +40,18 @@ run:
   # Directory to store results in (will be local_dir/name)
   storage_path: ${hydra:run.dir}
   # Log stdout and stderr to files in trial directories. If this is `False` (default), no
-  # files are written. If `true`, outputs are written to `trialdir/stdout` and 
+  # files are written. If `true`, outputs are written to `trialdir/stdout` and
   # `trialdir/stderr`, respectively.
   log_to_file: true
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
-  checkpoint_frequency: 20
+  checkpoint_frequency: 4000
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  # training_iteration: 4
-  timesteps_total: 2000000000
+  training_iteration: 1 #4000
+  timesteps_total: 15000000
   # episodes_total: 1000000
   episode_reward_mean: 10000000
 debugging:

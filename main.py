@@ -16,24 +16,27 @@ from importlib import import_module
 from typing import Any, Dict, Tuple
 
 import hydra
-import ray
 import numpy as np
+import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
+from ray.rllib.examples.models.centralized_critic_models import (
+    YetAnotherTorchCentralizedCriticModel,
+)
+from ray.rllib.models import ModelCatalog
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
+from simfire.enums import BurnStatus
 
 # from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
-
-from simfire.enums import BurnStatus
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
@@ -240,6 +243,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
     agent_ids = {f"agent_{i}" for i in sim_agent_ids}
 
+    ModelCatalog.register_custom_model("cc_model", YetAnotherTorchCentralizedCriticModel)
+
     algo_cfg = (
         get_trainable_cls(cfg.algo.name)
         .get_default_config()
@@ -258,10 +263,13 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         )
     )
 
+    algo_cfg.rl_module(_enable_rl_module_api=False)
+    algo_cfg.training(_enable_learner_api=False)
+
     return algo_cfg
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="conf", config_name="marl_config")
 def main(cfg: DictConfig) -> None:
     """Main entry-point for training a SimHarness model with RLlib.
 

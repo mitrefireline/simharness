@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 # Evaluate with every `evaluation_interval` training iterations.
-evaluation_interval: 2
+evaluation_interval: 1 #250
 
 # Duration for which to run evaluation each `evaluation_interval`. The unit for the
 # duration can be set via evaluation_duration_unit to either “episodes” (default) or “timesteps”.
