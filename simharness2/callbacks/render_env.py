@@ -141,6 +141,12 @@ class RenderEnv(DefaultCallbacks):
             # Check if there is a gif "ready" to be saved
             if env._should_render and env.sim.rendering:
                 # FIXME Update logic to handle saving same gif when writing to Aim UI
+                context_dict = {}
+                lat, lon = env.sim.config.landfire_lat_long_box.points[0]
+                op_data_lat_lon = f"operational_lat_{lat}_lon_{lon}"
+                fire_init_pos = env.sim.config.fire.fire_initial_position
+                context_dict.update({"fire_initial_position": fire_init_pos})
+                # FIXME Use nested structure for dir (gifs/<op_loc>/<fire_init_pos>)?
                 gif_save_path = os.path.join(
                     logdir, "gifs", f"eval_iter_{eval_iters}.gif"
                 )
@@ -150,7 +156,14 @@ class RenderEnv(DefaultCallbacks):
                 # Save the gif_path so that we can write image to aim server, if desired
                 # NOTE: `save_path` is a list after the above; do element access for now
                 logger.debug(f"Type of gif_save_path: {type(gif_save_path)}")
-                episode.media.update({"gif": gif_save_path})
+                gif_data = {
+                    "path": gif_save_path,
+                    "name": op_data_lat_lon,
+                    "step": eval_iters,
+                    # "epoch":
+                    "context": context_dict,
+                }
+                episode.media.update({"gif_data": gif_data})
 
                 # Try to collect and log episode history, if it was saved.
                 if env.harness_analytics.sim_analytics.save_history:
