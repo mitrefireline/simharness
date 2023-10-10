@@ -1,7 +1,7 @@
 """Callback for rendering gifs during evaluation."""
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import TYPE_CHECKING, Dict, Optional, Union, Tuple
 
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
@@ -9,7 +9,11 @@ from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
-from ray.rllib.utils.typing import PolicyID  # AgentID, EnvType,
+from ray.rllib.utils.typing import PolicyID, AgentID
+from ray.rllib.policy.sample_batch import SampleBatch
+
+from torch import nn
+import numpy as np
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
@@ -100,6 +104,64 @@ class RenderSaliencyEnv(DefaultCallbacks):
                     "Simulation is in rendering mode, but `env._should_render` is False."
                 )
 
+    def on_episode_step(
+        self,
+        *,
+        worker: "RolloutWorker",
+        base_env: BaseEnv,
+        policies: Optional[Dict[PolicyID, Policy]] = None,
+        episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
+        **kwargs,
+    ) -> None:
+        """Runs on each episode step.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env: BaseEnv running the episode. The underlying
+                sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            policies: Mapping of policy id to policy objects.
+                In single agent mode there will only be a single
+                "default_policy".
+            episode: Episode object which contains episode
+                state. You can use the `episode.user_data` dict to store
+                temporary data, and `episode.custom_metrics` to store custom
+                metrics for the episode.
+            env_index: The index of the sub-environment that stepped the episode
+                (within the vector of sub-environments of the BaseEnv).
+            kwargs: Forward compatibility placeholder.
+        """
+        env: ReactiveHarness = base_env.vector_env.envs[env_index]
+
+        # agent location, agent's selected action from respective location.
+        latest_move = env.movements[env._latest_movement]
+        latest_interact = env.interactions[env._latest_interaction]
+        curr_agent_pos = env.agent_pos
+
+        # get observation space, place agent at location X,Y, and query model for action
+        # TODO: add helper method to harness to build obs space from current timestep
+        # TODO: and previous timestep, so we can get action output for diff agent start pos
+
+        if env._is_eval_env:
+            breakpoint()
+
+        fire_map: np.ndarray = env.sim.fire_map
+
+        # Retrieve model and prepare for saliency map generation
+        default_policy: Policy = policies["default_policy"]
+        model: nn.Module = default_policy.model
+        is_training = model.training
+
+        if is_training:
+            model.eval()
+
+        # TODO: Put logic here
+
+        # Return model to "original" mode
+        if is_training:
+            model.train()
+
     def on_episode_end(
         self,
         *,
@@ -189,6 +251,40 @@ class RenderSaliencyEnv(DefaultCallbacks):
             local_worker=False,
         )
 
+    def on_postprocess_trajectory(
+        self,
+        *,
+        worker: "RolloutWorker",
+        episode: Episode,
+        agent_id: AgentID,
+        policy_id: PolicyID,
+        policies: Dict[PolicyID, Policy],
+        postprocessed_batch: SampleBatch,
+        original_batches: Dict[AgentID, Tuple[Policy, SampleBatch]],
+        **kwargs,
+    ) -> None:
+        """Called immediately after a policy's postprocess_fn is called.
+
+        You can use this callback to do additional postprocessing for a policy,
+        including looking at the trajectory data of other agents in multi-agent
+        settings.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            episode: Episode object.
+            agent_id: Id of the current agent.
+            policy_id: Id of the current policy for the agent.
+            policies: Mapping of policy id to policy objects. In single
+                agent mode there will only be a single "default_policy".
+            postprocessed_batch: The postprocessed sample batch
+                for this agent. You can mutate this object to apply your own
+                trajectory postprocessing.
+            original_batches: Mapping of agents to their unpostprocessed
+                trajectory data. You should not mutate this object.
+            kwargs: Forward compatibility placeholder.
+        """
+        breakpoint()
+
     def on_evaluate_end(
         self,
         *,
@@ -209,6 +305,7 @@ class RenderSaliencyEnv(DefaultCallbacks):
         # TODO: Add note in docs that the local worker IS NOT rendered. With this
         # assumption, we should always set `evaluation.evaluation_num_workers >= 1`.
         # TODO: Handle edge case where num_evaluation_workers == 0.
+        breakpoint()
 
         # TODO: Use a function to decide if this round should be rendered (ie log10).
         # Disable the evaluation environment (s) to be rendered.
