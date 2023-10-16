@@ -281,7 +281,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         truncs = set()
         terms = set()
         for agent_id, agent in self.agents.items():
-            new_obs[agent_id] = self.state
+            new_obs[agent_id] = {
+                agent_id: {"own_obs": self.state, "opponent_obs": self.state}
+            }
             rewards[agent_id] = reward  # FIXME !!
             truncateds[agent_id] = truncated
             terminateds[agent_id] = terminated
@@ -533,7 +535,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self._log_env_reset()
 
         # FIXME: Will need to update creation of `marl_obs`` to handle POMDP.
-        marl_obs = {ag_id: self.state for ag_id in self._agent_ids}
+        marl_obs = {
+            ag_id: {"own_obs": self.state, "opponent_obs": self.state}
+            for ag_id in self._agent_ids
+        }
         infos = {ag_id: {} for ag_id in self._agent_ids}
 
         return marl_obs, infos

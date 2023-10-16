@@ -24,10 +24,6 @@ from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
-from ray.rllib.examples.models.centralized_critic_models import (
-    YetAnotherTorchCentralizedCriticModel,
-)
-from ray.rllib.models import ModelCatalog
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
@@ -96,7 +92,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # Configs for this specific trial run
     run_config = air.RunConfig(
         name=cfg.run.name or None,
-        storage_path=cfg.run.storage_path,
+        local_dir=cfg.run.local_dir,
         stop={**cfg.stop_conditions},
         callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
         failure_config=None,
@@ -243,7 +239,15 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
     agent_ids = {f"agent_{i}" for i in sim_agent_ids}
 
-    ModelCatalog.register_custom_model("cc_model", YetAnotherTorchCentralizedCriticModel)
+    from gymnasium.spaces import Box, Dict, Discrete
+
+    action_space = Discrete(4)
+    observer_space = Dict(
+        {
+            "own_obs": Box(0, 10, (128, 128, 6), dtype=np.float32),
+            "opponent_obs": Box(0, 10, (128, 128, 6), dtype=np.float32),
+        }
+    )
 
     algo_cfg = (
         get_trainable_cls(cfg.algo.name)
@@ -258,13 +262,16 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
         .multi_agent(
-            policies=agent_ids,
+            policies={
+                agent_id: (None, observer_space, action_space, {})
+                for agent_id in agent_ids
+            },
             policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
         )
     )
 
-    algo_cfg.rl_module(_enable_rl_module_api=False)
     algo_cfg.training(_enable_learner_api=False)
+    algo_cfg.rl_module(_enable_rl_module_api=False)
 
     return algo_cfg
 
@@ -283,7 +290,7 @@ def main(cfg: DictConfig) -> None:
     # ray.init(address="auto", log_to_driver=False)
     ray.init()
 
-    outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
+    outdir = os.path.join(cfg.run.local_dir, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")
 
     # Build the algorithm config.

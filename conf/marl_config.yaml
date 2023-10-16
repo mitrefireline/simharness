@@ -38,7 +38,7 @@ run:
   # Name of the training run (directory name)
   name: null
   # Directory to store results in (will be local_dir/name)
-  storage_path: ${hydra:run.dir}
+  local_dir: ${hydra:run.dir}
   # Log stdout and stderr to files in trial directories. If this is `False` (default), no
   # files are written. If `true`, outputs are written to `trialdir/stdout` and
   # `trialdir/stderr`, respectively.
