@@ -229,7 +229,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
         for agent_id, agent in self.agents.items():
-            agent_idx = self.agent_ids.index(agent_id)
+            agent_idx = self._agent_ids.index(int(agent_id.split("_")[1]))
             agent_action = [action[agent_idx * 2], action[agent_idx * 2 + 1]]
             self._do_one_agent_step(agent, agent_action)
 
@@ -524,7 +524,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         #           RLHarness.__init__)
         nonsim_min_maxes["fire_map"] = {
             "min": 0,
-            "max": max(self.agent_ids),
+            "max": max(self._sim_agent_ids),
         }
         return nonsim_min_maxes
 
@@ -659,8 +659,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # FIXME: We assume provided pos are valid wrt map dims and agent collisions.
             # FIXME: Finish logic HERE to create `self.agents` dict
             # raise NotImplementedError  # adding so I don't forget!
-            agent_ids = sorted(self.agent_ids, key=lambda x: int(x.split("_")[-1]))
-            for agent_str, agent_info, sim_id in zip(agent_ids, pos_list, self.agent_ids):
+            agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
+            for agent_str, agent_info, sim_id in zip(
+                agent_ids, pos_list, self._sim_agent_ids
+            ):
                 x, y = agent_info
                 agent = ReactiveAgent(agent_str, sim_id, (x, y))
                 self.agents[agent_str] = agent
@@ -679,8 +681,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             agent_locs = np.vstack(np.unravel_index(flat_idx, mask.shape)).T
 
             # Populate the `self.agents` dict with `ReactiveAgent` object (s).
-            agent_ids = sorted(self.agent_ids, key=lambda x: int(x.split("_")[-1]))
-            for agent_str, sim_id, loc in zip(agent_ids, self.agent_ids, agent_locs):
+            agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
+            for agent_str, sim_id, loc in zip(agent_ids, self._sim_agent_ids, agent_locs):
                 agent = ReactiveAgent(agent_str, sim_id, tuple(loc))
                 self.agents[agent_str] = agent
         # This should be caught within the init. To be safe, also raise error here.
