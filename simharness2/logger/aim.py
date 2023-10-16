@@ -1,6 +1,6 @@
-"""Module for using AIM with simharness2."""
+"""Module for using Aim with SimHarness2."""
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, Any
 from functools import partial
 
 import numpy as np
@@ -26,12 +26,6 @@ except ImportError:
     Repo, Run = None, None
 
 logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
-)
-logger.addHandler(handler)
-logger.propagate = False
 
 VALID_SUMMARY_TYPES = [int, float, np.float32, np.float64, np.int32, np.int64]
 
@@ -109,9 +103,10 @@ class AimLoggerCallback(LoggerCallback):
             **self._aim_run_kwargs,
         )
         # Attach a few useful trial properties
+        run["trainable_name"] = trial.trainable_name
         run["trial_id"] = trial.trial_id
-        run["trial_logdir"] = trial.logdir
-
+        run["trial_path"] = trial.path
+        run["trial_relative_logdir"] = trial.relative_logdir
         # Log the (hydra) config if it exists
         if self._cfg:
             self._log_hydra_config(run)
@@ -183,12 +178,28 @@ class AimLoggerCallback(LoggerCallback):
         # gif_path = './trajectory.gif'
         # aim_image = aim.Image(image=gif_path, format='gif')
         # aim_run.track(value=aim_image, name=name, step=step_, context=context)
+        # NOTE: Gifs can only be saved to Aim UI if they are from evaluation episodes.
         if tmp_result.get("evaluation", None):
-            eval_episode_media = tmp_result["evaluation"].pop("episode_media")
-            if eval_episode_media:
-                for k, v in eval_episode_media.items():
-                    eval_gif = Image(v[0], caption="")
-                    trial_run.track(eval_gif, name=k, step=episode or step)
+            media: Dict[Any, List] = tmp_result["evaluation"].pop("episode_media", None)
+            # Ensure that there is episode media to log
+            if media and media.get("gif_data", None):
+                # Log gif for each episode added to episode media
+                for gif_data in media.get("gif_data"):
+                    # Prepare Aim Image object
+                    caption = gif_data.get("caption", "")
+                    image_path = gif_data.get("path", None)
+                    gif_img = Image(image_path, caption=caption)
+
+                    name = gif_data.get("name", None)
+                    # Use specified "step"; default to total episodes run
+                    episode = gif_data.get("step", episode)
+                    context = gif_data.get("context", {})
+                    trial_run.track(
+                        gif_img,
+                        name=name,
+                        step=episode or step,
+                        context=context,
+                    )
 
         flat_result = flatten_dict(tmp_result, delimiter="/")
         valid_result = {}
