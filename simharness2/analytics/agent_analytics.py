@@ -4,16 +4,26 @@ TODO: Add a list of any classes, exception, functions, and any other objects exp
 the module.
 """
 import logging
+import os
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import InitVar, dataclass
-from typing import List
+from typing import List, Dict, Any
 
 import numpy as np
+import pandas as pd
+
+from simharness2.agents import ReactiveAgent
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
-logger = logging.getLogger("ray.rllib")
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 @dataclass
@@ -23,6 +33,7 @@ class AgentData:
     FIXME: Alt. names - `AgentBehavior`, `AgentEpisodeBehavior`, etc. ??
     """
 
+    agent_id: str
     save_history: InitVar[bool] = False
 
     def __post_init__(self, save_history):
@@ -56,9 +67,26 @@ class AgentData:
         self.near_fire = timestep_dict["near_fire"]
         self.burn_status = timestep_dict["burn_status"]
 
-    def collect_episode_history(self, args):
-        """Aggregate data from self._history and write to file?"""
-        raise NotImplementedError
+    def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
+        """Save episode history to CSV file."""
+        if self._history is None:
+            return
+
+        # TODO: Add logic to save history from multiple episodes (run concurrently).
+        # Maybe we can use the PID to create a unique file name for each episode?
+        # Prepare to save
+        subdir = os.path.join("agent_data", self.agent_id)
+
+        # TODO: Update logic to handle saving history from training episodes too.
+        data_save_path = os.path.join(
+            output_dir, subdir, f"eval_iter_{total_eval_iters}.csv"
+        )
+        # Converts deque to list of dicts, then to DataFrame.
+        df = pd.DataFrame(list(self._history))
+        # Write to CSV file.
+        logger.info(f"Saving episode history to {data_save_path}...")
+        os.makedirs(os.path.dirname(data_save_path), exist_ok=True)
+        df.to_csv(data_save_path, index=False)
 
 
 class AgentAnalytics(ABC):
@@ -120,12 +148,8 @@ class AgentAnalytics(ABC):
     def update(
         self,
         timestep: int,
-        movement: int,
-        interaction: int,
-        agent_pos: List[int],
-        moved_off_map: bool,
     ) -> None:
-        """Update the AgentMetricsTracker object variables after each agent action."""
+        """Update the `AgentAnalytics` object after each agent action."""
         pass
 
     def agent_near_fire(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
@@ -173,6 +197,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         sim: FireSimulation,
         movement_types: List[str],
         interaction_types: List[str],
+        agent_ids: set,
         danger_level: int = 2,
         save_history: bool = False,
     ):
@@ -192,9 +217,11 @@ class ReactiveAgentAnalytics(AgentAnalytics):
                 agent.
             interaction_types: A list of strings indicating the available interactions
                 for the agent.
+            agent_ids: TODO
             danger_level: An integer indicating the minimum distance (in tiles) between
                 the agent and a tile with value `BurnStatus.BURNING` for the agent to be
                 considered "in danger" (maybe a better name is `near_fire_threshold`?).
+            save_history: TODO
         """
         super().__init__(
             sim=sim,
@@ -205,55 +232,48 @@ class ReactiveAgentAnalytics(AgentAnalytics):
 
         # Indicates if data from each timestep will be stored across the entire episode.
         self.save_history = save_history
-        self.data = AgentData(save_history)
+        self._agent_ids = agent_ids
+        # TODO: Cleaner to store all agents within a single `AgentData` class?
+        self.data = {ag_id: AgentData(ag_id, save_history) for ag_id in self._agent_ids}
 
     def update(
         self,
         timestep: int,
-        movement: int,
-        interaction: int,
-        agent_pos: List[int],
-        moved_off_map: bool,
+        agents: Dict[Any, ReactiveAgent],
     ) -> None:
         """Update the AgentAnalytics object variables after each agent action.
 
         Args:
             timestep: An integer indicating the current timestep of the episode.
-            movement: An integer indicating the index of the latest movement that the
-                agent selected.
-            interaction: An integer indicating the index of the latest interaction that
-                the agent selected.
-            agent_pos: A list of integers indicating the current position of the agent.
-            moved_off_map: A boolean indicating whether the agent's latest movement was
-                valid. Expect the value to be `True` if the agent attempted to move to a
-                position that is not contained within the `FireSimulation.fire_map`.
+            agents: TODO
         """
+        # FIXME: Update for MARL case.
         # NOTE: These are stored in the corresponding FireSimulationAnalytics.data obj.
-        if self._interaction_types[interaction] != "none":
-            self.num_interactions_since_last_sim_step += 1
-        if self._movement_types[movement] != "none":
-            self.num_movements_since_last_sim_step += 1
-
-        fire_map, agent_pos = self.sim.fire_map, agent_pos
-
-        # Prepare current timestep data.
-        agent_timestep_dict = {
-            "timestep": timestep,
-            "movement": self._movement_types[movement],
-            "interaction": self._interaction_types[interaction],
-            "moved_off_map": moved_off_map,
-            # "connected_mitigation": self.connected_mitigation(fire_map, agent_pos),
-            "near_fire": self.agent_near_fire(fire_map, agent_pos),
-            "burn_status": BurnStatus(fire_map[agent_pos[0], agent_pos[1]]).name,
-        }
-        # Store agent behavior for the current timestep in the dataclass
-        self.data.update(agent_timestep_dict)
+        # if self._interaction_types[interaction] != "none":
+        #     self.num_interactions_since_last_sim_step += 1
+        # if self._movement_types[movement] != "none":
+        #     self.num_movements_since_last_sim_step += 1
+        for ag_id, agent in agents.items():
+            agent_pos = (agent.row, agent.col)
+            # Prepare current timestep data.
+            agent_timestep_dict = {
+                "timestep": timestep,
+                "movement": self._movement_types[agent.latest_movement],
+                "interaction": self._interaction_types[agent.latest_interaction],
+                "moved_off_map": agent.moved_off_map,
+                # "connected_mitigation": self.connected_mitigation(fire_map, agent_pos),
+                "near_fire": self.agent_near_fire(self.sim.fire_map, agent_pos),
+                "burn_status": BurnStatus(self.sim.fire_map[agent_pos]).name,
+            }
+            # Store agent behavior for the current timestep in the dataclass
+            self.data[ag_id].update(agent_timestep_dict)
 
     def reset_after_one_simulation_step(self) -> None:
         """Reset values that are tracked between each simulation step."""
         # For debugging, and potentially, timestep intermediate reward calculation?
-        self.num_interactions_since_last_sim_step = 0
-        self.num_movements_since_last_sim_step = 0
+        # self.num_interactions_since_last_sim_step = 0
+        # self.num_movements_since_last_sim_step = 0
+        pass
 
     def reset(self, env_is_rendering: bool = False):
         """Reset the attributes of `BaseAgentAnalytics` to initial values.
@@ -263,6 +283,6 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         # Reset attributes used to store the agent's behavior across a single episode.
         # NOTE: either create new object or use dataclasses.replace()
         save_history = env_is_rendering and self.save_history
-        self.data = AgentData(save_history)
+        self.data = {ag_id: AgentData(ag_id, save_history) for ag_id in self._agent_ids}
         # Reset attributes used to store the agent's behavior between each sim step.
         self.reset_after_one_simulation_step()

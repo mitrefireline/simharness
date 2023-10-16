@@ -16,7 +16,7 @@ defaults:
 aim:
   run_hash: null
   repo: ${cli.data_dir}/simharness/aim
-  experiment: alex_multidiscrete
+  experiment: debug_alex
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true
@@ -33,20 +33,25 @@ algo:
   # The path (str) to the checkpoint directory to use.
   checkpoint_path: null
 # Specify configuration used to create the ray.air.RunConfig object
+# Specify configuration used to create the ray.air.RunConfig object
 run:
   # Name of the training run (directory name)
   name: null
   # Directory to store results in (will be local_dir/name)
   storage_path: ${hydra:run.dir}
+  # Log stdout and stderr to files in trial directories. If this is `False` (default), no
+  # files are written. If `true`, outputs are written to `trialdir/stdout` and 
+  # `trialdir/stderr`, respectively.
+  log_to_file: true
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
-  checkpoint_frequency: 4005
+  checkpoint_frequency: 20
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 4000
-  # timesteps_total: 2000000000
+  # training_iteration: 4
+  timesteps_total: 2000000000
   # episodes_total: 1000000
   episode_reward_mean: 10000000
 debugging:

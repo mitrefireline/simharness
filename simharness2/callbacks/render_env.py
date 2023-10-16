@@ -16,7 +16,13 @@ if TYPE_CHECKING:
 
     from simharness2.environments.reactive import ReactiveHarness
 
-logger = logging.getLogger("ray.rllib")
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class RenderEnv(DefaultCallbacks):
@@ -84,7 +90,7 @@ class RenderEnv(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env: ReactiveHarness = base_env.vector_env.envs[env_index]
+        env: ReactiveHarness = base_env.envs[env_index]
 
         if worker.config.in_evaluation:
             logger.info("Creating evaluation episode...")
@@ -93,8 +99,8 @@ class RenderEnv(DefaultCallbacks):
                 logger.info("Enabling rendering for evaluation env.")
                 # TODO: Refactor below 3 lines into `env.render()` method?
                 os.environ["SDL_VIDEODRIVER"] = "dummy"
-                base_env.vector_env.envs[env_index].sim.reset()
-                base_env.vector_env.envs[env_index].sim.rendering = True
+                base_env.envs[env_index].sim.reset()
+                base_env.envs[env_index].sim.rendering = True
             elif not env._should_render and env.sim.rendering:
                 logger.error(
                     "Simulation is in rendering mode, but `env._should_render` is False."
@@ -132,7 +138,7 @@ class RenderEnv(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env: ReactiveHarness = base_env.vector_env.envs[env_index]
+        env: ReactiveHarness = base_env.envs[env_index]
         # Save a GIF from the last episode
         # TODO: Do we also want to save the fire spread graph?
         if worker.config.in_evaluation:
@@ -152,7 +158,7 @@ class RenderEnv(DefaultCallbacks):
                 )
                 # FIXME: Can we save each gif in a folder that relates it to episode iter?
                 logger.info(f"Saving GIF to {gif_save_path}...")
-                base_env.vector_env.envs[env_index].sim.save_gif(gif_save_path)
+                base_env.envs[env_index].sim.save_gif(gif_save_path)
                 # Save the gif_path so that we can write image to aim server, if desired
                 # NOTE: `save_path` is a list after the above; do element access for now
                 logger.debug(f"Type of gif_save_path: {type(gif_save_path)}")

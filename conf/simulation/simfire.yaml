@@ -23,3 +23,4 @@ defaults:
 screen_size: 128
 screen_height: ${.screen_size}
 screen_width: ${.screen_size}
+fire_start_seed: 2

@@ -27,7 +27,13 @@ from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
 
-logger = logging.getLogger("ray.rllib")
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
 
 class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
@@ -572,7 +578,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # TODO: What log level should we use here?
         for idx, feat in enumerate(self.attributes):
-            low, high = self.low[..., idx].min(), self.high[..., idx].max()
+            low, high = self._low[..., idx].min(), self._high[..., idx].max()
             obs_min = round(self.state[..., idx].min(), 2)
             obs_max = round(self.state[..., idx].max(), 2)
             # Log lower bound of the (obs space) and max returned obs for each attribute.
