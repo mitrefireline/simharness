@@ -77,6 +77,7 @@ class RLHarness(gym.Env, ABC):
         action_space_cls: Callable,
         deterministic: bool = False,
         benchmark_sim: FireSimulation = None,
+        num_agents: int = 1,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -112,6 +113,8 @@ class RLHarness(gym.Env, ABC):
         # FIXME: remove `deterministic` from the constructor; externally randomize env.
         self.deterministic = deterministic
 
+        self.num_agents = num_agents
+
         if not set(self.normalized_attributes).issubset(self.attributes):
             raise AssertionError(
                 f"All normalized attributes ({str(self.normalized_attributes)}) must be "
@@ -128,7 +131,9 @@ class RLHarness(gym.Env, ABC):
         #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
         #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
         #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
-        self.sim_agent_id = 3 + len(self.interactions) + 1
+
+        agent_id_start = 3 + len(self.interactions) + 1
+        self.agent_ids = list(range(agent_id_start, agent_id_start + self.num_agents))
 
         # Before verifying that all interactions are supported by the simulator, we need
         # to remove the "none" interaction (if it exists).
@@ -401,7 +406,7 @@ class RLHarness(gym.Env, ABC):
         if space_type is spaces.Discrete:
             return len(self.movements) * len(self.interactions)
         elif space_type is spaces.MultiDiscrete:
-            return [len(self.movements), len(self.interactions)]
+            return [len(self.movements), len(self.interactions)] * self.num_agents
         else:
             # TODO provide a descriptive error message.
             raise NotImplementedError

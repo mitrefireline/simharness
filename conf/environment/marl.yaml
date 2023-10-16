@@ -1,6 +1,6 @@
 defaults:
   # Arguments dict passed to the env creator as an `EnvContext` object
-  - env_config: reactive
+  - env_config: reactive_marl
   - _self_
 
 # The environment specifier. This can either be a tune-registered env, via
@@ -8,7 +8,7 @@ defaults:
 # RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
 # either an Farama-Foundation gymnasium env, a PyBullet env, a ViZDoomGym env, or a fully
 # qualified classpath to an Env class, ie. "ray.rllib.examples.env.random_env.RandomEnv".
-env: simharness2.environments.reactive.ReactiveHarness
+env: simharness2.environments.reactive_marl.MARLReactiveHarness
 
 env_task_fn: null
 # If True, try to render the environment on the local worker or on worker 1 (if
@@ -29,5 +29,5 @@ clip_rewards: null
 # small stddev; only affecting Box components). We will unsquash actions (and clip, just
 # in case) to the bounds of the env's action space before sending actions back to env.
 normalize_actions: True
-disable_env_checking: True
+disable_env_checking: False
 is_atari: False
