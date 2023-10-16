@@ -229,7 +229,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
         for agent_id, agent in self.agents.items():
-            agent_idx = self._agent_ids.index(int(agent_id.split("_")[1]))
+            # agent_idx = self._sim_agent_ids.index(int(agent_id.split("_")[1]))
+            agent_idx = np.where(self._sim_agent_ids == int(agent_id.split("_")[1]))[
+                0
+            ].item()
             agent_action = [action[agent_idx * 2], action[agent_idx * 2 + 1]]
             self._do_one_agent_step(agent, agent_action)
 

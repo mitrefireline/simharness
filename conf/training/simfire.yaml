@@ -1,8 +1,8 @@
 defaults:
   - model: screen_size_128
 
-v_min: -10
-v_max: 10
-noisy: True
-dueling: True
-double_q: True
+# v_min: -10
+# v_max: 10
+# noisy: True
+# dueling: True
+# double_q: True

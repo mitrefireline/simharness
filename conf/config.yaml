@@ -1,7 +1,7 @@
 defaults:
   - simulation: simfire
   - training: simfire
-  - environment: default
+  - environment: marl
   - framework: default
   - rollouts: default
   - evaluation: default
@@ -29,7 +29,7 @@ cli:
   # /nfs/lslab2/fireline/simharness
   data_dir: /nfs/lslab2/fireline
 algo:
-  name: DQN
+  name: PPO
   # The path (str) to the checkpoint directory to use.
   checkpoint_path: null
 # Specify configuration used to create the ray.air.RunConfig object
