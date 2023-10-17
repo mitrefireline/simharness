@@ -218,7 +218,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         Tuple(Algorithm, AlgorithmConfig): Training algorithm and associated config.
     """
     # Instantiate everything necessary for creating the algorithm config.
-    env_settings, eval_settings, debug_settings, explor_cfg = _instantiate_config(cfg)
+    env_settings, eval_settings, debug_settings, explore_cfg = _instantiate_config(cfg)
 
     algo_cfg = (
         get_trainable_cls(cfg.algo.name)
@@ -228,7 +228,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .framework(**cfg.framework)
         .rollouts(**cfg.rollouts)
         .evaluation(**eval_settings)
-        .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
+        .exploration(explore=cfg.exploration.explore, exploration_config=explore_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)

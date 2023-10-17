@@ -46,12 +46,12 @@ checkpoint:
   # Number of checkpoints to keep
   num_to_keep: null
 stop_conditions:
-  training_iteration: 4000
+  training_iteration: 10
   # timesteps_total: 2000000000
   # episodes_total: 1000000
   episode_reward_mean: 10000000
 debugging:
-  log_level: INFO
+  log_level: CRITICAL
   log_sys_usage: True
   seed: 2000
   # Prepare debugging settings
