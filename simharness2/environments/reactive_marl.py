@@ -228,7 +228,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO: Refactor to better utilize `RLHarness` ABC, or update the API.
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
-        print(self._is_eval_env, self.action_space, action)
+        # print(self._is_eval_env, self.action_space, action)
         for agent_id, agent in self.agents.items():
             agent_idx = np.where(self._sim_agent_ids == int(agent_id.split("_")[1]))[
                 0
