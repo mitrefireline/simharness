@@ -234,8 +234,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .callbacks(RenderEnv)
     )
 
-    algo_cfg.training(_enable_learner_api=False)
-    algo_cfg.rl_module(_enable_rl_module_api=False)
+    # algo_cfg.training(_enable_learner_api=False)
+    # algo_cfg.rl_module(_enable_rl_module_api=False)
 
     return algo_cfg
 

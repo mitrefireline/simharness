@@ -35,4 +35,4 @@ reward_cls_partial:
   _partial_: true
 action_space_partial:
   _partial_: true
-  _target_: gymnasium.spaces.MultiDiscrete
+  _target_: gymnasium.spaces.Tuple

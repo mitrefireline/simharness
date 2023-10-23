@@ -233,7 +233,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             agent_idx = np.where(self._sim_agent_ids == int(agent_id.split("_")[1]))[
                 0
             ].item()
-            agent_action = [action[agent_idx * 2], action[agent_idx * 2 + 1]]
+            agent_action = action[agent_idx]
             self._do_one_agent_step(agent, agent_action)
 
         if self.harness_analytics:
@@ -359,7 +359,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         elif isinstance(self.action_space, spaces.MultiDiscrete):
             return action[0], action[1]
         # Handle the Discrete case
-        elif isinstance(self.action_space, spaces.Discrete):
+        elif isinstance(self.action_space, spaces.Discrete) or isinstance(
+            self.action_space, spaces.Tuple
+        ):
             return action % len(self.movements), int(action / len(self.movements))
         else:
             raise NotImplementedError(f"{self.action_space} is not supported.")

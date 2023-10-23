@@ -424,6 +424,11 @@ class RLHarness(gym.Env, ABC):
             return len(self.movements) * len(self.interactions)
         elif space_type is spaces.MultiDiscrete:
             return [len(self.movements), len(self.interactions)] * self.num_agents
+        elif space_type is spaces.Tuple:
+            return [
+                spaces.Discrete(len(self.movements) * len(self.interactions))
+                for _ in range(self.num_agents)
+            ]
         else:
             # TODO provide a descriptive error message.
             raise NotImplementedError
