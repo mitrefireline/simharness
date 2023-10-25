@@ -11,6 +11,7 @@ from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
 from ray.rllib.utils.typing import PolicyID, AgentID
 from ray.rllib.policy.sample_batch import SampleBatch
+from simfire.enums import BurnStatus
 
 from torch import nn
 import numpy as np
@@ -135,32 +136,40 @@ class RenderSaliencyEnv(DefaultCallbacks):
         env: ReactiveHarness = base_env.vector_env.envs[env_index]
 
         # agent location, agent's selected action from respective location.
-        latest_move = env.movements[env._latest_movement]
-        latest_interact = env.interactions[env._latest_interaction]
-        curr_agent_pos = env.agent_pos
+        default_policy: Policy = policies["default_policy"]
+        prev_agent_pos = env.agent_pos
+        movement_map = np.zeros(env.state.shape[:2])
+        interaction_map = np.zeros(env.state.shape[:2])
+        for y in range(env.state.shape[0]):
+            for x in range(env.state.shape[1]):
+                prev_y, prev_x = prev_agent_pos
+                env.state[prev_y, prev_x, 0] = env.sim.fire_map[prev_y, prev_x]
+                new_agent_pos = (y, x)
+                prev_agent_pos = new_agent_pos
+                # Skip if BURNING or BURNED
+                if env.state[y, x, 0] in [BurnStatus.BURNING, BurnStatus.BURNED]:
+                    continue
+                env.state[y, x, 0] = env.sim_agent_id
+
+                action = default_policy.compute_single_action(env.state, explore=False)[0]
+                movement, interaction = env._parse_action(action)
+                movement_str = env.movements[movement]
+                interaction_str = env.interactions[interaction]
+                movement_map[y, x] = movement
+                interaction_map[y, x] = interaction
+
+        import matplotlib.pyplot as plt
+        plt.imshow(movement_map, cmap="hot", interpolation="nearest")
+        plt.savefig("movement_map.png")
+
+        plt.figure()
+        plt.imshow(interaction_map, cmap="hot", interpolation="nearest")
+        plt.savefig("interaction_map.png")
+        print("done")
 
         # get observation space, place agent at location X,Y, and query model for action
         # TODO: add helper method to harness to build obs space from current timestep
         # TODO: and previous timestep, so we can get action output for diff agent start pos
-
-        if env._is_eval_env:
-            breakpoint()
-
-        fire_map: np.ndarray = env.sim.fire_map
-
-        # Retrieve model and prepare for saliency map generation
-        default_policy: Policy = policies["default_policy"]
-        model: nn.Module = default_policy.model
-        is_training = model.training
-
-        if is_training:
-            model.eval()
-
-        # TODO: Put logic here
-
-        # Return model to "original" mode
-        if is_training:
-            model.train()
 
     def on_episode_end(
         self,
