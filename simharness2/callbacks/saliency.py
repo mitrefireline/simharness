@@ -1,25 +1,26 @@
 """Callback for rendering gifs during evaluation."""
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, Optional, Union, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
 from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
-from ray.rllib.utils.typing import PolicyID, AgentID
 from ray.rllib.policy.sample_batch import SampleBatch
+from ray.rllib.utils.typing import AgentID, PolicyID
 from simfire.enums import BurnStatus
-
-from torch import nn
-import numpy as np
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
 
-    from simharness2.environments.reactive import ReactiveHarness
+from simharness2.environments.reactive import ReactiveHarness
 
 logger = logging.getLogger("ray.rllib")
 
@@ -105,38 +106,18 @@ class RenderSaliencyEnv(DefaultCallbacks):
                     "Simulation is in rendering mode, but `env._should_render` is False."
                 )
 
-    def on_episode_step(
-        self,
-        *,
-        worker: "RolloutWorker",
-        base_env: BaseEnv,
-        policies: Optional[Dict[PolicyID, Policy]] = None,
-        episode: Union[Episode, EpisodeV2],
-        env_index: Optional[int] = None,
-        **kwargs,
-    ) -> None:
-        """Runs on each episode step.
+    def _get_action_maps(
+        self, env: ReactiveHarness, policy: Policy
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the action maps for the given policy.
 
         Args:
-            worker: Reference to the current rollout worker.
-            base_env: BaseEnv running the episode. The underlying
-                sub environment objects can be retrieved by calling
-                `base_env.get_sub_environments()`.
-            policies: Mapping of policy id to policy objects.
-                In single agent mode there will only be a single
-                "default_policy".
-            episode: Episode object which contains episode
-                state. You can use the `episode.user_data` dict to store
-                temporary data, and `episode.custom_metrics` to store custom
-                metrics for the episode.
-            env_index: The index of the sub-environment that stepped the episode
-                (within the vector of sub-environments of the BaseEnv).
-            kwargs: Forward compatibility placeholder.
-        """
-        env: ReactiveHarness = base_env.vector_env.envs[env_index]
+            env: The environment to get the action maps for.
+            policy: The policy to use for getting the action maps.
 
-        # agent location, agent's selected action from respective location.
-        default_policy: Policy = policies["default_policy"]
+        Returns:
+            A tuple of the movement map and interaction map.
+        """
         prev_agent_pos = env.agent_pos
         movement_map = np.zeros(env.state.shape[:2])
         interaction_map = np.zeros(env.state.shape[:2])
@@ -151,25 +132,118 @@ class RenderSaliencyEnv(DefaultCallbacks):
                     continue
                 env.state[y, x, 0] = env.sim_agent_id
 
-                action = default_policy.compute_single_action(env.state, explore=False)[0]
+                action = policy.compute_single_action(env.state, explore=False)[0]
                 movement, interaction = env._parse_action(action)
-                movement_str = env.movements[movement]
-                interaction_str = env.interactions[interaction]
+                # movement_str = env.movements[movement]
+                # interaction_str = env.interactions[interaction]
                 movement_map[y, x] = movement
                 interaction_map[y, x] = interaction
+        return movement_map, interaction_map
 
-        import matplotlib.pyplot as plt
-        plt.imshow(movement_map, cmap="hot", interpolation="nearest")
-        plt.savefig("movement_map.png")
+    def _create_figure(
+        self,
+        movement_map: np.ndarray,
+        interaction_map: np.ndarray,
+        movements: list[str],
+        interactions: list[str],
+    ) -> Figure:
+        """Create a figure for the given map and actions.
 
-        plt.figure()
-        plt.imshow(interaction_map, cmap="hot", interpolation="nearest")
-        plt.savefig("interaction_map.png")
-        print("done")
+        Args:
+            map: The map to plot.
+            actions: The actions to use for the legend.
 
-        # get observation space, place agent at location X,Y, and query model for action
-        # TODO: add helper method to harness to build obs space from current timestep
-        # TODO: and previous timestep, so we can get action output for diff agent start pos
+        Returns:
+            The created figure.
+        """
+        move_colors = ["lightgray", "lightblue", "lightcoral", "lightseagreen", "thistle"]
+        action_colors = ["blue", "red", "green", "purple", "orange"]
+        # Create custom legend lines
+
+        move_colors = move_colors[: len(movements)]
+        cmap = plt.matplotlib.colors.ListedColormap(move_colors)
+        move_legend_lines = [Line2D([0], [0], color=color, lw=4) for color in move_colors]
+
+        # Do the same thing with the interactions
+        interaction_colors = interaction_colors[: len(movements)]
+        interaction_legend_lines = [
+            Line2D([0], [0], color=color, lw=0, marker=0) for color in interaction_colors
+        ]
+
+        legend_lines = move_legend_lines + interaction_legend_lines
+
+        # Create the plot
+        fig, ax = plt.subplots()
+        ax.imshow(map, cmap=cmap)
+
+        # Overlay dots where the dot_data array has values equal to 1
+        for i in range(movement_map.shape[0]):
+            for j in range(movement_map.shape[1]):
+                if interaction_map[i, j] != 0:
+                    action = interaction_map[i, j]
+                    ax.plot(j, i, ".", markersize=0.3, color=action_colors[action - 1])
+
+        # Set axis properties
+        ax.set_xticks([])
+        ax.set_yticks([])
+        legend = ax.legend(
+            legend_lines,
+            movements + interactions,
+            bbox_to_anchor=(1.3, 1.02),
+        )
+        legend.get_frame().set_facecolor("white")
+        legend.get_frame().set_alpha(1.0)
+        legend.set_frame_on(True)
+        return fig
+
+    def on_episode_step(
+        self,
+        *,
+        worker: RolloutWorker,
+        base_env: BaseEnv,
+        policies: Dict[PolicyID, Policy],
+        episode: Union[Episode, EpisodeV2, Exception],
+        env_index: Optional[int] = None,
+        **kwargs,
+    ) -> None:
+        """Runs after each step of the episode.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env: BaseEnv running the episode. The underlying
+                sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            policies: Mapping of policy id to policy
+                objects. In single agent mode there will only be a single
+                "default_policy".
+            episode: Episode object which contains episode
+                state. You can use the `episode.user_data` dict to store
+                temporary data, and `episode.custom_metrics` to store custom
+                metrics for the episode.
+                In case of environment failures, episode may also be an Exception
+                that gets thrown from the environment before the episode finishes.
+                Users of this callback may then handle these error cases properly
+                with their custom logics.
+            env_index: The index of the sub-environment that ended the episode
+                (within the vector of sub-environments of the BaseEnv).
+            kwargs: Forward compatibility placeholder.
+        """
+        if worker.config.in_evaluation:
+            logdir = env._trial_results_path
+            eval_iters = env._num_eval_iters
+            env: ReactiveHarness = base_env.vector_env.envs[env_index]
+            default_policy: Policy = policies["default_policy"]
+            # Create the action maps
+            saliency_path = os.path.join(
+                logdir, "saliency", f"eval_iter_{eval_iters}.png"
+            )
+            movement_map, interaction_map = self._get_action_maps(env, default_policy)
+            fig = self._create_figure(
+                movement_map, interaction_map, env.movements, env.interactions
+            )
+            fig.savefig(saliency_path, dpi=300)
+            episode.media.update({"saliency": saliency_path})
+            plt.close(fig)
 
     def on_episode_end(
         self,
