@@ -233,8 +233,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        if terminated:
-            reward += 10
+        #if terminated:
+        #    reward += 10
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
@@ -385,13 +385,13 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # FIXME this needs to not be hard-coded and moved outside of method logic.
         # if not self.deterministic:
         #     # Set seeds for randomization
-        #seeds = self.sim.get_seeds()
-        #fire_init_seed = seeds["fire_initial_position"]
+        seeds = self.sim.get_seeds()
+        fire_init_seed = seeds["fire_initial_position"]
         #elevation_seed = self.simulation.get_seeds()["elevation"]
-        #seed_dict = {
-        #         "fire_initial_position": fire_init_seed + 1,
-        #}
-        #self.sim.set_seeds(seed_dict)
+        seed_dict = {
+                 "fire_initial_position": fire_init_seed + 1,
+        }
+        self.sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.

@@ -3,7 +3,7 @@ sim:
   config:
     _target_: simfire.utils.config.Config
     config_dict: ${simulation.train}
-movements: [down, up, right, left]
+movements: [up, down, left, right]
 interactions: [fireline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
@@ -28,7 +28,7 @@ reward_cls_partial:
   # fixed_reward: 100
   # static_penalty: 50
   # invalid_movement_penalty: 5
-initial_agent_pos: [60, 127]
+initial_agent_pos: [64, 0]
 randomize_initial_agent_pos: false
 benchmark_sim: ${.sim}
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
