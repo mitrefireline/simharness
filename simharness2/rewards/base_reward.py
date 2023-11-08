@@ -29,6 +29,8 @@ class BaseReward(ABC):
             self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
         )
 
+        self.latest_reward = 1.0/self._sim_area
+
     @abstractmethod
     def get_reward(self, timestep: int, sim_run: bool) -> float:
         """TODO Add docstring."""
@@ -64,6 +66,58 @@ class SimpleReward(BaseReward):
         """TODO Add function docstring."""
         # Basic Intermediate reward is 0
         return 0.0
+
+class BenchFirstReward(BaseReward):
+    """TODO add description."""
+
+    def __init__(self, harness_analytics: ReactiveHarnessAnalytics):
+        """TODO Add constructor docstring."""
+        super().__init__(harness_analytics)
+
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
+        """TODO Add function docstring."""
+        if not sim_run:
+            # No intermediate reward calculation used currently, so 0.0 is returned.
+            return self.get_timestep_intermediate_reward(timestep)
+
+        bench_sim_steps = len(self.harness_analytics.benchmark_sim_analytics.data.damaged)
+        assert bench_sim_steps == self.harness_analytics.benchmark_sim_analytics.num_sim_steps, (str(bench_sim_steps) + " , " + str(self.harness_analytics.benchmark_sim_analytics.num_sim_steps))
+
+        sim_steps = self.harness_analytics.sim_analytics.num_sim_steps
+
+        #bench_total_damaged = self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned
+        sim_damaged = self.harness_analytics.sim_analytics.data.burning + self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.mitigated
+
+        #if sim_steps == 2:
+        #    assert (self.harness_analytics.benchmark_sim_analytics.data.damaged[(sim_steps - 1)]) == (self.harness_analytics.sim_analytics.data.burning + self.harness_analytics.sim_analytics.data.burned), (str(self.harness_analytics.benchmark_sim_analytics.data.damaged[(sim_steps - 1)])) + " , " + str(self.harness_analytics.sim_analytics.data.burning + self.harness_analytics.sim_analytics.data.burned)+ " , " +(str(self.harness_analytics.benchmark_sim_analytics.data.damaged[(sim_steps)])) + " , " +(str(self.harness_analytics.benchmark_sim_analytics.data.damaged[(sim_steps - 2)]))+" , " +(str(self.harness_analytics.benchmark_sim_analytics.data.damaged[(sim_steps+1)]))
+
+        #if the sim has ended in fewer steps before the benchsim
+        if (self.harness_analytics.sim_analytics.active == False) & (sim_steps < bench_sim_steps):
+            step_diff = bench_sim_steps - sim_steps
+            bench_damaged = self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)]
+            reward = (((bench_damaged - sim_damaged) / self._sim_area) * step_diff)
+            #reward = (((bench_damaged - sim_damaged) / self._sim_area) * (sim_steps/bench_sim_steps))
+            #reward = (((bench_damaged - sim_damaged) / self._sim_area))
+
+        #if the current sim step is within the range of the bench_sim steps
+        elif sim_steps <= bench_sim_steps:
+            bench_damaged = self.harness_analytics.benchmark_sim_analytics.data.damaged[(sim_steps - 1)]
+            reward = ((bench_damaged - sim_damaged) / self._sim_area)
+        
+        #if the bench sim ended before the main sim
+        else:
+            bench_damaged = self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)]
+            reward = ((bench_damaged - sim_damaged) / self._sim_area)
+
+
+        # update self.latest_reward and then return the reward
+        self.latest_reward = reward
+        return reward
+
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
+        """TODO Add function docstring."""
+        # Basic Intermediate reward is 0
+        return (self.latest_reward * 1.01)
 
 
 class BenchmarkReward(BaseReward):
