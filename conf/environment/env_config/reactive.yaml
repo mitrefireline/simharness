@@ -5,8 +5,8 @@ sim:
     config_dict: ${simulation.train}
 movements: [up, down, left, right]
 interactions: [fireline]
-attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
-normalized_attributes: [elevation]
+attributes: [fire_map, bench_fire_map, bench_fire_map_final]
+normalized_attributes: []
 agent_speed: 4
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 harness_analytics_partial:
@@ -23,7 +23,7 @@ harness_analytics_partial:
       movement_types: ${....movements}
       interaction_types: ${....interactions}
 reward_cls_partial:
-  _target_: simharness2.rewards.base_reward.SimpleReward
+  _target_: simharness2.rewards.base_reward.BenchFirstReward
   _partial_: true
   # fixed_reward: 100
   # static_penalty: 50
