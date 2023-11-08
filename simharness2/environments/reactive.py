@@ -413,6 +413,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # FIXME quick fix to avoid errors if benchmark_sim is not used (ie. None)
         if self.benchmark_sim:
             # reset benchmark simulation
+            self.benchmark_sim.set_seeds(seed_dict)
             self.benchmark_sim.reset()
 
         # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
