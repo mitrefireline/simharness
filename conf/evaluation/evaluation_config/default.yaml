@@ -13,3 +13,4 @@ env: ${environment.env}
 # Arguments dict passed to the env creator as an `EnvContext` object
 # NOTE: Any arguments that are also specified in `reactive.yaml` will be overridden.
 env_config: ${environment.env_config}
+explore: True

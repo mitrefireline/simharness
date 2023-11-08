@@ -1,10 +1,13 @@
 training:
   lr:
     type: loguniform
-    values: [0.001, 0.01]
+    values: [0.001, 0.01, 0.005, 0.0005]
   train_batch_size:
     type: choice
-    values: [128, 256, 512]
+    values: [128, 256, 512, 1024, 2048]
+  # entropy_coeff:
+  #   type: choice
+  #   values: [0.0, 0.1, 0.25]
   # n_step:
   #   type: choice
   #   values: [1, 3, 5, 8]
@@ -17,3 +20,11 @@ training:
   # num_atoms:
   #   type: choice
   #   values: [1, 10, 20, 50]
+
+exploration:
+  warmup_timesteps:
+    type: choice
+    values: [50000, 100000]
+  epsilon_timesteps:
+    type: choice
+    values: [250000, 500000]

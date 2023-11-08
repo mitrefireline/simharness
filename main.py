@@ -50,24 +50,39 @@ def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) ->
         algo_cfg (AlgorithmConfig): Config used for training our model.
         cfg (DictConfig): Hydra config with all required parameters.
     """
-    tunables = OmegaConf.to_container(cfg.tunables, resolve=True)
+    training_tunables = OmegaConf.to_container(cfg.tunables["training"], resolve=True)
+    explore_tunables = OmegaConf.to_container(cfg.tunables["exploration"], resolve=True)
 
-    for section_key, param_dict in tunables.items():
-        for key, value in param_dict.items():
-            if value["type"] == "loguniform":
-                sampler = tune.loguniform(value["values"][0], value["values"][1])
-            elif value["type"] == "uniform":
-                sampler = tune.uniform(value["values"][0], value["values"][1])
-            elif value["type"] == "random":
-                sampler = tune.randint(value["values"][0], value["values"][1])
-            elif value["type"] == "choice":
-                sampler = tune.choice(value["values"])
-            else:
-                LOGGER.error(f"Invalid value type {value['type']} given - skipping.")
+    for key, value in training_tunables.items():
+        if value["type"] == "loguniform":
+            sampler = tune.loguniform(value["values"][0], value["values"][1])
+        elif value["type"] == "uniform":
+            sampler = tune.uniform(value["values"][0], value["values"][1])
+        elif value["type"] == "random":
+            sampler = tune.randint(value["values"][0], value["values"][1])
+        elif value["type"] == "choice":
+            sampler = tune.choice(value["values"])
+        else:
+            LOGGER.error(f"Invalid value type {value['type']} given - skipping.")
 
-            tunables[section_key][key] = sampler
+        training_tunables[key] = sampler
 
-    algo_cfg.training(**tunables["training"])
+    for key, value in explore_tunables.items():
+        if value["type"] == "loguniform":
+            sampler = tune.loguniform(value["values"][0], value["values"][1])
+        elif value["type"] == "uniform":
+            sampler = tune.uniform(value["values"][0], value["values"][1])
+        elif value["type"] == "random":
+            sampler = tune.randint(value["values"][0], value["values"][1])
+        elif value["type"] == "choice":
+            sampler = tune.choice(value["values"])
+        else:
+            LOGGER.error(f"Invalid value type {value['type']} given - skipping.")
+
+        explore_tunables[key] = sampler
+
+    algo_cfg.training(**training_tunables)
+    algo_cfg.exploration_config.update(explore_tunables)
 
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
@@ -102,14 +117,14 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # TODO make sure 'reward' is reported with tune.report()
     # TODO add this to config
     # Config for the tuning process (used for all trial runs)
-    # tune_config = tune.TuneConfig(num_samples=4)
+    tune_config = tune.TuneConfig(num_samples=4)
 
     # Create a Tuner
     tuner = tune.Tuner(
         trainable=trainable_algo_str,
         param_space=param_space,
         run_config=run_config,
-        # tune_config=tune_config,
+        tune_config=tune_config,
     )
 
     results = tuner.fit()
@@ -234,8 +249,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .callbacks(RenderEnv)
     )
 
-    # algo_cfg.training(_enable_learner_api=False)
-    # algo_cfg.rl_module(_enable_rl_module_api=False)
+    algo_cfg.training(_enable_learner_api=False)
+    algo_cfg.rl_module(_enable_rl_module_api=False)
 
     return algo_cfg
 

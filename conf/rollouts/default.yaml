@@ -1,7 +1,7 @@
 # Number of rollout worker actors to create for parallel sampling. Setting this to 0 will
 # force rollouts to be done in the local worker (driver process or the Algorithm’s actor
 # when using Tune).
-num_rollout_workers: 0
+num_rollout_workers: 8
 
 # Number of environments to evaluate vector-wise per worker. This enables model inference
 # batching, which can improve performance for inference bottlenecked workloads.
