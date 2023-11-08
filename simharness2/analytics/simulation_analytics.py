@@ -7,9 +7,9 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import InitVar, dataclass
+from dataclasses import InitVar, dataclass, field
 from functools import partial
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,7 @@ from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
 from simharness2.analytics.agent_analytics import ReactiveAgentAnalytics
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class SimulationData:
 
     is_benchmark: bool = False
     save_history: InitVar[bool] = False
+    damaged: List[int] = field(default_factory=list)
+
 
     def __post_init__(self, save_history):
         """TODO"""
@@ -59,11 +62,23 @@ class SimulationData:
         self.burned = timestep_dict["burned"]
         self.unburned = timestep_dict["unburned"]
         self.burning = timestep_dict["burning"]
+        self.burn_rate = timestep_dict["burn_rate"]
+
+        if self.is_benchmark:
+            self.damaged.append((timestep_dict["burned"] + timestep_dict["burning"]))
 
         if not self.is_benchmark:
             self.mitigated = timestep_dict["mitigated"]
             self.agent_interactions = timestep_dict["agent_interactions"]
             self.agent_movements = timestep_dict["agent_movements"]
+
+            if ("area_saved" in timestep_dict) & ("burn_rate_reduction" in timestep_dict):
+                self.area_saved = timestep_dict["area_saved"]
+                self.burn_rate_reduction = timestep_dict["burn_rate_reduction"]
+
+                if self._history is not None:
+                    self._history.pop()
+                    self._history.append(timestep_dict)
 
     def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
         """Save episode history to CSV file."""
@@ -167,6 +182,7 @@ class FireSimulationAnalytics(SimulationAnalytics):
         log_to_file: bool = False,
         file_type: str = "csv",
         custom_file_name: Optional[str] = None,
+        benchmark_exists: bool = False,
     ):
         """TODO: A brief description of what the method is and what it's used for.
 
@@ -205,6 +221,7 @@ class FireSimulationAnalytics(SimulationAnalytics):
         burned_total = np.sum(fire_map == BurnStatus.BURNED)
         burning_total = np.sum(fire_map == BurnStatus.BURNING)
         unburned_total = np.sum(fire_map == BurnStatus.UNBURNED)
+        #burn_rate_list = self.data.burn_rate
 
         sim_timestep_dict = {
             "sim_step": self.num_sim_steps,
@@ -212,6 +229,8 @@ class FireSimulationAnalytics(SimulationAnalytics):
             "burned": burned_total,
             "burning": burning_total,
             "unburned": unburned_total,
+            #"burn_rate": self.data.burn_rate.append((burned_total/(timestep+1.0))),
+            "burn_rate": ((burned_total + burning_total)/(timestep+1.0))
         }
 
         if not self.is_benchmark:
@@ -229,12 +248,78 @@ class FireSimulationAnalytics(SimulationAnalytics):
 
         self.num_sim_steps += 1  # increment AFTER method logic is performed (convention).
 
-    def reset(self, env_is_rendering: bool = False):
+
+    def update_sim_bench_comparison_metrics(self, timestep: int, bench_damaged) -> None:
+        """TODO Add docstring."""
+        # Only access `active` attribute if the sim has been updated at least once.
+        if self.sim.elapsed_steps != 0:
+            self.active = self.sim.active
+
+        if not self.is_benchmark:
+            if self.benchmark_exists:
+
+                sim_timestep_dict = {
+                    "sim_step": self.num_sim_steps,
+                    "timestep": timestep,
+                    "burned": self.data.burned,
+                    "burning": self.data.burning,
+                    "unburned": self.data.unburned,
+                    "burn_rate": self.data.burn_rate,
+                    "mitigated": self.data.mitigated,
+                    "agent_interactions": self.data.agent_interactions,  # noqa: E501
+                    "agent_movements": self.data.agent_movements, 
+                }
+
+                # Prepare current timestep data that was just updated.
+                #burned = self.data.burned
+                #burning = self.data.burning
+
+                sim_area = int(self.sim.fire_map.size)
+                unburned = self.data.unburned
+                burn_rate = self.data.burn_rate
+
+
+                #mitigated = self.data.mitigated
+
+                #bench_burned = benchmark_sim_analytics.data.burned
+                #bench_burning = benchmark_sim_analytics.data.burning
+                
+            
+                bench_num_damaged = 0
+
+                if len(bench_damaged)<self.num_sim_steps:
+                    bench_num_damaged = int(bench_damaged[len(bench_damaged) - 1])
+                else:
+                    bench_num_damaged = int(bench_damaged[self.num_sim_steps - 1])
+
+
+                bench_unburned = sim_area - bench_num_damaged
+                bench_burn_rate = (bench_num_damaged / ((int(timestep) + 1.0) * 1.0))
+
+
+            
+                sim_timestep_dict.update(
+                    {
+                        #"area_saved": self.data.area_saved.append(((unburned) - bench_unburned)),
+                        "area_saved": ((unburned) - bench_unburned),
+                        #"burn_rate_reduction": self.data.burn_rate_reduction.append((bench_burn_rate - burn_rate)),
+                        "burn_rate_reduction": (bench_burn_rate - burn_rate), 
+                    }
+                )
+
+                # Update the dataclass that stores the simulation's behavior.
+                self.data.update(sim_timestep_dict)
+
+
+    def reset(self, env_is_rendering: bool = False, benchmark_exists: bool = False):
         """Reset the attributes of `FireSimulationData` to initial values."""
+
 
         # NOTE: either create new object or use dataclasses.replace()
         save_history = env_is_rendering and self.save_history
+        #breakpoint()
         self.data = SimulationData(self._is_benchmark, save_history)
+        self.benchmark_exists = benchmark_exists
 
         # Reset attributes used to store simulation behavior across a single episode.
         self.num_sim_steps = 0

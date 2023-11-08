@@ -149,12 +149,17 @@ class RenderEnv(DefaultCallbacks):
         logger.info(f"sim/unburned: {sim_data.unburned}")
         logger.info(f"sim/burning: {sim_data.burning}")
         logger.info(f"mitigated: {sim_data.mitigated}")
+        logger.info(f"sim/burn_rate: {sim_data.burn_rate}")
         logger.info(f"agent_interactions: {sim_data.agent_interactions}")
         logger.info(f"agent_movements: {sim_data.agent_movements}")
+        logger.info(f"area_saved {sim_data.area_saved}")
+        logger.info(f"burn_rate_reduction {sim_data.burn_rate_reduction}")
+
         if env.benchmark_sim:
             logger.info(f"bench_sim/burned: {bench_sim_data.burned}")
             logger.info(f"bench_sim/unburned: {bench_sim_data.unburned}")
             logger.info(f"bench_sim/burning: {bench_sim_data.burning}")
+            logger.info(f"bench_sim/burn_rate: {bench_sim_data.burn_rate}")
 
         episode.custom_metrics["movement"] = env.movements.index(agent_data.movement)
         episode.custom_metrics["interaction"] = env.interactions.index(
@@ -169,15 +174,19 @@ class RenderEnv(DefaultCallbacks):
         episode.custom_metrics["sim/burned"] = sim_data.burned
         episode.custom_metrics["sim/unburned"] = sim_data.unburned
         episode.custom_metrics["sim/burning"] = sim_data.burning
+        episode.custom_metrics["sim/burn_rate"] = sim_data.burn_rate
         episode.custom_metrics["mitigated"] = sim_data.mitigated
         episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
         episode.custom_metrics["agent_movements"] = sim_data.agent_movements
+        episode.custom_metrics["area_saved"] = sim_data.area_saved
+        episode.custom_metrics["burn_rate_reduction"] = sim_data.burn_rate_reduction
 
         if env.benchmark_sim:
         # Save benchmark sim specific data
             episode.custom_metrics["bench_sim/burned"] = bench_sim_data.burned
             episode.custom_metrics["bench_sim/unburned"] = bench_sim_data.unburned
             episode.custom_metrics["bench_sim/burning"] = bench_sim_data.burning
+            episode.custom_metrics["bench_sim/burn_rate"] = bench_sim_data.burn_rate
 
         # Ensure all custom metrics are ints
         for k, v in episode.custom_metrics.items():
