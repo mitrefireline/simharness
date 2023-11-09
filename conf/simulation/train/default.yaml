@@ -63,7 +63,7 @@ terrain:
 
 fire:
   fire_initial_position:
-    type: random  # ${simulation.fire_initial_position.type}
+    type: static  # ${simulation.fire_initial_position.type}
     static:
       position:
         _target_: builtins.tuple
@@ -77,7 +77,7 @@ fire:
         #   "${calculate_half:${simulation.screen_height}}" # y position
         # ]]
     random:
-      seed: ${simulation.fire_start_seed}
+      seed: 1234 # ${simulation.fire_start_seed}
   max_fire_duration: 4
   diagonal_spread: True
 

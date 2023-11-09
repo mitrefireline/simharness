@@ -12,6 +12,8 @@ Typical usage example:
 """
 import logging
 import os
+import sys
+import warnings
 from importlib import import_module
 from typing import Any, Dict, Tuple
 
@@ -20,6 +22,7 @@ import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
+
 from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
@@ -27,14 +30,15 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
 
-# from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
-from simharness2.callbacks.render_env import RenderEnv
+import simharness2.utils.utils as utils
+
+from simharness2.callbacks.do_everything import DoEverything
 from simharness2.logger.aim import AimLoggerCallback
 
-# from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
-
+warnings.filterwarnings("ignore")
 os.environ["HYDRA_FULL_ERROR"] = "1"
+
 # Register custom resolvers that are used within the config files
 OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 39))
 OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
@@ -246,7 +250,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .exploration(explore=cfg.exploration.explore, exploration_config=explore_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(RenderEnv)
+        .callbacks(DoEverything)
     )
 
     algo_cfg.training(_enable_learner_api=False)
@@ -262,6 +266,8 @@ def main(cfg: DictConfig) -> None:
     Args:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
+    executed_command = " ".join(["%s" % arg for arg in sys.argv])
+    LOGGER.info(f"Executed command: \n{executed_command}")
     # NOTE: We are disabling logging to the driver. For reference, see
     # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
     # Thus, to use an existing ray cluster, we must set address="auto".
@@ -274,6 +280,10 @@ def main(cfg: DictConfig) -> None:
 
     # Build the algorithm config.
     algo_cfg = _build_algo_cfg(cfg)
+
+    # Check that algorithm config is valid wrt SimHarness assumptions.
+    utils.validate_rollouts_config(algo_cfg)
+    utils.validate_evaluation_config(algo_cfg)
 
     if cfg.cli.mode == "train":
         algo = algo_cfg.build()

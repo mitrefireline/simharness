@@ -222,6 +222,39 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Set the path to the directory where (tune) trial results will be stored."""
         self._trial_results_path = path
 
+    def _initialize_simfire(
+        self, data: np.recarray, num_envs_per_worker: int
+    ) -> Tuple[int, int]:
+        """Update the `fire_initial_position` for the `FireSimulation` instance.
+
+        Arguments:
+            data: A np.recarray containing the sample of fire scenarios to choose from.
+            num_envs_per_worker: The number of environments that are contained within
+                each worker. This helps determine the index of the fire scenario that
+                should be used for the current environment.
+
+        Returns:
+            The selected initial position of the fire, as a tuple of (x, y) coordinates.
+        """
+        # Get the respective fire scenario for the current environment.
+        # NOTE: We use the modulo operator to ensure that the `fire_idx` is within the
+        # available indices of the provided data.
+        w_i, v_i = self.worker_idx, self.vector_idx
+        if self.num_workers == 0:
+            # Sub-environment (s) contained within only the `local_worker`.
+            fire_idx = ((w_i + 1) * v_i) % len(data)
+        else:
+            # Sub-environment (s) contained within only the `remote_worker` (s).
+            fire_idx = ((num_envs_per_worker * w_i) + v_i) % len(data)
+
+        fire_pos_arr: np.recarray = data[fire_idx]
+
+        # Use the fire scenario to initialize the `FireSimulation`.
+        init_pos = (fire_pos_arr.x, fire_pos_arr.y)
+        self.sim.set_fire_initial_position(init_pos)
+
+        return init_pos
+
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa FIXME
@@ -463,9 +496,6 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         logger.debug("Resetting `self.sim`...")
 
-        fire_init_seed = self.sim.get_seeds()["fire_initial_position"]
-        seed_dict = {"fire_initial_position": fire_init_seed + 1}
-        self.sim.set_seeds(seed_dict)
         self.sim.reset()
         if self.benchmark_sim:
             logger.debug("Resetting `self.benchmark_sim`...")

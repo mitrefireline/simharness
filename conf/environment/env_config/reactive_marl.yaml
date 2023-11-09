@@ -36,3 +36,5 @@ reward_cls_partial:
 action_space_partial:
   _partial_: true
   _target_: gymnasium.spaces.Tuple
+
+fire_initial_position: ${simulation.fire_initial_position}
