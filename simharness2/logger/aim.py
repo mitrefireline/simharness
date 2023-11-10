@@ -218,7 +218,7 @@ class AimLoggerCallback(LoggerCallback):
                     name=full_attr,
                     epoch=epoch,
                     step=episode or step,
-                    context=context,
+                    # context=context,
                 )
             elif (isinstance(value, (list, tuple, set)) and len(value) > 0) or (
                 isinstance(value, np.ndarray) and value.size > 0
