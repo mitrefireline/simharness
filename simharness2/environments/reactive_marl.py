@@ -253,6 +253,9 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         init_pos = (fire_pos_arr.x, fire_pos_arr.y)
         self.sim.set_fire_initial_position(init_pos)
 
+        if self.benchmark_sim:
+            self.benchmark_sim.set_fire_initial_position(init_pos)
+
         return init_pos
 
     def step(
