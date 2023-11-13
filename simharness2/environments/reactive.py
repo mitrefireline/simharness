@@ -204,6 +204,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 interaction=self._latest_interaction,
                 agent_pos=self.agent_pos,
                 moved_off_map=self._moved_off_map,
+                mitigation_placed = self.mitigation_placed
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -282,6 +283,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self._agent_pos_is_unburned() and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
+        elif (not self._agent_pos_is_unburned()) and interact:
+            self.mitigation_placed = False
 
         # Update agent location on map
         if self.movements[self._latest_movement] != "none":
