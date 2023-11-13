@@ -32,7 +32,12 @@ class SimulationData:
     is_benchmark: bool = False
     save_history: InitVar[bool] = False
     damaged: List[int] = field(default_factory=list)
-
+    new_damaged: List[int] = field(default_factory=list)
+    new_damaged_sim: int = 0
+    #new_damaged_sim_list: List[int] = field(default_factory=list)
+    episode_reward: float = 0.0
+    old_damaged: int = 0
+    first_step: int = 0 
 
     def __post_init__(self, save_history):
         """TODO"""
@@ -59,13 +64,25 @@ class SimulationData:
             self._history.append(timestep_dict)
 
         # Update the attributes that store the simulation's behavior.
+
+    
+
         self.burned = timestep_dict["burned"]
         self.unburned = timestep_dict["unburned"]
         self.burning = timestep_dict["burning"]
         self.burn_rate = timestep_dict["burn_rate"]
-
+        self.size = timestep_dict["size"]
+        
         if self.is_benchmark:
-            self.damaged.append((timestep_dict["burned"] + timestep_dict["burning"]))
+            #breakpoint()
+            damaged = (timestep_dict["size"] - timestep_dict["unburned"])
+
+            if len(self.new_damaged) == 0:
+                self.new_damaged.append(damaged)
+            else:
+                self.new_damaged.append(damaged - self.damaged[-1])
+
+            self.damaged.append(damaged)
 
         if not self.is_benchmark:
             self.mitigated = timestep_dict["mitigated"]
@@ -75,6 +92,21 @@ class SimulationData:
             if ("area_saved" in timestep_dict) & ("burn_rate_reduction" in timestep_dict):
                 self.area_saved = timestep_dict["area_saved"]
                 self.burn_rate_reduction = timestep_dict["burn_rate_reduction"]
+                self.bench_episode_length = timestep_dict["bench_episode_length"]
+                self.timesteps_saved = timestep_dict["timesteps_saved"]
+                self.area_saved_prop = timestep_dict["area_saved_prop"]
+
+                if self.first_step == 0:
+                    damaged = ((timestep_dict["size"] - timestep_dict["unburned"]))
+                    self.new_damaged_sim = damaged
+                    #self.new_damaged_sim_list.append(self.new_damaged_sim)
+                    self.old_damaged = damaged
+                    self.first_step = self.first_step + 1
+                else:
+                    damaged = ((timestep_dict["size"] - timestep_dict["unburned"]))
+                    self.new_damaged_sim = damaged - self.old_damaged
+                    #self.new_damaged_sim_list.append(self.new_damaged_sim)
+                    self.old_damaged = damaged
 
                 if self._history is not None:
                     self._history.pop()
@@ -230,7 +262,8 @@ class FireSimulationAnalytics(SimulationAnalytics):
             "burning": burning_total,
             "unburned": unburned_total,
             #"burn_rate": self.data.burn_rate.append((burned_total/(timestep+1.0))),
-            "burn_rate": ((burned_total + burning_total)/(timestep+1.0))
+            "burn_rate": ((burned_total + burning_total)/(timestep+1.0)),
+            "size": fire_map.size
         }
 
         if not self.is_benchmark:
@@ -268,6 +301,7 @@ class FireSimulationAnalytics(SimulationAnalytics):
                     "mitigated": self.data.mitigated,
                     "agent_interactions": self.data.agent_interactions,  # noqa: E501
                     "agent_movements": self.data.agent_movements, 
+                    "size":self.data.size
                 }
 
                 # Prepare current timestep data that was just updated.
@@ -286,6 +320,7 @@ class FireSimulationAnalytics(SimulationAnalytics):
                 
             
                 bench_num_damaged = 0
+                bench_sim_steps = len(bench_damaged)
 
                 if len(bench_damaged)<self.num_sim_steps:
                     bench_num_damaged = int(bench_damaged[len(bench_damaged) - 1])
@@ -296,7 +331,10 @@ class FireSimulationAnalytics(SimulationAnalytics):
                 bench_unburned = sim_area - bench_num_damaged
                 bench_burn_rate = (bench_num_damaged / ((int(timestep) + 1.0) * 1.0))
 
+                bench_total_damaged = int(bench_damaged[len(bench_damaged) - 1])
+                area_saved_prop = (float((bench_num_damaged*1.0 - (sim_area - self.data.unburned)))/(bench_total_damaged*1.0))
 
+                
             
                 sim_timestep_dict.update(
                     {
@@ -304,6 +342,9 @@ class FireSimulationAnalytics(SimulationAnalytics):
                         "area_saved": ((unburned) - bench_unburned),
                         #"burn_rate_reduction": self.data.burn_rate_reduction.append((bench_burn_rate - burn_rate)),
                         "burn_rate_reduction": (bench_burn_rate - burn_rate), 
+                        "bench_episode_length": ((bench_sim_steps) * 4),
+                        "timesteps_saved": ((bench_sim_steps - self.num_sim_steps) * 4), #multiplied by the agent speed
+                        "area_saved_prop": (area_saved_prop),
                     }
                 )
 
