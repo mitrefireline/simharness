@@ -191,7 +191,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If the agent attempts to move out of bounds, this is set to True.
         self._moved_off_map = False
 
-
         self.bench_firemaps = [0] * 1000
 
     def set_trial_results_path(self, path: str) -> None:
@@ -211,6 +210,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 interaction=self._latest_interaction,
                 agent_pos=self.agent_pos,
                 moved_off_map=self._moved_off_map,
+                mitigation_placed = self.mitigation_placed
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -237,6 +237,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Calculate the reward for the current timestep
         # TODO pass `terminated` into `get_reward` method
         reward = self.reward_cls.get_reward(self.timesteps, sim_run)
+
+        #terminate the episode if the num_damaged is worse than the benchmark sim
+        total_area = self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
+        #dont use mitigations in sim_damaged_total
+        #sim_damaged_total = total_area - self.harness_analytics.sim_analytics.data.unburned
+        sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
+        benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
+        if sim_damaged_total > benchsim_damaged_total:
+            terminated = True
+            #potentially add a static negative penalty for making the fire worse
 
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
@@ -289,6 +299,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self._agent_pos_is_unburned() and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
+        elif (not self._agent_pos_is_unburned()) and interact:
+            self.mitigation_placed = False
 
         # Update agent location on map
         if self.movements[self._latest_movement] != "none":
