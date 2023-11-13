@@ -59,6 +59,7 @@ class AgentData:
         # self.connected_mitigation = timestep_dict["connected_mitigation"]
         self.near_fire = timestep_dict["near_fire"]
         self.burn_status = timestep_dict["burn_status"]
+        self.mitigation_placed = timestep_dict["mitigation_placed"]
 
     def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
         """Save episode history to CSV file."""
@@ -240,6 +241,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
         interaction: int,
         agent_pos: List[int],
         moved_off_map: bool,
+        mitigation_placed: bool,
     ) -> None:
         """Update the AgentAnalytics object variables after each agent action.
 
@@ -271,6 +273,7 @@ class ReactiveAgentAnalytics(AgentAnalytics):
             # "connected_mitigation": self.connected_mitigation(fire_map, agent_pos),
             "near_fire": self.agent_near_fire(fire_map, agent_pos),
             "burn_status": BurnStatus(fire_map[agent_pos[0], agent_pos[1]]).name,
+            "mitigation_placed": mitigation_placed,
         }
         # Store agent behavior for the current timestep in the dataclass
         self.data.update(agent_timestep_dict)
