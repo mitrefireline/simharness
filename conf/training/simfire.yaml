@@ -2,8 +2,8 @@ defaults:
   - model: screen_size_128
 
 # train_batch_size: 4000
-v_min: -1000
-v_max: 1000
+v_min: -5
+v_max: 5
 # num_atoms: 51
 noisy: true
 # lr: 0.00173477
@@ -14,8 +14,10 @@ noisy: true
 # train_batch_size: 64
 
 lr: 0.00454119
-n_step: 8
+n_step: 4
 num_atoms: 10
-num_steps_sampled_before_learning_starts: 2000
+num_steps_sampled_before_learning_starts: 3000
 target_network_update_freq: 3000
-train_batch_size: 600
+train_batch_size: 1
+
+gamma: 0.95
