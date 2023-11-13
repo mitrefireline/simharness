@@ -153,7 +153,10 @@ class RenderEnv(DefaultCallbacks):
         logger.info(f"agent_interactions: {sim_data.agent_interactions}")
         logger.info(f"agent_movements: {sim_data.agent_movements}")
         logger.info(f"area_saved {sim_data.area_saved}")
+        logger.info(f"area_saved_prop {sim_data.area_saved_prop}")
         logger.info(f"burn_rate_reduction {sim_data.burn_rate_reduction}")
+        logger.info(f"bench_episode_length {sim_data.bench_episode_length}")
+        logger.info(f"timesteps_saved {sim_data.timesteps_saved}")
 
         if env.benchmark_sim:
             logger.info(f"bench_sim/burned: {bench_sim_data.burned}")
@@ -179,7 +182,10 @@ class RenderEnv(DefaultCallbacks):
         episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
         episode.custom_metrics["agent_movements"] = sim_data.agent_movements
         episode.custom_metrics["area_saved"] = sim_data.area_saved
+        episode.custom_metrics["area_saved_prop"] = sim_data.area_saved_prop
         episode.custom_metrics["burn_rate_reduction"] = sim_data.burn_rate_reduction
+        episode.custom_metrics["bench_episode_length"] = sim_data.bench_episode_length
+        episode.custom_metrics["timesteps_saved"] = sim_data.timesteps_saved
 
         if env.benchmark_sim:
         # Save benchmark sim specific data
@@ -190,7 +196,10 @@ class RenderEnv(DefaultCallbacks):
 
         # Ensure all custom metrics are ints
         for k, v in episode.custom_metrics.items():
-            episode.custom_metrics[k] = int(v)
+            if ("rate" in k) or ("prop" in k):
+                episode.custom_metrics[k] = float(v)
+            else:
+                episode.custom_metrics[k] = int(v)
             # elif "numpy.bool" in str(type(v)):
             #     episode.custom_metrics[k] = bool(v)
 
