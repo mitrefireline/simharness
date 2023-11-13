@@ -239,7 +239,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     replay_buffer_config = {
             "_enable_replay_buffer_api": True,
             "type": "MultiAgentPrioritizedReplayBuffer",
-            "capacity": 400,
+            "capacity": 800,
             "prioritized_replay_alpha": 0.6,
             "prioritized_replay_beta": 0.4,
             #"prioritized_replay_eps": 1e-7,

@@ -43,12 +43,12 @@ checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
   checkpoint_frequency: 100
   # Number of checkpoints to keep
-  num_to_keep: 2
+  num_to_keep: 5
 stop_conditions:
-  training_iteration: 200
+  training_iteration: 2000
   timesteps_total: 20000000000
   # episodes_total: 1000000
-  episode_reward_mean: 1000
+  episode_reward_mean: 4.0
 debugging:
   log_level: INFO
   log_sys_usage: True
