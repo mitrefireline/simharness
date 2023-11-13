@@ -141,6 +141,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         interaction: int,
         agent_pos: List[int],
         moved_off_map: bool,
+        mitigation_placed: bool,
     ) -> None:
         """Updates `self.sim_analytics.agent_analytics`, if agents are in the sim.
 
@@ -164,7 +165,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         """
         if self.sim_analytics.agent_analytics:
             self.sim_analytics.agent_analytics.update(
-                timestep, movement, interaction, agent_pos, moved_off_map
+                timestep, movement, interaction, agent_pos, moved_off_map, mitigation_placed
             )
 
 
