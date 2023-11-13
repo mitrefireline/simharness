@@ -188,7 +188,7 @@ class RenderEnv(DefaultCallbacks):
         episode.custom_metrics["timesteps_saved"] = sim_data.timesteps_saved
 
         if env.benchmark_sim:
-        # Save benchmark sim specific data
+            # Save benchmark sim specific data
             episode.custom_metrics["bench_sim/burned"] = bench_sim_data.burned
             episode.custom_metrics["bench_sim/unburned"] = bench_sim_data.unburned
             episode.custom_metrics["bench_sim/burning"] = bench_sim_data.burning
@@ -200,8 +200,6 @@ class RenderEnv(DefaultCallbacks):
                 episode.custom_metrics[k] = float(v)
             else:
                 episode.custom_metrics[k] = int(v)
-            # elif "numpy.bool" in str(type(v)):
-            #     episode.custom_metrics[k] = bool(v)
 
     def on_episode_end(
         self,

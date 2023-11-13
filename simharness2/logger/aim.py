@@ -162,7 +162,7 @@ class AimLoggerCallback(LoggerCallback):
         """
         tmp_result = result.copy()
 
-        step = result.get(TIMESTEPS_TOTAL, None) or result[TRAINING_ITERATION]
+        step = result.get(TRAINING_ITERATION, None)
         episode = result.get(EPISODES_TOTAL, None)
         for k in ["config", "pid", "timestamp", TIME_TOTAL_S, TRAINING_ITERATION]:
             tmp_result.pop(k, None)  # not useful to log these
@@ -209,7 +209,11 @@ class AimLoggerCallback(LoggerCallback):
                 continue
 
             full_attr = "/".join(path + [attr])
-            if isinstance(value, tuple(VALID_SUMMARY_TYPES)) and not (
+            if "sampler_results" in full_attr:
+                if step == 1:
+                    logger.debug(f"Skipping duplicate metric: {full_attr}")
+                continue
+            elif isinstance(value, tuple(VALID_SUMMARY_TYPES)) and not (
                 np.isnan(value) or np.isinf(value)
             ):
                 valid_result[attr] = value
@@ -218,7 +222,7 @@ class AimLoggerCallback(LoggerCallback):
                     name=full_attr,
                     epoch=epoch,
                     step=episode or step,
-                    context=context,
+                    # context=context,
                 )
             elif (isinstance(value, (list, tuple, set)) and len(value) > 0) or (
                 isinstance(value, np.ndarray) and value.size > 0

@@ -166,7 +166,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             benchmark_sim=config.get("benchmark_sim"),
         )
 
-        #self.benchmark_sim = copy.deepcopy(self.sim())
+        # self.benchmark_sim = copy.deepcopy(self.sim())
         assert self.sim.get_seeds() == self.benchmark_sim.get_seeds()
 
         self._log_env_init()
@@ -197,6 +197,42 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Set the path to the directory where (tune) trial results will be stored."""
         self._trial_results_path = path
 
+    def _initialize_simfire(
+        self, data: np.recarray, num_envs_per_worker: int
+    ) -> Tuple[int, int]:
+        """Update the `fire_initial_position` for the `FireSimulation` instance.
+
+        Arguments:
+            data: A np.recarray containing the sample of fire scenarios to choose from.
+            num_envs_per_worker: The number of environments that are contained within
+                each worker. This helps determine the index of the fire scenario that
+                should be used for the current environment.
+
+        Returns:
+            The selected initial position of the fire, as a tuple of (x, y) coordinates.
+        """
+        # Get the respective fire scenario for the current environment.
+        # NOTE: We use the modulo operator to ensure that the `fire_idx` is within the
+        # available indices of the provided data.
+        w_i, v_i = self.worker_idx, self.vector_idx
+        if self.num_workers == 0:
+            # Sub-environment (s) contained within only the `local_worker`.
+            fire_idx = ((w_i + 1) * v_i) % len(data)
+        else:
+            # Sub-environment (s) contained within only the `remote_worker` (s).
+            fire_idx = ((num_envs_per_worker * w_i) + v_i) % len(data)
+
+        fire_pos_arr: np.recarray = data[fire_idx]
+
+        # Use the fire scenario to initialize the `FireSimulation`.
+        init_pos = (fire_pos_arr.x, fire_pos_arr.y)
+        self.sim.set_fire_initial_position(init_pos)
+
+        if self.benchmark_sim:
+            self.benchmark_sim.set_fire_initial_position(init_pos)
+
+        return init_pos
+
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa
@@ -210,7 +246,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 interaction=self._latest_interaction,
                 agent_pos=self.agent_pos,
                 moved_off_map=self._moved_off_map,
-                mitigation_placed = self.mitigation_placed
+                mitigation_placed=self.mitigation_placed,
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -238,19 +274,26 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO pass `terminated` into `get_reward` method
         reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
-        #terminate the episode if the num_damaged is worse than the benchmark sim
-        total_area = self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
-        #dont use mitigations in sim_damaged_total
-        #sim_damaged_total = total_area - self.harness_analytics.sim_analytics.data.unburned
-        sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
-        benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
+        # terminate the episode if the num_damaged is worse than the benchmark sim
+        total_area = (
+            self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
+        )
+        # dont use mitigations in sim_damaged_total
+        # sim_damaged_total = total_area - self.harness_analytics.sim_analytics.data.unburned
+        sim_damaged_total = (
+            self.harness_analytics.sim_analytics.data.burned
+            + self.harness_analytics.sim_analytics.data.burning
+        )
+        benchsim_damaged_total = (
+            total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
+        )
         if sim_damaged_total > benchsim_damaged_total:
             terminated = True
-            #potentially add a static negative penalty for making the fire worse
+            # potentially add a static negative penalty for making the fire worse
 
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        #if terminated:
+        # if terminated:
         #    reward += 10
 
         if self.harness_analytics:
@@ -386,22 +429,26 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         """Run the simulation (s) for one timestep."""
 
         timesteps_copy = self.timesteps
-        
+
         if self.benchmark_sim:
             if self.benchmark_sim.elapsed_steps == 0:
                 self.benchmark_sim.run(1)
                 self.harness_analytics.update_bench_after_one_simulation_step(
-                timestep=timesteps_copy
+                    timestep=timesteps_copy
                 )
                 timesteps_copy = timesteps_copy + 1
-                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
+                self.bench_firemaps[
+                    (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+                ] = np.copy(self.benchmark_sim.fire_map)
             while self.benchmark_sim.active == True:
                 self.benchmark_sim.run(1)
                 self.harness_analytics.update_bench_after_one_simulation_step(
-                timestep=timesteps_copy
+                    timestep=timesteps_copy
                 )
                 timesteps_copy = timesteps_copy + 1
-                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
+                self.bench_firemaps[
+                    (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+                ] = np.copy(self.benchmark_sim.fire_map)
 
         self.sim.run(1)
 
@@ -416,14 +463,22 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.state[..., fire_map_idx] = fire_map
 
         bench_fire_map_idx = self.attributes.index("bench_fire_map")
-        if (self.harness_analytics.benchmark_sim_analytics.num_sim_steps < self.harness_analytics.sim_analytics.num_sim_steps):
-            self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
+        if (
+            self.harness_analytics.benchmark_sim_analytics.num_sim_steps
+            < self.harness_analytics.sim_analytics.num_sim_steps
+        ):
+            self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[
+                (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+            ]
         else:
-            self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.sim_analytics.num_sim_steps) - 1]
-        
+            self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[
+                (self.harness_analytics.sim_analytics.num_sim_steps) - 1
+            ]
+
         bench_fire_map_final_idx = self.attributes.index("bench_fire_map_final")
-        self.state[..., (bench_fire_map_final_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
-        
+        self.state[..., (bench_fire_map_final_idx)] = self.bench_firemaps[
+            (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+        ]
 
     def reset(
         self,
@@ -434,22 +489,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # log.info("Resetting environment")
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
-        # If the environment is stochastic, set the seeds for randomization parameters.
-        # An evaluation environment will generally be set as deterministic.
-        # NOTE: Other randomization parameters include "fuel", "wind_speed", and
-        # "wind_direction". For reference with `FireSimulation`, see
-        # https://gitlab.mitre.org/fireline/simulators/simfire/-/blob/d70358ec960af5cfbf1855ef78218475cc569247/simfire/sim/simulation.py#L672-718
-        # TODO(afennelly) Enable selecting attributes to randomize from config file.
-        # FIXME this needs to not be hard-coded and moved outside of method logic.
-        # if not self.deterministic:
-        #     # Set seeds for randomization
-        seeds = self.sim.get_seeds()
-        fire_init_seed = seeds["fire_initial_position"]
-        #elevation_seed = self.simulation.get_seeds()["elevation"]
-        seed_dict = {
-                 "fire_initial_position": fire_init_seed + 1,
-        }
-        self.sim.set_seeds(seed_dict)
 
         # Reset the `Simulation` to initial conditions. In particular, this resets the
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
@@ -459,15 +498,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         bench_exists = False
         if self.benchmark_sim:
             # reset benchmark simulation
-            self.benchmark_sim.set_seeds(seed_dict)
             self.benchmark_sim.reset()
             bench_exists = True
-            #self.benchmark_sim = copy.deepcopy(self.sim())
+            # self.benchmark_sim = copy.deepcopy(self.sim())
         self.bench_firemaps = [0] * 1000
         # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
         if self.harness_analytics:
             render = self._should_render if hasattr(self, "_should_render") else False
-            self.harness_analytics.reset(env_is_rendering=render, benchmark_exists=bench_exists)
+            self.harness_analytics.reset(
+                env_is_rendering=render, benchmark_exists=bench_exists
+            )
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()

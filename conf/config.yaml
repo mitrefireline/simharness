@@ -15,8 +15,8 @@ defaults:
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
   run_hash: null
-  repo: ${cli.data_dir}/simharness/aim
-  experiment: 20-trials-operational-baron-explore
+  repo: /dev/shm/fireline/simharness/aim
+  experiment: aidan_test_run_dqn_with_reward_updates
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true
@@ -31,7 +31,7 @@ cli:
 algo:
   name: DQN
   # The path (str) to the checkpoint directory to use.
-  checkpoint_path: /data/lslab2/fireline//simharness/experiments/2023-09-23_05-20-24/DQN/DQN_simharness2.environments.reactive.ReactiveHarness_94026_00010_10_lr=0.0045,n_step=8,num_atoms=10,num_steps_sampled_before_lear_2023-09-26_09-27-34/checkpoint_004000
+  checkpoint_path: null
 # Specify configuration used to create the ray.air.RunConfig object
 runtime:
   # Name of the training run (directory name)
