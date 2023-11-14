@@ -5,3 +5,6 @@
 **/outputs
 **/ckpts
 **/gifs
+**/.vscode
+**/.ipynb_checkpoints
+**/*.npy
