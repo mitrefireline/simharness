@@ -15,6 +15,7 @@ import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
+import math
 
 import numpy as np
 from gymnasium import spaces
@@ -385,24 +386,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
     def _run_simulation(self):
         """Run the simulation (s) for one timestep."""
 
-        timesteps_copy = self.timesteps
         
-        if self.benchmark_sim:
-            if self.benchmark_sim.elapsed_steps == 0:
-                self.benchmark_sim.run(1)
-                self.harness_analytics.update_bench_after_one_simulation_step(
-                timestep=timesteps_copy
-                )
-                timesteps_copy = timesteps_copy + 1
-                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
-            while self.benchmark_sim.active == True:
-                self.benchmark_sim.run(1)
-                self.harness_analytics.update_bench_after_one_simulation_step(
-                timestep=timesteps_copy
-                )
-                timesteps_copy = timesteps_copy + 1
-                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
-
         self.sim.run(1)
 
     def _update_state(self):
@@ -443,18 +427,34 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # FIXME this needs to not be hard-coded and moved outside of method logic.
         # if not self.deterministic:
         #     # Set seeds for randomization
-        seeds = self.sim.get_seeds()
-        fire_init_seed = seeds["fire_initial_position"]
-        #elevation_seed = self.simulation.get_seeds()["elevation"]
-        seed_dict = {
-                 "fire_initial_position": fire_init_seed + 1,
-        }
-        self.sim.set_seeds(seed_dict)
 
-        # Reset the `Simulation` to initial conditions. In particular, this resets the
-        # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
+
+        sim_side_length = math.sqrt(float(self.sim.fire_map.size))
+        fire_init_pos_x = 0
+        fire_init_pos_y = 64
+        seed_dict = 0
+
         logger.info(f"Resetting environment {hex(id(self))}")
-        self.sim.reset()
+        #set the proper bounds for the fire sim start location
+        while (fire_init_pos_x < (math.floor(sim_side_length/2.0))) or (fire_init_pos_y < (math.floor(sim_side_length/4.0)))or (fire_init_pos_y > (math.floor(3.0*(sim_side_length/4.0)))):
+            #reset the sim until the fire start is in the proper bounds
+            seeds = self.sim.get_seeds()
+            fire_init_seed = seeds["fire_initial_position"]
+            #elevation_seed = self.simulation.get_seeds()["elevation"]
+            seed_dict = {
+                    "fire_initial_position": fire_init_seed + 1,
+            }
+            self.sim.set_seeds(seed_dict)
+            # Reset the `Simulation` to initial conditions. In particular, this resets the
+            # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
+            
+            self.sim.reset()
+
+            fire_init_pos = self.sim.config.fire.fire_initial_position
+            fire_init_pos_x = fire_init_pos[0]
+            fire_init_pos_y = fire_init_pos[1]
+
+
         # FIXME quick fix to avoid errors if benchmark_sim is not used (ie. None)
         bench_exists = False
         if self.benchmark_sim:
@@ -463,7 +463,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             self.benchmark_sim.reset()
             bench_exists = True
             #self.benchmark_sim = copy.deepcopy(self.sim())
-        self.bench_firemaps = [0] * 1000
+        
         # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
         if self.harness_analytics:
             render = self._should_render if hasattr(self, "_should_render") else False
@@ -515,6 +515,32 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.mitigation_placed: bool = False
         # If the agent attempts to move out of bounds, this is set to True.
         self._moved_off_map = False
+
+
+        #reset the benchsim data
+        self.bench_firemaps = [0] * 1000
+
+        #run the benchsim
+        timesteps_copy = self.timesteps
+        
+        if self.benchmark_sim:
+            if self.benchmark_sim.elapsed_steps == 0:
+                #self.bench_firemaps[0] = np.copy(self.benchmark_sim.fire_map)
+                self.benchmark_sim.run(1)
+                self.harness_analytics.update_bench_after_one_simulation_step(
+                timestep=timesteps_copy
+                )
+                timesteps_copy = timesteps_copy + self.agent_speed
+                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
+            while self.benchmark_sim.active == True:
+                self.benchmark_sim.run(1)
+                self.harness_analytics.update_bench_after_one_simulation_step(
+                timestep=timesteps_copy
+                )
+                timesteps_copy = timesteps_copy + self.agent_speed
+                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
+
+
 
         return self.state, {}
 
