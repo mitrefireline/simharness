@@ -85,7 +85,7 @@ class BenchFirstReward(BaseReward):
 
         sim_steps = self.harness_analytics.sim_analytics.num_sim_steps
 
-        #bench_total_damaged = self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned
+        bench_total_damaged = self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned
         sim_damaged = self.harness_analytics.sim_analytics.data.burning + self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.mitigated
 
         #if sim_steps == 2:
@@ -94,9 +94,15 @@ class BenchFirstReward(BaseReward):
         #if the sim has ended in fewer steps before the benchsim
         #Range is (-1,1)*Bench_timesteps
         if (self.harness_analytics.sim_analytics.active == False) & (sim_steps < bench_sim_steps):
-            step_diff = bench_sim_steps - sim_steps
+            
             bench_damaged = self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)]
-            reward = (((bench_damaged - sim_damaged) / self._sim_area) * step_diff)
+            reward = (((bench_damaged - sim_damaged) / self._sim_area))
+
+            bench_rest_damaged = self.harness_analytics.benchmark_sim_analytics.data.damaged[sim_steps: bench_sim_steps].copy()
+            step_diff = len(bench_rest_damaged.copy())
+            bench_rest_damaged = sum(bench_rest_damaged)
+            reward = reward + (bench_rest_damaged - (sim_damaged * step_diff))/self._sim_area
+
             #reward = (((bench_damaged - sim_damaged) / self._sim_area) * (sim_steps/bench_sim_steps))
             #reward = (((bench_damaged - sim_damaged) / self._sim_area))
 
@@ -117,14 +123,25 @@ class BenchFirstReward(BaseReward):
         return reward
 
     def get_timestep_intermediate_reward(self, timestep: int) -> float:
-        """TODO Add function docstring."""
-        # Basic Intermediate reward is the last sim step reward + a small amount if the agent successfully placed a mitigation
-        if self.harness_analytics.sim_analytics.agent_analytics.data.mitigation_placed == True:
-            #breakpoint()
-            self.latest_reward = self.latest_reward + (0.25/self._sim_area)
-            return (self.latest_reward)
-        else:
-            return (self.latest_reward)
+            """TODO Add function docstring."""
+            # Basic Intermediate reward is the last sim step reward + a small amount if the agent successfully placed a mitigation
+            if self.harness_analytics.sim_analytics.agent_analytics.data.mitigation_placed == True:
+                #breakpoint()
+
+                benchsim_damaged_total = self.harness_analytics.benchmark_sim_analytics.data.damaged[(len(self.harness_analytics.benchmark_sim_analytics.data.new_damaged) - 1)]
+                sim_damaged_total = self._sim_area - self.harness_analytics.sim_analytics.data.unburned
+
+                if sim_damaged_total < benchsim_damaged_total:
+                    self.latest_reward = self.latest_reward + (0.5/self._sim_area)
+                    return (self.latest_reward)
+                elif sim_damaged_total > benchsim_damaged_total:
+                    self.latest_reward = self.latest_reward - (0.5/self._sim_area)
+                    return (self.latest_reward)
+                else:
+                    return (self.latest_reward)
+
+            else:
+                return (self.latest_reward)
 
 
 
@@ -238,8 +255,8 @@ class BenchFirstRewardV3(BaseReward):
             #default
             damaged_total = benchsim_damaged_total
 
-        assert benchsim_damaged_total == (self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned), str(benchsim_damaged_total)+ " , " + str((self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned))
-        assert benchsim_damaged_total == (self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)]), str(benchsim_damaged_total)+ " , " + str(self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)])
+        #assert benchsim_damaged_total == (self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned), str(benchsim_damaged_total)+ " , " + str((self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned))
+        #assert benchsim_damaged_total == (self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)]), str(benchsim_damaged_total)+ " , " + str(self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)])
 
         #if the sim has ended in fewer steps before the benchsim
         #Range is (-1,1)*Bench_timesteps
@@ -292,10 +309,133 @@ class BenchFirstRewardV3(BaseReward):
             #breakpoint()
 
             benchsim_damaged_total = self.harness_analytics.benchmark_sim_analytics.data.damaged[(len(self.harness_analytics.benchmark_sim_analytics.data.new_damaged) - 1)]
-            self.latest_reward = self.latest_reward + (0.25/benchsim_damaged_total)
-            return (self.latest_reward)
+            sim_damaged_total = self._sim_area - self.harness_analytics.sim_analytics.data.unburned
+
+            if sim_damaged_total < benchsim_damaged_total:
+                self.latest_reward = self.latest_reward + (0.5/self._sim_area)
+                return (self.latest_reward)
         else:
             return (self.latest_reward)
+
+class BenchFirstRewardV4(BaseReward):
+    """TODO add description."""
+
+    def __init__(self, harness_analytics: ReactiveHarnessAnalytics):
+        """TODO Add constructor docstring."""
+        super().__init__(harness_analytics)
+
+    def get_reward(self, timestep: int, sim_run: bool) -> float:
+        """TODO Add function docstring."""
+        if not sim_run:
+            # No intermediate reward calculation used currently, so 0.0 is returned.
+            return self.get_timestep_intermediate_reward(timestep)
+
+        bench_sim_steps = len(self.harness_analytics.benchmark_sim_analytics.data.new_damaged)
+
+        #assert bench_sim_steps == self.harness_analytics.benchmark_sim_analytics.num_sim_steps, (str(bench_sim_steps) + " , " + str(self.harness_analytics.benchmark_sim_analytics.num_sim_steps))
+        #assert sum(self.harness_analytics.benchmark_sim_analytics.data.new_damaged) <= int(self._sim_area), (str(sum(self.harness_analytics.benchmark_sim_analytics.data.new_damaged))  + " , " + str(bench_sim_steps))
+        #assert sum(self.harness_analytics.benchmark_sim_analytics.data.new_damaged_sim_list) <= int(self._sim_area), (str(sum(self.harness_analytics.benchmark_sim_analytics.data.new_damaged_sim_list))  + " , " + str(self.harness_analytics.sim_analytics.num_sim_steps))
+
+        sim_steps = self.harness_analytics.sim_analytics.num_sim_steps
+
+        sim_damaged = self.harness_analytics.sim_analytics.data.new_damaged_sim
+
+        benchsim_damaged_total = sum(self.harness_analytics.benchmark_sim_analytics.data.new_damaged)
+        sim_damaged_total = self._sim_area - self.harness_analytics.sim_analytics.data.unburned
+        damaged_total = 0
+        damage_excess = False
+        if sim_damaged_total >= benchsim_damaged_total:
+            #should only run through once with this value and then it will be terminated from the reactive_bench_sarl.py
+            damaged_total = benchsim_damaged_total
+            damage_excess = True
+        else:
+            #default
+            damaged_total = benchsim_damaged_total
+
+        #assert benchsim_damaged_total == (self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned), str(benchsim_damaged_total)+ " , " + str((self.harness_analytics.benchmark_sim_analytics.data.burning + self.harness_analytics.benchmark_sim_analytics.data.burned))
+        #assert benchsim_damaged_total == (self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)]), str(benchsim_damaged_total)+ " , " + str(self.harness_analytics.benchmark_sim_analytics.data.damaged[(bench_sim_steps - 1)])
+
+        #if the sim has ended in fewer steps before the benchsim
+        #Range is (-1,1)*Bench_timesteps
+        if (self.harness_analytics.sim_analytics.active == False) & (sim_steps < bench_sim_steps):
+            step_diff = bench_sim_steps - sim_steps
+            bench_damaged = self.harness_analytics.benchmark_sim_analytics.data.new_damaged[(sim_steps - 1)]
+
+            #set max possible sim damage as bench damage
+            if sim_damaged > bench_damaged:
+                sim_damaged = bench_damaged
+
+            reward = ((((bench_damaged*1.0) - sim_damaged) / (damaged_total*1.0)))
+
+
+            if damage_excess == False:
+                bench_rest_damaged = self.harness_analytics.benchmark_sim_analytics.data.new_damaged[sim_steps: bench_sim_steps].copy()
+                bench_rest_damaged = sum(bench_rest_damaged)
+
+                reward = reward + (bench_rest_damaged*1.0 / damaged_total*1.0)
+
+            #assert reward < 1.0, (str(bench_damaged) + " , " + str(sim_damaged) + " , " + str(bench_rest_damaged))
+            #assert reward > -1.0, (str(bench_damaged) + " , " + str(sim_damaged) + " , " + str(bench_rest_damaged))
+            
+
+        #Range is (-1,1)*Bench_timesteps
+        #if the current sim step is within the range of the bench_sim steps
+        elif sim_steps <= bench_sim_steps:
+            bench_damaged = self.harness_analytics.benchmark_sim_analytics.data.new_damaged[(sim_steps - 1)]
+
+            #set max possible sim damage as bench damage
+            if sim_damaged > bench_damaged:
+                sim_damaged = bench_damaged
+
+            reward = ((bench_damaged*1.0 - sim_damaged) / damaged_total*1.0)
+            #assert reward < 1.0, (str(bench_damaged) + " , " + str(sim_damaged))
+            #assert reward > -1.0, (str(bench_damaged) + " , " + str(sim_damaged))
+        
+        #if the bench sim ended before the main sim
+        else:
+            #bench_damaged = self.harness_analytics.benchmark_sim_analytics.data.new_damaged[(bench_sim_steps - 1)]
+            bench_damaged = 0.0
+            if damage_excess == False:
+                reward = ((bench_damaged*1.0 - sim_damaged) / (damaged_total*1.0))
+            else:
+                reward = ((0.0) / (damaged_total*1.0))
+            
+            #assert reward < 1.0, (str(bench_damaged) + " , " + str(sim_damaged))
+            #assert reward > -1.0, (str(bench_damaged) + " , " + str(sim_damaged))
+
+
+        # update self.latest_reward and then return the reward
+        self.latest_reward = reward
+
+        #use to debug
+        #self.harness_analytics.benchmark_sim_analytics.data.episode_reward = self.harness_analytics.benchmark_sim_analytics.data.episode_reward + reward
+        #if self.harness_analytics.benchmark_sim_analytics.data.episode_reward < -1.0:
+            #breakpoint()
+
+        return reward
+
+    def get_timestep_intermediate_reward(self, timestep: int) -> float:
+        """TODO Add function docstring."""
+        # Basic Intermediate reward is the last sim step reward + a small amount if the agent successfully placed a mitigation
+        if self.harness_analytics.sim_analytics.agent_analytics.data.mitigation_placed == True:
+            #breakpoint()
+
+            benchsim_damaged_total = self.harness_analytics.benchmark_sim_analytics.data.damaged[(len(self.harness_analytics.benchmark_sim_analytics.data.new_damaged) - 1)]
+            sim_damaged_total = self._sim_area - self.harness_analytics.sim_analytics.data.unburned
+
+            if sim_damaged_total < benchsim_damaged_total:
+                self.latest_reward = self.latest_reward + (0.5/self._sim_area)
+                return (self.latest_reward)
+            elif sim_damaged_total > benchsim_damaged_total:
+                self.latest_reward = self.latest_reward - (0.5/self._sim_area)
+                return (self.latest_reward)
+            else:
+                return (self.latest_reward)
+
+        else:
+            return (self.latest_reward)
+
+
 
 
 class BenchmarkReward(BaseReward):

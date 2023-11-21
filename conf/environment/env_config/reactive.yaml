@@ -23,7 +23,7 @@ harness_analytics_partial:
       movement_types: ${....movements}
       interaction_types: ${....interactions}
 reward_cls_partial:
-  _target_: simharness2.rewards.base_reward.BenchFirstRewardV3
+  _target_: simharness2.rewards.base_reward.BenchFirstRewardV4
   _partial_: true
   # fixed_reward: 100
   # static_penalty: 50
