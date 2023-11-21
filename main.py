@@ -225,7 +225,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         get_trainable_cls(cfg.algo.name)
         .get_default_config()
         .training(**cfg.training)
-        .environment(**env_settings, )
+        .environment(**env_settings)
         .framework(**cfg.framework)
         .rollouts(**cfg.rollouts)
         .evaluation(**eval_settings)
@@ -239,22 +239,18 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     replay_buffer_config = {
             "_enable_replay_buffer_api": True,
             "type": "MultiAgentPrioritizedReplayBuffer",
-            "capacity": 800,
+            "capacity": 2000,
             "prioritized_replay_alpha": 0.6,
             "prioritized_replay_beta": 0.4,
             #"prioritized_replay_eps": 1e-7,
             "storage_unit": "episodes",
             "replay_sequence_length": 1,
-
-            #"alpha":0.45,
-            #"beta":0.55,
-            #"storage_unit": StorageUnit.SEQUENCES,
-            #"replay_burn_in": 20,
             
         }
     
     algo_cfg = algo_cfg.training(replay_buffer_config=replay_buffer_config)
 
+    #algo_cfg.training(_enable_learner_api=False)
     #algo_cfg.rl_module(_enable_rl_module_api=False)
 
     return algo_cfg
