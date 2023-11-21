@@ -1,11 +1,34 @@
 defaults:
   - model: screen_size_128
 
-# train_batch_size: 4000
+
+
+
+
+
+## For SARL DQN with episode based PER
 v_min: -5
 v_max: 5
-# num_atoms: 51
 noisy: true
+lr: 0.00454119
+n_step: 4
+num_atoms: 10
+num_steps_sampled_before_learning_starts: 200000
+target_network_update_freq: 3000
+train_batch_size: 1
+gamma: 0.95
+
+## For SARL PPO
+#train_batch_size: 1000
+
+
+## Older Values
+
+
+# num_atoms: 51
+
+
+# train_batch_size: 4000
 # lr: 0.00173477
 # n_step: 3
 # num_atoms: 10
@@ -13,11 +36,6 @@ noisy: true
 # target_network_update_freq: 500
 # train_batch_size: 64
 
-lr: 0.00454119
-n_step: 4
-num_atoms: 10
-num_steps_sampled_before_learning_starts: 3000
-target_network_update_freq: 3000
-train_batch_size: 1
 
-gamma: 0.95
+
+
