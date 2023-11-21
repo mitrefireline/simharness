@@ -139,19 +139,20 @@ class RenderEnv(DefaultCallbacks):
         # if worker.config.in_evaluation:
         # Save agent specific data
         # Instead of logging each value to custom_metrics, write to log file
-        logger.info(f"env timestep: {env.timesteps}")
-        logger.info(f"movement: {agent_data.movement}")
-        logger.info(f"interaction: {agent_data.interaction}")
-        logger.info(f"moved_off_map: {agent_data.moved_off_map}")
-        logger.info(f"near_fire: {agent_data.near_fire}")
-        logger.info(f"burn_status: {agent_data.burn_status}")
+
+        #logger.info(f"env timestep: {env.timesteps}")
+        #logger.info(f"movement: {agent_data.movement}")
+        #logger.info(f"interaction: {agent_data.interaction}")
+        #logger.info(f"moved_off_map: {agent_data.moved_off_map}")
+        #logger.info(f"near_fire: {agent_data.near_fire}")
+        #logger.info(f"burn_status: {agent_data.burn_status}")
         logger.info(f"sim/burned: {sim_data.burned}")
         logger.info(f"sim/unburned: {sim_data.unburned}")
         logger.info(f"sim/burning: {sim_data.burning}")
         logger.info(f"mitigated: {sim_data.mitigated}")
         logger.info(f"sim/burn_rate: {sim_data.burn_rate}")
-        logger.info(f"agent_interactions: {sim_data.agent_interactions}")
-        logger.info(f"agent_movements: {sim_data.agent_movements}")
+        #logger.info(f"agent_interactions: {sim_data.agent_interactions}")
+        #logger.info(f"agent_movements: {sim_data.agent_movements}")
         logger.info(f"area_saved {sim_data.area_saved}")
         logger.info(f"area_saved_prop {sim_data.area_saved_prop}")
         logger.info(f"burn_rate_reduction {sim_data.burn_rate_reduction}")
@@ -164,23 +165,23 @@ class RenderEnv(DefaultCallbacks):
             logger.info(f"bench_sim/burning: {bench_sim_data.burning}")
             logger.info(f"bench_sim/burn_rate: {bench_sim_data.burn_rate}")
 
-        episode.custom_metrics["movement"] = env.movements.index(agent_data.movement)
-        episode.custom_metrics["interaction"] = env.interactions.index(
-            agent_data.interaction
-        )
-        episode.custom_metrics["moved_off_map"] = agent_data.moved_off_map
-        episode.custom_metrics["near_fire"] = agent_data.near_fire
+        #episode.custom_metrics["movement"] = env.movements.index(agent_data.movement)
+        #episode.custom_metrics["interaction"] = env.interactions.index(
+        #    agent_data.interaction
+        #)
+        #episode.custom_metrics["moved_off_map"] = agent_data.moved_off_map
+        #episode.custom_metrics["near_fire"] = agent_data.near_fire
         # FIXME: "burn_status" is a string and we can't log it to Aim UI
-        burn_status = [x.name for x in BurnStatus].index(agent_data.burn_status)
-        episode.custom_metrics["burn_status"] = burn_status
+        #burn_status = [x.name for x in BurnStatus].index(agent_data.burn_status)
+        #episode.custom_metrics["burn_status"] = burn_status
         # Save sim specific data
         episode.custom_metrics["sim/burned"] = sim_data.burned
         episode.custom_metrics["sim/unburned"] = sim_data.unburned
         episode.custom_metrics["sim/burning"] = sim_data.burning
         episode.custom_metrics["sim/burn_rate"] = sim_data.burn_rate
         episode.custom_metrics["mitigated"] = sim_data.mitigated
-        episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
-        episode.custom_metrics["agent_movements"] = sim_data.agent_movements
+        #episode.custom_metrics["agent_interactions"] = sim_data.agent_interactions
+        #episode.custom_metrics["agent_movements"] = sim_data.agent_movements
         episode.custom_metrics["area_saved"] = sim_data.area_saved
         episode.custom_metrics["area_saved_prop"] = sim_data.area_saved_prop
         episode.custom_metrics["burn_rate_reduction"] = sim_data.burn_rate_reduction
