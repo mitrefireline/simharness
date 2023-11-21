@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
+import math
 
 from simharness2.analytics.agent_analytics import ReactiveAgentAnalytics
 
@@ -38,6 +39,7 @@ class SimulationData:
     episode_reward: float = 0.0
     old_damaged: int = 0
     first_step: int = 0 
+    sim_update: int = 0
 
     def __post_init__(self, save_history):
         """TODO"""
@@ -96,14 +98,30 @@ class SimulationData:
                 self.timesteps_saved = timestep_dict["timesteps_saved"]
                 self.area_saved_prop = timestep_dict["area_saved_prop"]
 
+                """bench_damaged_ts = 0
+                if self.sim_update < len(self.damaged):
+                    bench_damaged_ts = self.damaged[self.sim_update]
+                else:
+                    bench_damaged_ts = self.damaged[len(self.damaged)-1]"""
+
                 if self.first_step == 0:
                     damaged = ((timestep_dict["size"] - timestep_dict["unburned"]))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'] + int(math.floor(timestep_dict['mitigated']/2.0)))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'])
+
                     self.new_damaged_sim = damaged
                     #self.new_damaged_sim_list.append(self.new_damaged_sim)
                     self.old_damaged = damaged
                     self.first_step = self.first_step + 1
                 else:
                     damaged = ((timestep_dict["size"] - timestep_dict["unburned"]))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'] + int(math.floor(timestep_dict['mitigated']/2.0)))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'])
+
+                    #set the max possible damaged value
+                    #if damaged > bench_damaged_ts:
+                    #    damaged = bench_damaged_ts
+
                     self.new_damaged_sim = damaged - self.old_damaged
                     #self.new_damaged_sim_list.append(self.new_damaged_sim)
                     self.old_damaged = damaged
@@ -111,6 +129,8 @@ class SimulationData:
                 if self._history is not None:
                     self._history.pop()
                     self._history.append(timestep_dict)
+                
+                self.sim_update = self.sim_update + 1
 
     def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
         """Save episode history to CSV file."""
@@ -333,6 +353,8 @@ class FireSimulationAnalytics(SimulationAnalytics):
 
                 bench_total_damaged = int(bench_damaged[len(bench_damaged) - 1])
                 area_saved_prop = (float((bench_num_damaged*1.0 - (sim_area - self.data.unburned)))/(bench_total_damaged*1.0))
+                if area_saved_prop < 0.0:
+                    area_saved_prop = -0.01
 
                 
             
