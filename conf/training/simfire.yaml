@@ -1,5 +1,5 @@
 defaults:
-  - model: screen_size_128
+  - model: screen_size_128_complex
 
 
 
@@ -7,7 +7,7 @@ defaults:
 
 
 ## For SARL DQN with episode based PER
-v_min: -5
+v_min: 0
 v_max: 5
 noisy: true
 lr: 0.00454119
