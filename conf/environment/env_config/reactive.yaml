@@ -5,8 +5,10 @@ sim:
     config_dict: ${simulation.train}
 movements: [up, down, left, right]
 interactions: [fireline]
-attributes: [fire_map, bench_fire_map, bench_fire_map_final]
-normalized_attributes: []
+attributes: [fire_map, bench_fire_map, bench_fire_map_final, elevation, w_0, sigma, delta, M_x]
+#attributes: [fire_map, bench_fire_map, bench_fire_map_final]
+normalized_attributes: [elevation]
+#normalized_attributes: []
 agent_speed: 4
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 harness_analytics_partial:
