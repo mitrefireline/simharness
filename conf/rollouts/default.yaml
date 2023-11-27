@@ -67,4 +67,4 @@ restart_failed_sub_environments: False
 
 # Whether to LZ4 compress individual observations in the SampleBatches collected during
 # rollouts.
-compress_observations: False
+compress_observations: True
