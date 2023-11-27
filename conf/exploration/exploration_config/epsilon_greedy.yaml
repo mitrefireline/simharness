@@ -1,4 +1,31 @@
 type: EpsilonGreedy
 initial_epsilon: 1.0
-final_epsilon: 0.02
-epsilon_timesteps: 10000
+final_epsilon: 0.01
+warmup_timesteps: 80000
+epsilon_timesteps: 9600000
+
+
+
+#assuming 550 timesteps per episode
+
+#for 40000 episodes
+#warmup_timesteps: 200000
+#epsilon_timesteps: 24000000
+
+#for 20000 episodes
+#warmup_timesteps: 100000
+#epsilon_timesteps: 12000000
+
+#for 10000 episodes
+#warmup_timesteps: 50000
+#epsilon_timesteps: 6000000
+
+
+#for 1600 episodes
+#warmup_timesteps: 8000
+#epsilon_timesteps: 960000
+
+
+#for 1000 episodes
+#warmup_timesteps: 5000
+#epsilon_timesteps: 600000
