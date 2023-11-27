@@ -239,7 +239,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     replay_buffer_config = {
             "_enable_replay_buffer_api": True,
             "type": "MultiAgentPrioritizedReplayBuffer",
-            "capacity": 4000,
+            #capacity of 800 for 16000 episode exp, adjust accordingly
+            "capacity": 800,
             "prioritized_replay_alpha": 0.6,
             "prioritized_replay_beta": 0.4,
             #"prioritized_replay_eps": 1e-7,
@@ -253,7 +254,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     #Uncomment these for PPO
     #algo_cfg.training(_enable_learner_api=False)
     #algo_cfg.rl_module(_enable_rl_module_api=False)
-    
+
     return algo_cfg
 
 
