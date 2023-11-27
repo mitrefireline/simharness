@@ -7,7 +7,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import InitVar, dataclass
+from dataclasses import InitVar, dataclass, field
 from functools import partial
 from typing import Optional
 
@@ -15,8 +15,10 @@ import numpy as np
 import pandas as pd
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
+import math
 
 from simharness2.analytics.agent_analytics import ReactiveAgentAnalytics
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,14 @@ class SimulationData:
 
     is_benchmark: bool = False
     save_history: InitVar[bool] = False
+    damaged: List[int] = field(default_factory=list)
+    new_damaged: List[int] = field(default_factory=list)
+    new_damaged_sim: int = 0
+    #new_damaged_sim_list: List[int] = field(default_factory=list)
+    episode_reward: float = 0.0
+    old_damaged: int = 0
+    first_step: int = 0 
+    sim_update: int = 0
 
     def __post_init__(self, save_history):
         """TODO"""
@@ -59,11 +69,65 @@ class SimulationData:
         self.burned = timestep_dict["burned"]
         self.unburned = timestep_dict["unburned"]
         self.burning = timestep_dict["burning"]
+        self.burn_rate = timestep_dict["burn_rate"]
+        self.size = timestep_dict["size"]
+        
+        if self.is_benchmark:
+            #breakpoint()
+            damaged = (timestep_dict["size"] - timestep_dict["unburned"])
+
+            if len(self.new_damaged) == 0:
+                self.new_damaged.append(damaged)
+            else:
+                self.new_damaged.append(damaged - self.damaged[-1])
+
+            self.damaged.append(damaged)
 
         if not self.is_benchmark:
             self.mitigated = timestep_dict["mitigated"]
             self.agent_interactions = timestep_dict["agent_interactions"]
             self.agent_movements = timestep_dict["agent_movements"]
+
+            if ("area_saved" in timestep_dict) & ("burn_rate_reduction" in timestep_dict):
+                self.area_saved = timestep_dict["area_saved"]
+                self.burn_rate_reduction = timestep_dict["burn_rate_reduction"]
+                self.bench_episode_length = timestep_dict["bench_episode_length"]
+                self.timesteps_saved = timestep_dict["timesteps_saved"]
+                self.area_saved_prop = timestep_dict["area_saved_prop"]
+
+                """bench_damaged_ts = 0
+                if self.sim_update < len(self.damaged):
+                    bench_damaged_ts = self.damaged[self.sim_update]
+                else:
+                    bench_damaged_ts = self.damaged[len(self.damaged)-1]"""
+
+                if self.first_step == 0:
+                    damaged = ((timestep_dict["size"] - timestep_dict["unburned"]))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'] + int(math.floor(timestep_dict['mitigated']/2.0)))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'])
+
+                    self.new_damaged_sim = damaged
+                    #self.new_damaged_sim_list.append(self.new_damaged_sim)
+                    self.old_damaged = damaged
+                    self.first_step = self.first_step + 1
+                else:
+                    damaged = ((timestep_dict["size"] - timestep_dict["unburned"]))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'] + int(math.floor(timestep_dict['mitigated']/2.0)))
+                    #damaged = (timestep_dict['burned'] + timestep_dict['burning'])
+
+                    #set the max possible damaged value
+                    #if damaged > bench_damaged_ts:
+                    #    damaged = bench_damaged_ts
+
+                    self.new_damaged_sim = damaged - self.old_damaged
+                    #self.new_damaged_sim_list.append(self.new_damaged_sim)
+                    self.old_damaged = damaged
+
+                if self._history is not None:
+                    self._history.pop()
+                    self._history.append(timestep_dict)
+                
+                self.sim_update = self.sim_update + 1
 
     def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
         """Save episode history to CSV file."""
@@ -167,6 +231,7 @@ class FireSimulationAnalytics(SimulationAnalytics):
         log_to_file: bool = False,
         file_type: str = "csv",
         custom_file_name: Optional[str] = None,
+        benchmark_exists: bool = False,
     ):
         """TODO: A brief description of what the method is and what it's used for.
 
@@ -212,6 +277,8 @@ class FireSimulationAnalytics(SimulationAnalytics):
             "burned": burned_total,
             "burning": burning_total,
             "unburned": unburned_total,
+            "burn_rate": ((burned_total + burning_total)/(timestep+1.0)),
+            "size": fire_map.size
         }
 
         if not self.is_benchmark:
@@ -229,12 +296,86 @@ class FireSimulationAnalytics(SimulationAnalytics):
 
         self.num_sim_steps += 1  # increment AFTER method logic is performed (convention).
 
-    def reset(self, env_is_rendering: bool = False):
+    def update_sim_bench_comparison_metrics(self, timestep: int, bench_damaged) -> None:
+        """TODO Add docstring."""
+        # Only access `active` attribute if the sim has been updated at least once.
+        if self.sim.elapsed_steps != 0:
+            self.active = self.sim.active
+
+        if not self.is_benchmark:
+            if self.benchmark_exists:
+
+                sim_timestep_dict = {
+                    "sim_step": self.num_sim_steps,
+                    "timestep": timestep,
+                    "burned": self.data.burned,
+                    "burning": self.data.burning,
+                    "unburned": self.data.unburned,
+                    "burn_rate": self.data.burn_rate,
+                    "mitigated": self.data.mitigated,
+                    "agent_interactions": self.data.agent_interactions,  # noqa: E501
+                    "agent_movements": self.data.agent_movements, 
+                    "size":self.data.size
+                }
+
+                # Prepare current timestep data that was just updated.
+                #burned = self.data.burned
+                #burning = self.data.burning
+
+                sim_area = int(self.sim.fire_map.size)
+                unburned = self.data.unburned
+                burn_rate = self.data.burn_rate
+
+
+                #mitigated = self.data.mitigated
+
+                #bench_burned = benchmark_sim_analytics.data.burned
+                #bench_burning = benchmark_sim_analytics.data.burning
+                
+            
+                bench_num_damaged = 0
+                bench_sim_steps = len(bench_damaged)
+
+                if len(bench_damaged)<self.num_sim_steps:
+                    bench_num_damaged = int(bench_damaged[len(bench_damaged) - 1])
+                else:
+                    bench_num_damaged = int(bench_damaged[self.num_sim_steps - 1])
+
+
+                bench_unburned = sim_area - bench_num_damaged
+                bench_burn_rate = (bench_num_damaged / ((int(timestep) + 1.0) * 1.0))
+
+                bench_total_damaged = int(bench_damaged[len(bench_damaged) - 1])
+                area_saved_prop = (float((bench_num_damaged*1.0 - (sim_area - self.data.unburned)))/(bench_total_damaged*1.0))
+                if area_saved_prop < 0.0:
+                    area_saved_prop = -0.01
+
+                
+            
+                sim_timestep_dict.update(
+                    {
+                        #"area_saved": self.data.area_saved.append(((unburned) - bench_unburned)),
+                        "area_saved": ((unburned) - bench_unburned),
+                        #"burn_rate_reduction": self.data.burn_rate_reduction.append((bench_burn_rate - burn_rate)),
+                        "burn_rate_reduction": (bench_burn_rate - burn_rate), 
+                        "bench_episode_length": ((bench_sim_steps) * 4),
+                        "timesteps_saved": ((bench_sim_steps - self.num_sim_steps) * 4), #multiplied by the agent speed
+                        "area_saved_prop": (area_saved_prop),
+                    }
+                )
+
+                # Update the dataclass that stores the simulation's behavior.
+                self.data.update(sim_timestep_dict)    
+
+    def reset(self, env_is_rendering: bool = False, benchmark_exists: bool = False):
         """Reset the attributes of `FireSimulationData` to initial values."""
+
 
         # NOTE: either create new object or use dataclasses.replace()
         save_history = env_is_rendering and self.save_history
+        #breakpoint()
         self.data = SimulationData(self._is_benchmark, save_history)
+        self.benchmark_exists = benchmark_exists
 
         # Reset attributes used to store simulation behavior across a single episode.
         self.num_sim_steps = 0
