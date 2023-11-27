@@ -1,0 +1,13 @@
+# Initial input size (by assumption): [128, 128, 8]
+conv_filters: [
+  [16, [8, 8], 4],
+  # new in_size: 
+  [32, [4, 4], 2],
+  # new in_size: 
+  [64, [4, 4], 2],
+  # new in_size: 
+  [128, [4, 4], 2],
+  # new in_size: 
+  [256, [4, 4], 1]
+]
+# use_lstm: true
