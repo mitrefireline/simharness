@@ -31,6 +31,7 @@ from ray.tune.result_grid import ResultGrid
 import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
+from ray.rllib.utils.replay_buffers.replay_buffer import StorageUnit
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
@@ -233,6 +234,26 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .callbacks(RenderEnv)
     )
 
+
+    #Use Prioritized Replay Buffer
+    replay_buffer_config = {
+            "_enable_replay_buffer_api": True,
+            "type": "MultiAgentPrioritizedReplayBuffer",
+            "capacity": 4000,
+            "prioritized_replay_alpha": 0.6,
+            "prioritized_replay_beta": 0.4,
+            #"prioritized_replay_eps": 1e-7,
+            "storage_unit": "episodes",
+            "replay_sequence_length": 1,
+            
+        }
+    
+    algo_cfg = algo_cfg.training(replay_buffer_config=replay_buffer_config)
+
+    #Uncomment these for PPO
+    #algo_cfg.training(_enable_learner_api=False)
+    #algo_cfg.rl_module(_enable_rl_module_api=False)
+    
     return algo_cfg
 
 
