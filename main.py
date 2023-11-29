@@ -16,8 +16,8 @@ from importlib import import_module
 from typing import Any, Dict, Tuple
 
 import hydra
-import ray
 import numpy as np
+import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
@@ -27,13 +27,12 @@ from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
+from simfire.enums import BurnStatus
 
 # from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
-
-from simfire.enums import BurnStatus
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
@@ -206,7 +205,7 @@ def _instantiate_config(
     # TODO: This blocks us from being able to have `view()` can we change this?
     env_module, env_cls = cfg.environment.env.rsplit(".", 1)
     env_cls = getattr(import_module(env_module), env_cls)
-    register_env(cfg.environment.env, lambda config: env_cls(config))
+    register_env(cfg.environment.env, lambda config: env_cls(**config))
 
     return env_settings, eval_settings, debug_settings, exploration_cfg
 

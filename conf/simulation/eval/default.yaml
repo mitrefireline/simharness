@@ -1,5 +1,5 @@
 area:
-  screen_size:         
+  screen_size:
     _target_: builtins.tuple
     # NOTE: This will initialize the fire at the center of the screen
     _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
@@ -29,8 +29,10 @@ operational:
   seed: null
   latitude: 36.09493 # top left corner
   longitude: -120.52193 # top left corner
-  height: ${operational_screen_size:${simulation.screen_height}}
-  width: ${operational_screen_size:${simulation.screen_width}}
+  # height: ${operational_screen_size:${simulation.screen_height}}
+  # width: ${operational_screen_size:${simulation.screen_width}}
+  height: 5000
+  width: 5000
   resolution: 30
   year: 2019  # ${simulation.operational.year}
 

@@ -47,7 +47,7 @@ class RenderEnv(DefaultCallbacks):
         # TODO: Handle edge case where num_evaluation_workers == 0.
         # Make the trial result path accessible to each env (for gif saving).
         algorithm.evaluation_workers.foreach_worker(
-            lambda w: w.foreach_env(lambda env: env.set_trial_results_path(logdir)),
+            lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
             local_worker=False,
         )
 

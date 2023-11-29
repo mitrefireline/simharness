@@ -34,6 +34,6 @@ benchmark_sim: ${.sim}
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
 # NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).
 # benchmark_sim: null
-action_space_partial:
-  _partial_: true
-  _target_: gymnasium.spaces.Discrete
+action_space_cls:
+  _target_: hydra.utils.get_class
+  path: gymnasium.spaces.Discrete
