@@ -58,27 +58,57 @@ environment.
 
 # Installation
 
-**Note:** *For the time being, a `requirements.txt` file will be used to install the project dependencies.*
+*Note: SimHarness has only been tested on Ubuntu 18.04 and Python 3.9.18
 
 1. **Clone the repository.**
 
-```bash
-git clone https://github.com/mitrefireline/simharness.git
-```
+    ```bash
+    git clone https://github.com/mitrefireline/simharness.git
+    ```
 
-2. **Create a conda environment.**
+2. **Setup Pyenv Virtual Environment**
 
-```bash
-conda create --yes --name sh2 python=3.9.*
-conda activate sh2
-```
+    ```bash
+    curl https://pyenv.run | bash
+    ```
 
-3. **Install required packages.**
+    ```bash
+    export PYENV_ROOT="$HOME/.pyenv"
+    command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+    ```
 
-```bash
-pip install -r requirements.txt
-pip install ray[rllib]==2.6.2
-```
+    ```bash
+    pyenv install 3.9.18
+    pyenv local 3.9.18
+    ```
+
+3. **Install poetry**
+
+    ```bash
+    curl -sSL https://install.python-poetry.org | python3 -
+    ```
+
+    *Note: Don't forget to add `poetry` to your path.*
+    ```bash
+    export PATH="$HOME/.local/bin:$PATH"
+    ```
+
+    ```bash
+    poetry config virtualenvs.in-project true
+    poetry env use 3.9.18
+    ```
+
+4. **Install required packages**
+
+    ```bash
+    cd simharness
+    poetry shell
+    poetry install --no-dev
+    ```
+
+    *Note: To re-enter the environment after this step, run `poetry shell`.*
+
 
 # Getting Started
 
