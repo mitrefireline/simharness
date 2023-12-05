@@ -104,7 +104,7 @@ environment.
     ```bash
     cd simharness
     poetry shell
-    poetry install --no-dev
+    poetry install --only main
     ```
 
     *Note: To re-enter the environment after this step, run `poetry shell`.*

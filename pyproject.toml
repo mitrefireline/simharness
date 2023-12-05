@@ -1,77 +1,55 @@
+[build-system]
+requires = ["poetry-core>=1.0.0", "swig=^4.1.1"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
 name = "simharness"
 version = "1.0.0"
-description = "Reinforcement learning harness to train a variety of agents within environments wrapped around wildfire projection modelers."
-authors = ["Tim Welsh <twelsh@mitre.org>", "Marissa Dotter <mdotter@mitre.org>",
-           "Michael Doyle <mdoyle@mitre.org>", "Dhanuj Gandikota <dgandikota@mitre.org>",
-           "Chris Kempis <ckempis@mitre.org>", "Lauren Schambach <lschambach@mitre.org>",
-           "Alex Tapley <atapley@mitre.org>", "Michael Threet <mthreet@mitre.org>",
-           "Aidan Fennelly <afennelly@mitre.org", "Savanna Smith <sosmith@mitre.org"]
+description = "A modular reinforcement learning wrapper capable of automatically generating land management strategies within SimFire to reduce the overall damage to an area."
+authors = ["Aidan Fennelly <afennelly@mitre.org>", "Alex Tapley <atapley@mitre.org>", "Dhanuj Gandikota <dgandikota@mitre.org>", "Tim Welsh <twelsh@mitre.org>"]
 readme = "README.md"
-include = ["simharness2/assets/simharness2-dalle.png"]
 keywords = ["python", "reinforcement learning", "simulation", "fire"]
-documentation = "https://fireline.pages.mitre.org/reinforcementlearning/simharness2/"
-repository = "https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2"
+repository = "https://github.com/mitrefireline/simharness"
+documentation = "https://mitrefireline.github.io/simharness"
 
 [tool.poetry.dependencies]
 python = "~3.9"
-# gymnasium = "0.26.3"
-# simfire = "^1.4.30"
-# hydra-core = "^1.3.2"
-# protobuf = "3.20.3"
-# tensorflow-probability = "^0.19.0"
-# aim = "^3.17.3"
-# tensorboardX = "2.6"
-# torch = { version = "^1.10.2", source="torch" }
-# torchvision = { version = "^0.11.3", source="torch" }
-# torch = "1.13.0"
-# torchvision = "0.14.0"
-# ray = "2.3.0"
-# conda-lock = "^1.4.0"
+ray = {version = "2.6.2", extras = ["rllib"]}
+gymnasium = "0.26.3"
+simfire = "^1.5.5"
+aim = "^3.17.5"
+hydra-core = "^1.3.2"
+torch = "^2.1.1"
 
 [tool.poetry.group.dev.dependencies]
-black = "^22.3.0"
-certifi = "^2022.6.15"
-flake8 = "^4.0.1"
-isort = "^5.10.1"
-mypy = "^0.961"
-pre-commit = "^2.19.0"
-pytest = "^7.1.2"
-bandit = "^1.7.4"
-
-[tool.poetry.group.coverage.dependencies]
-pytest-cov = "^3.0.0"
+bandit = {extras = ["toml"], version = "^1.7.5"}
+black = "^23.7.0"
+flake8 = "^6.0.0"
+isort = "^5.12.0"
+pre-commit = "^3.3.3"
+pytest = "^7.4.0"
 
 [tool.poetry.group.docs.dependencies]
-Sphinx = "^5.0.2"
-sphinx-autoapi = "^1.8.4"
-sphinx-rtd-theme = "^1.0.0"
-myst-parser = "^0.18.0"
+sphinx = "^7.2.6"
+sphinx-autoapi = "^3.0.0"
+myst-parser = "^2.0.0"
+sphinx-rtd-theme = "^1.2.2"
+
+[tool.poetry.group.coverage.dependencies]
+pytest-cov = "^4.1.0"
 
 [tool.black]
 line-length = 90
-target-version = ['py39']
+target-version = ["py39"]
 
-[tool.mypy]
-ignore_missing_imports = true
-allow_redefinition = true
-exclude = [
-    '/_tests/',
-    'tests/'
-]
+[tool.isort]
+profile = "black"
+line_length = 90
+lines_after_imports = 2
+lines_between_sections = 1
+honor_noqa = true
+skip_gitignore = true
 
-[tool.pydocstyle]
-# Possible conventions: pep257, numpy, google (see http://www.pydocstyle.org/en/stable/error_codes.html#default-conventions).
-convention = "google"
-# match '*.py' files that don't start with 'test_' or '__init'
-match = '(?![test_|__init]).*\.py'
-
-# [[tool.poetry.source]]
-# name = "torch"
-# url = "https://download.pytorch.org/whl/cu116"
-# default = false
-# secondary = true
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B311"]
