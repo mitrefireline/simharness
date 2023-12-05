@@ -75,6 +75,15 @@ performance can be viewed either in the command line output through Ray or in th
 [aim](https://aimstack.io) dashboard associated with the given trial. Learn more about
 Ray's *tune* capabilities [here](https://docs.ray.io/en/latest/tune/key-concepts.html).
 
+### Aim Monitoring
+
+[aim](https://aimstack.io) is an open-source experiment tracker for ML projects.
+Currently, aim is only available through running `tune` (not `train`). The aim data for a
+particular run is stored in the directory outlined in the main config, under `aim.repo`.
+To view the data through the aim dashboard, simply navigate to the repo storing the data
+and run `aim up`. For more information about using aim, please refer to their
+[docs page](https://aimstack.readthedocs.io/en/latest/quick_start/setup.html#browsing-results-with-aim-ui).
+
 ### Tuning Hyperparameters
 
 To select hyperparameters for tuning, SimHarness uses a separate
