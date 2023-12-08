@@ -1,0 +1,51 @@
+defaults:
+  - simulation: simfire
+  - training: simfire
+  - environment: marl
+  - framework: default
+  - rollouts: default
+  - evaluation: default
+  - exploration: default
+  # - debugging: default
+  - resources: default
+  - hydra: default
+  - _self_
+
+cli:
+  # Specify the run mode. Supported options: train, tune, view
+  mode: train
+  # Specify the root directory used to save data for the experiment.
+  data_dir: /data/lslab2/fireline
+algo:
+  name: DQN
+  # The path (str) to the checkpoint directory to use.
+  checkpoint_path: null
+# Specify configuration used to create the ray.air.RunConfig object
+run:
+  # Name of the training run (directory name)
+  name: null
+  # Directory to store results in (will be storage_path/name)
+  storage_path: ${hydra:run.dir}
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: 20
+  # Number of checkpoints to keep
+  num_to_keep: null
+stop_conditions:
+  training_iteration: 10
+debugging:
+  log_level: DEBUG
+  log_sys_usage: True
+  seed: 2000
+  # Prepare debugging settings
+  logger_config:
+    type:
+      _target_: hydra.utils.get_class
+      path: ray.tune.logger.TBXLogger
+    logdir: ${hydra:run.dir}
+
+# Override rollout settings for debug mode
+rollouts:
+  num_rollout_workers: 0
+  batch_mode: complete_episodes

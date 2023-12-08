@@ -3,8 +3,7 @@ sim:
   config:
     config_dict: ${simulation.eval}
 benchmark_sim: ${.sim}
-is_evaluation_env: True
-evaluation_duration: ${evaluation.evaluation_duration}
+in_evaluation: True
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 # NOTE: Override train settings to enable saving of data during evaluation.
 harness_analytics_partial:

@@ -10,6 +10,7 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+import logging
 import copy
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
@@ -26,13 +27,21 @@ from typing import (
     no_type_check,
 )
 
-import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simfire.sim.simulation import FireSimulation
 
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+)
+logger.addHandler(handler)
+logger.propagate = False
 
-class RLHarness(gym.Env, ABC):
+
+class RLHarness(MultiAgentEnv, ABC):
     """`Simulation` wrapper enabling RL agent's to interact with different simulators.
 
     The most important API methods a RLHarness exposes are `step()`, `reset()`,
@@ -77,6 +86,7 @@ class RLHarness(gym.Env, ABC):
         action_space_cls: Callable,
         deterministic: bool = False,
         benchmark_sim: FireSimulation = None,
+        num_agents: int = 1,
     ) -> None:
         """Inits RLHarness with blah FIXME.
 
@@ -122,14 +132,6 @@ class RLHarness(gym.Env, ABC):
         sim_attributes = self.sim.get_attribute_data()
         sim_actions = self.sim.get_actions()
 
-        # FIXME(afennelly) provide a better explanation (below) for sim_agent_id
-        # Make ID of agent +1 of the max value returned by the simulation for a location
-        # NOTE: Assume that every simulator will support 3 base scenarios:
-        #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
-        #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
-        #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
-        self.sim_agent_id = 3 + len(self.interactions) + 1
-
         # Before verifying that all interactions are supported by the simulator, we need
         # to remove the "none" interaction (if it exists).
         if "none" in self.interactions:
@@ -146,13 +148,27 @@ class RLHarness(gym.Env, ABC):
                 f"in the simulator's actions ({str(list(sim_actions.keys()))})!"
             )
 
-        # FIXME review purpose of sim_nonsim conversions + add brief comment
-        self._separate_sim_nonsim(sim_attributes)
         # NOTE: `self.harness_to_sim` used in `ReactiveHarness._update_mitigation()`.
         # FIXME `self.sim_to_harness` is NOT used anywhere else.
+        self._separate_sim_nonsim(sim_attributes)
         self.harness_to_sim, self.sim_to_harness = self._sim_harness_conv(sim_actions)
-        self.min_maxes = self._get_min_maxes()
 
+        self.num_agents = num_agents
+        # Each sim_agent_id is used to "encode" the agent position within the `fire_map`
+        # dimension of the returned observation of the environment. The intention is to
+        # help the model learn/use the location of the respective agent on the fire_map.
+        # NOTE: Assume that every simulator will support 3 base scenarios:
+        #  1. Untouched (Ex: simfire.enums.BurnStatus.UNBURNED)
+        #  2. Currently Being Affected (Ex: simfire.enums.BurnStatus.BURNING)
+        #  3. Affected (Ex: simfire.enums.BurnStatus.BURNED)
+        # The max value is +1 of the max mitigation value available (wrt the sim).
+        self._agent_id_start = max(self.harness_to_sim.values()) + 1
+        self._agent_id_stop = self._agent_id_start + self.num_agents
+        self._sim_agent_ids = np.arange(self._agent_id_start, self._agent_id_stop)
+        # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
+        self._agent_ids = {f"agent_{i}" for i in self._sim_agent_ids}
+
+        self.min_maxes = self._get_min_maxes()
         # NOTE: calling `reshape()` to switch to channel-minor format.
         channel_lows = np.array(
             [[[self.min_maxes[channel]["min"]]] for channel in self.attributes]
@@ -161,26 +177,32 @@ class RLHarness(gym.Env, ABC):
             [[[self.min_maxes[channel]["max"]]] for channel in self.attributes]
         ).reshape(1, 1, len(self.attributes))
 
-        self.low = np.repeat(
+        self._low = np.repeat(
             np.repeat(channel_lows, self.sim.config.area.screen_size[0], axis=1),
             self.sim.config.area.screen_size[0],
             axis=0,
         )
-        self.high = np.repeat(
+        self._high = np.repeat(
             np.repeat(channel_highs, self.sim.config.area.screen_size[0], axis=1),
             self.sim.config.area.screen_size[0],
             axis=0,
         )
 
-        # NOTE: Should we pass `seed` to seed the RNG used to sample from the space?
-        self.observation_space = spaces.Box(
-            self.low,
-            self.high,
-            dtype=np.float32,
+        # Provide full (preferred format) observation- and action-spaces as Dicts
+        # mapping agent IDs to the individual agents' spaces.
+        # TODO: Should we pass `seed` to seed the RNG used to sample from the space?
+        self._obs_space_in_preferred_format = True
+        obs_space = spaces.Box(self._low, self._high, dtype=np.float32)
+        self.observation_space = spaces.Dict(
+            {agent_id: obs_space for agent_id in self._agent_ids}
         )
 
+        self._action_space_in_preferred_format = True
         action_shape = self._get_action_space_shape(space_type=action_space_cls)
-        self.action_space = action_space_cls(action_shape)
+        action_space = action_space_cls(action_shape)
+        self.action_space = spaces.Dict(
+            {agent_id: action_space for agent_id in self._agent_ids}
+        )
 
     @no_type_check
     @abstractmethod
@@ -189,7 +211,7 @@ class RLHarness(gym.Env, ABC):
         *,
         seed: Optional[int] = None,
         options: Optional[Dict[Any, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[Any, Any]]:
+    ) -> Tuple[Dict[Any, np.ndarray], Dict[Any, Dict[Any, Any]]]:
         """Resets the environment to an initial state.
 
         This method generates a new starting state often with some randomness to ensure
@@ -211,12 +233,18 @@ class RLHarness(gym.Env, ABC):
         Returns:
             An ndarray containing the initial state of the environment.
         """
-        super().reset(seed=seed)
+        super().reset(seed=seed, options=options)
 
     @abstractmethod
     def step(
-        self, action: np.ndarray
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+        self, action_dict: Dict[Any, np.ndarray]
+    ) -> Tuple[
+        Dict[Any, np.ndarray],
+        Dict[Any, float],
+        Dict[Any, bool],
+        Dict[Any, bool],
+        Dict[Any, Dict[Any, Any]],
+    ]:
         """Run one timestep of the environment's dynamics.
 
         When end of episode is reached (`terminated or truncated` is True), you are

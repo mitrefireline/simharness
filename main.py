@@ -16,6 +16,7 @@ from importlib import import_module
 from typing import Any, Dict, Tuple
 
 import hydra
+import numpy as np
 import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
@@ -26,6 +27,7 @@ from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
+from simfire.enums import BurnStatus
 
 # from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
@@ -83,19 +85,20 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     trainable_algo_str = cfg.algo.name
     param_space = algo_cfg
 
-    # Override the variables we want to tune on
+    # Override the variables we want to tune on ()`param_space` is updated in-place).
     if cfg.tunables:
         _set_variable_hyperparameters(algo_cfg=param_space, cfg=cfg)
 
     # Configs for this specific trial run
     run_config = air.RunConfig(
-        name=cfg.runtime.name or None,
-        local_dir=cfg.runtime.local_dir,
+        name=cfg.run.name or None,
+        storage_path=cfg.run.storage_path,
         stop={**cfg.stop_conditions},
         callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
         failure_config=None,
         sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
         checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
+        log_to_file=cfg.run.log_to_file,
     )
 
     # TODO make sure 'reward' is reported with tune.report()
@@ -114,7 +117,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     results = tuner.fit()
     result_df = results.get_dataframe()
 
-    logging.info(result_df)
+    logging.debug(result_df)
     return results
 
 
@@ -202,7 +205,7 @@ def _instantiate_config(
     # TODO: This blocks us from being able to have `view()` can we change this?
     env_module, env_cls = cfg.environment.env.rsplit(".", 1)
     env_cls = getattr(import_module(env_module), env_cls)
-    register_env(cfg.environment.env, lambda config: env_cls(config))
+    register_env(cfg.environment.env, lambda config: env_cls(**config))
 
     return env_settings, eval_settings, debug_settings, exploration_cfg
 
@@ -219,6 +222,23 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     # Instantiate everything necessary for creating the algorithm config.
     env_settings, eval_settings, debug_settings, explor_cfg = _instantiate_config(cfg)
 
+    # Manually prepare agent_ids using same logic as within environments/rl_harness.py
+    num_agents = env_settings["env_config"].get("num_agents", 1)
+    interacts = env_settings["env_config"]["interactions"]
+    # map sh2 interactions to underlying BurnStatus category
+    interacts_map = {
+        "fireline": BurnStatus.FIRELINE,
+        "wetline": BurnStatus.WETLINE,
+        "scratchline": BurnStatus.SCRATCHLINE,
+    }
+    agent_id_start = (
+        max(set([int(v) for k, v in interacts_map.items() if k in interacts])) + 1
+    )
+    agent_id_stop = agent_id_start + num_agents
+    sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
+    # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
+    agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+
     algo_cfg = (
         get_trainable_cls(cfg.algo.name)
         .get_default_config()
@@ -231,6 +251,10 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
+        .multi_agent(
+            policies=agent_ids,
+            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+        )
     )
 
     return algo_cfg
@@ -247,9 +271,10 @@ def main(cfg: DictConfig) -> None:
     # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
-    ray.init(address="auto", log_to_driver=False)
+    # ray.init(address="auto", log_to_driver=False)
+    ray.init()
 
-    outdir = os.path.join(cfg.runtime.local_dir, HydraConfig.get().output_subdir)
+    outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")
 
     # Build the algorithm config.
