@@ -14,6 +14,8 @@ import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
+import math
+import copy
 
 import numpy as np
 from gymnasium import spaces
@@ -167,6 +169,27 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial=config.get("reward_cls_partial"))
 
+        # If the agent(s) places an effective mitigation (not placed in already damaged/mitigated square), this is set to True.
+        # FIXME Have this tracked across all of the agents
+        self.true_mitigation_placed: bool = False
+
+        # Bool to toggle the ability to terminate the agent simulation early if at the current timestep of the agent simulation
+        #   , the agents have caused more burn damage (burned + burning) than the final state of the benchmark fire map
+        # FIXME Have this value set in the configs
+        self._terminate_if_greater_damage = True
+
+        if self.benchmark_sim:
+            #Validate that benchmark and sim match seeds
+            assert self.sim.get_seeds() == self.benchmark_sim.get_seeds()
+
+            #create static list to store the episode benchsim firemaps
+            self.max_bench_length = 600
+            self.bench_firemaps = [0] * self.max_bench_lenght
+
+            #run the first benchmark sim to generate the benchmark sim firemaps and metrics for this episode
+            self._run_benchmark()
+
+
     def _set_debug_options(self, config: EnvContext):
         """Set the debug options for the environment."""
         self._debug_mode = config.get("debug_mode", False)
@@ -237,7 +260,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_agent_step(
-                timestep=self.timesteps, agents=self.agents
+                timestep=self.timesteps, agents=self.agents, true_mitigation_placed = self.true_mitigation_placed
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -264,10 +287,23 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO: Give each agent the "same" simple reward for now.
         reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
+        # Terminate episode early if burn damage in Agent Sim is larger than final bench fire map
+        if self.benchmark_sim:
+            if self._terminate_if_greater_damage:
+                total_area = self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
+
+                sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
+
+                benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
+
+                if sim_damaged_total > benchsim_damaged_total:
+                    terminated = True
+                    # TODO potentially add a static negative penalty for making the fire worse
+
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        if terminated:
-            reward += 10
+        #if terminated:
+            #reward += 10
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
@@ -345,6 +381,10 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         if self._agent_pos_is_unburned(agent) and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation(agent)
+        elif (not self._agent_pos_is_unburned()) and interact:
+            #set true_mitigation_placed to False if agent has placed mitigation in damaged/mitigated square
+            #FIXME: do for each agent
+            self.true_mitigation_placed = False
         else:
             # Overwrite value from previous timestep.
             agent.mitigation_placed = False
@@ -425,6 +465,8 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         mitigation_update = (agent.col, agent.row, sim_interaction)
         self.sim.update_mitigation([mitigation_update])
         agent.mitigation_placed = True
+        # Store indicator that a true mitigation was placed, which will be set back to False in self._do_one_agent_step if agent was in an already damaged/mitigated square
+        self.true_mitigation_placed = False
 
     def _do_one_simulation_step(self) -> bool:
         """Check if the simulation should be run, and then run it if necessary."""
@@ -438,10 +480,58 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
 
     def _run_simulation(self):
         """Run the simulation (s) for one timestep."""
-        if self.benchmark_sim:
-            self.benchmark_sim.run(1)
 
         self.sim.run(1)
+
+    def _run_benchmark(self):
+        """Runs the entire benchmark sim and stores the data needed for the rewards and bench fire maps within each episode"""
+
+        #use timesteps_copy to track the matching timestep that each benchsim fire map will match with the sim fire map
+        timesteps_copy = 0
+
+        #if the benchmark simulation has not been updated yet
+        if self.benchmark_sim.elapsed_steps == 0:
+            
+            self.benchmark_sim.run(1)
+
+            #update the benchsim metrics at this timesteps_copy in the harness analytics
+            if self.harness_analytics:     
+                self.harness_analytics.update_bench_after_one_simulation_step(
+            timestep=timesteps_copy
+            )
+
+            #update timesteps_copy to next time the simulation with the agent will update
+            timesteps_copy = timesteps_copy + self.agent_speed
+            
+            #store the bench fire map at the sim step
+            self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
+
+        #continue to run the benchmark simulation and update the benchsim data/metrics after each sim step    
+        while self.benchmark_sim.active == True:
+
+            self.benchmark_sim.run(1)
+
+            #update the benchsim metrics at this timesteps_copy in the harness analytics
+            if self.harness_analytics:     
+                self.harness_analytics.update_bench_after_one_simulation_step(
+            timestep=timesteps_copy
+            )
+
+            #update timesteps_copy to next time the simulation with the agent will update
+            timesteps_copy = timesteps_copy + self.agent_speed
+
+           #update the size of self.bench_firemaps if this benchmark simulation has lasted longer than any previous benchmark simulations
+           if ((self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1) > (self.max_bench_length - 1):
+
+                #append the bench fire map to the self.bench_firemaps
+                self.bench_firemaps.append(np.copy(self.benchmark_sim.fire_map))
+
+                #update the max length of the benchsim when defining future lists for self.bench_firemaps
+                self.max_bench_length = self.max_bench_length + 1
+
+           #else store the bench fire map at the sim step
+           else:
+                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
 
     def _update_state(self):
         """Modify environment's state to contain updates from the current timestep."""
@@ -452,6 +542,24 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             fire_map[agent.row, agent.col] = agent.sim_id
         # Modify the state to contain the updated fire map
         self.state[..., self.attributes.index("fire_map")] = fire_map
+
+        #Modify the state to contain the bench fire map at that sim step
+        if "bench_fire_map" in self.attributes:
+
+            bench_fire_map_idx = self.attributes.index("bench_fire_map")
+
+            #if the simulation has lasted longer that the benchmark sim, use the final state of the benchsim fire map
+            if (self.harness_analytics.benchmark_sim_analytics.num_sim_steps < self.harness_analytics.sim_analytics.num_sim_steps):
+                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
+            #else get the benchmark sim fire map from the same sim step as the simulation fire map
+            else:
+                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.sim_analytics.num_sim_steps) - 1]
+
+        #Modify the state to contain the final state of bench fire map       
+        if "bench_fire_map_final" in self.attributes:
+
+            bench_fire_map_final_idx = self.attributes.index("bench_fire_map_final")
+            self.state[..., (bench_fire_map_final_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
 
     def reset(
         self,
@@ -466,10 +574,15 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # `fire_map`, `terrain`, `fire_manager`, and all mitigations.
         logger.debug("Resetting `self.sim`...")
         self.sim.reset()
+        
+        bench_exists = False
         if self.benchmark_sim:
             logger.debug("Resetting `self.benchmark_sim`...")
+            # set the benchmark seeds to match the sim seeds
+            self.benchmark_sim.set_seeds(seed_dict)
             # reset benchmark simulation
             self.benchmark_sim.reset()
+            bench_exists = True
 
         # Reset the agent's contained within the `FireSimulation`.
         logger.debug("Resetting `self.agents`...")
@@ -479,7 +592,7 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # Reset `ReactiveHarnessAnalytics` to initial conditions, if it exists.
         if self.harness_analytics:
             logger.debug("Resetting `self.harness_analytics`...")
-            self.harness_analytics.reset()
+            self.harness_analytics.reset(benchmark_exists=bench_exists)
 
         # Get the initial state of the `FireSimulation`, after it has been reset (above).
         sim_observations = super()._select_from_dict(
@@ -517,6 +630,15 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         marl_obs = {ag_id: self.state for ag_id in self._agent_ids}
         infos = {ag_id: {} for ag_id in self._agent_ids}
 
+        # If the agent(s) places an effective mitigation (not placed in already damaged/mitigated square), this is set to True.
+        # FIXME Have this tracked across all of the agents
+        self.true_mitigation_placed: bool = False
+
+        #Run the new benchsim to obtain the benchsim data used to generate the rewards and policy
+        if self.benchmark_sim:
+            #run benchmark sim to generate the benchmark sim firemaps and metrics for this episode
+            self._run_benchmark()
+
         return marl_obs, infos
 
     def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:  # noqa
@@ -533,11 +655,31 @@ class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             "min": 0,
             "max": max(self._sim_agent_ids),
         }
+        nonsim_min_maxes["bench_fire_map"] = {
+            "min": 0,
+            "max": max(self._sim_agent_ids),
+        }
+        nonsim_min_maxes["bench_fire_map_final"] = {
+            "min": 0,
+            "max": max(self._sim_agent_ids),
+        }
         return nonsim_min_maxes
 
     def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:  # noqa
         nonsim_data = ordered_dict()
         nonsim_data["fire_map"] = self._create_fire_map()
+        nonsim_data["bench_fire_map"] = np.zeros(
+            (
+                self.sim.config.area.screen_size[0],
+                self.sim.config.area.screen_size[0],
+            )
+        )
+        nonsim_data["bench_fire_map_final"] = np.zeros(
+            (
+                self.sim.config.area.screen_size[0],
+                self.sim.config.area.screen_size[0],
+            )
+        )
         return nonsim_data
 
     def render(self):  # noqa
