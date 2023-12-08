@@ -1,5 +1,5 @@
 defaults:
-  - model: screen_size_128
+  - model: screen_size_128_complex
 
 ## For SARL DQN with episode based PER - BenchFirstRewardV4
 v_min: 0
