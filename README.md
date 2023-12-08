@@ -1,113 +1,141 @@
-# SimHarness2: Modular Reinforcement Learning Harness for Natural Disaster Modelers (RLlib)
+# SimHarness -  Reinforcement Learning for Wildfire Mitigation in Simulated Disaster Environments
+
+SimHarness is a Python-based harness that wraps a [SimFire](https://github.com/mitrefireline/simfire/tree/main)
+environment to generate effective wildfire mitigation strategy responses via reinforcement
+learning (RL). Through an easy-to-use API, SimHarness can train one, or multiple,
+intelligent agents within the SimFire Simulation with a variety of different RL algorithms
+defined by [RLlib](https://docs.ray.io/en/latest/rllib/index.html).
+
+Documentation is available [here](https://mitrefireline.github.io/simharness/).
 
 <figure>
     <p align="center">
         <p align="center">
-            <img src="assets/icons/simharness2_logo.png">
+            <img src="docs/images/workflow.png">
+            Conceptual workflow for training an RL model using SimHarness within the SimFire environment.
         </p>
 </figure>
 
+**Table of Contents**
 
-# Introduction
+- [About SimHarness](#about-simharness)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [License](#license)
+- [Citation](#citation)
 
-SimHarness is a modular reinforcement learning harness based on the RLlib framework written in PyTorch made to interact with natural disaster modelers.
-SimHarness's easy-to-use interface allows for the quick and simple training of intelligent agents within any simulation that implements the required API interface, such as [SimFire](https://gitlab.mitre.org/fireline/simfire).
+# About SimHarness
+
+SimHarness is a Python repository designed to support the training of
+[RLlib](https://docs.ray.io/en/latest/rllib/index.html) RL algorithms within simulated
+disaster environments defined by
+[SimFire](https://github.com/mitrefireline/simfire/tree/main). SimHarness takes as input
+an instance of the
+[SimFire Simulation class](https://github.com/mitrefireline/simfire/blob/39abc5a34b103a306c776a3c2972c10a87d0e652/simfire/sim/simulation.py#L37),
+such as SimFire's
+[FireSimulation](https://github.com/mitrefireline/simfire/blob/39abc5a34b103a306c776a3c2972c10a87d0e652/simfire/sim/simulation.py#L173),
+as the training environment.
+The [Simulation](https://github.com/mitrefireline/simfire/blob/39abc5a34b103a306c776a3c2972c10a87d0e652/simfire/sim/simulation.py#L37)
+object provides an API that allows SimHarness to move agents around the simulated
+environment and interact with it by placing mitigations. The
+[FireSimulation](https://github.com/mitrefireline/simfire/blob/39abc5a34b103a306c776a3c2972c10a87d0e652/simfire/sim/simulation.py#L173)
+agents represent firefighters moving through an environment as a wildfire spreads,
+placing mitigations such as firelines to limit the spread of the fire within the area.
+
+The SimHarness training loop functions similarly to a traditional RL training loop, except
+it expects the passed-in environment to be a child class of `Simulation` as opposed to a
+[gymnasium](https://gymnasium.farama.org) environment. `Simulation`` is currently a class
+within the SimFire package, but is expected to be moved to a separate,
+non-disaster-specific package in the future. The simulated environment outputs training
+signals such as observations and rewards to the SimHarness agent(s) which use the
+observations to predict optimal actions. The actions produced by the model provide both
+`movement` and `interaction` information. `Movements` are how the agent is traversing
+across the environment, such as `[nothing, up, down, left, right]`. `Interactions` are how
+the agent is changing the environment itself. In the case of SimFire, this can be
+`[nothing, fireline, wetline, scratchline]`. These actions are relayed back to the
+simulated environment, which then affects the overall disaster scenario simulated by the
+environment.
 
 # Installation
-- For the time being, a `requirements.txt` file will be used to install the project dependencies.
 
-Clone the repository:
+*Note: SimHarness has only been tested on Ubuntu 18.04 and Python 3.9.18
 
-(with HTTPS)
-```shell
-git clone https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2.git
-```
-(with SSH)
-```shell
-git clone git@gitlab.mitre.org:fireline/reinforcementlearning/simharness2.git
-```
-Then, create and populate the `sh2` conda environment with project dependencies:
-```shell
-cd simharness2/
-sudo apt-get update && sudo apt-get install build-essential libgl1 -y
-# Create a conda environment with the correct python version
-conda create --yes --name sh2 python=3.9.*
-conda activate sh2
-pip install -r requirements.txt
-pip install ray[rllib]==2.6.2
-```
+1. **Clone the repository.**
 
-## Troubleshooting
-- If you experience any `SSL` errors/warnings, try running the lines below, or append them to `$HOME/.bashrc` (preferred method). Then, rerun the installation commands above.
-```shell
-export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-```
+    ```bash
+    git clone https://github.com/mitrefireline/simharness.git
+    ```
 
-# Building Docker Image(s)
+2. **Setup Pyenv Virtual Environment**
 
-There are different flavors of docker images and only one of them ([simple](#simple)) currently works. The order of this section is by order of how close I think each dockerfile is to producing a working image once built.
+    ```bash
+    curl https://pyenv.run | bash
+    ```
 
-## Simple
+    ```bash
+    export PYENV_ROOT="$HOME/.pyenv"
+    command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+    ```
 
-**File**: [`docker/simple.dockerfile`](docker/simple.dockerfile)
+    ```bash
+    pyenv install 3.9.18
+    pyenv local 3.9.18
+    ```
 
-The simplest docker image just has the [`rayproject/ray:2.3.0-py39-gpu`](https://hub.docker.com/r/rayproject/ray) image as the base image and uses the [`requirements.txt`](requirements.txt) file to install the dependencies during build time. This doesn't install poetry or is using multi-stage builds because that was causing major headaches due to the way `ray` builds their docker images. The more complicated docker images below don't currently work but are described anyway.
+3. **Install poetry**
 
-The problem with this is that the [`requirements.txt`](requirements.txt) file has to be updated along with poetry to ensure the builds work. Not ideal.
+    ```bash
+    curl -sSL https://install.python-poetry.org | python3 -
+    ```
 
-**To build**:
+    *Note: Don't forget to add `poetry` to your path.*
+    ```bash
+    export PATH="$HOME/.local/bin:$PATH"
+    ```
 
-```shell
-docker build -f docker/simple.dockerfile .
-```
+    ```bash
+    poetry config virtualenvs.in-project true
+    poetry env use 3.9.18
+    ```
 
-## Ray
+4. **Install required packages**
 
-**File**: [`docker/ray.dockerfile`](docker/ray.dockerfile)
+    ```bash
+    cd simharness
+    poetry shell
+    poetry install --only main
+    ```
 
-This was an attempt at using poetry to install the dependencies in the [`rayproject/ray:2.3.0-py39-gpu`](https://hub.docker.com/r/rayproject/ray) docker image, using it as a single stage build. This didn't work because I couldn't get the image to use the correct python when either installing the dependencies through poetry or running the test script after build when doing `docker run ...`.
-
-**To build**:
-
-```shell
-docker build -f docker/ray.dockerfile .
-```
-
-## Multi
-
-**File**: [`docker/multi.dockerfile`](docker/multi.dockerfile)
-
-This is the most-tested multi-stage build dockerfile, but still does not work. It uses `continuumio/miniconda3:latest` as the build stage and `rayproject/ray:2.3.0-py39-gpu` as the deploy stage. I couldn't get the conda environment built in the first stage (using poetry) to correctly copy over to the second stage so that it could be used. This is because of how the `ray` image is built.
+    *Note: To re-enter the environment after this step, run `poetry shell`.*
 
 
-**To build**:
+# Getting Started
 
-```shell
-docker build -f docker/multi.dockerfile .
-```
+SimHarness provides a number of tutorials within the `tutorials` section of the
+documentation. Documentation is available [here](https://mitrefireline.github.io/simharness/).
 
-## Nvidia
+# License
 
-**File**: [`docker/nvidia.dockerfile`](docker/nvidia.dockerfile)
+SimHarness is released under the [Apache 2.0 license](LICENSE).
 
-This image is essentially the same as the [multi](docker/multi.dockerfile) image, but it uses `nvidia/cuda:11.2.0-runtime-ubuntu20.04` as the deploy image to get around the difficulties of `multi`. This didn't work either.
+# Citation
 
-**To build**:
+If you use SimHarness for your work, please cite our white paper with the following BibTex entry.
 
-```shell
-docker build -f docker/nvidia.dockerfile .
+```BibTeX
+@misc{tapley2023simharness,
+      title={Reinforcement Learning for Wildfire Mitigation in Simulated Disaster Environments},
+      author={Alexander Tapley and Marissa Dotter and Michael Doyle and Aidan Fennelly and Dhanuj Gandikota and Savanna Smith and Michael Threet and Tim Welsh},
+      year={2023},
+      booktitle={"Proc. of the Tackling Climate Change with Machine Learning Workshop"},
+      series={NeurIPS},
+      howpublished={\url{https://arxiv.org/abs/2311.15925}}
+}
 ```
 
-## Code Server
+This project contains content developed by The MITRE Corporation. If this code is used in
+a deployment or embedded within another project, it is requested that you send an email
+to opensource@mitre.org in order to let us know where this software is being used.
 
-**File**: [`docker/code-server.dockerfile`](docker/code-server.dockerfile)
-
-This was just the beginnings of putting the necessary packages into a docker image that also had code-server installed. Not tested all that much.
-
-**To build**:
-
-```shell
-docker build -f docker/code-server.dockerfile .
-```
+Copyright ©2022-2023 The MITRE Corporation. ALL RIGHTS RESERVED. Approved for Public Release; Distribution Unlimited. Public Release Case Number 22-3261.
