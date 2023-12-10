@@ -107,6 +107,20 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         # TODO: Give each agent the "same" simple reward for now.
         reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
+        # Terminate episode early if burn damage in Agent Sim is larger than final bench fire map
+        self._terminate_if_greater_damage = False #FIXME get rid of this line when the fixme in the if statement below is implemented
+        if self.benchmark_sim:
+            if self._terminate_if_greater_damage:
+                total_area = self.sim.fire_map.size
+
+                sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
+                # FIXME Fix this damage calculation if needed to account for damage across all the agent sims
+                benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
+
+                if sim_damaged_total > benchsim_damaged_total:
+                    terminated = True
+                    # TODO potentially add a static negative penalty for making the fire worse
+
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
         if terminated:
