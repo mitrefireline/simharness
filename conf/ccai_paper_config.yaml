@@ -1,0 +1,69 @@
+defaults:
+  - config
+  - _self_
+
+# Specify configuration pass to the `AimLoggerCallback`
+aim:
+  experiment: ccai_paper
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: 100
+  # Number of checkpoints to keep
+  num_to_keep: 5
+stop_conditions:
+  timesteps_total: 2000000000
+  episode_reward_mean: 10000000
+
+environment:
+  env: simharness2.environments.reactive.ReactiveHarness
+  env_config:
+    movements: [up, down, left, right]
+    interactions: [fireline]
+    attributes: [fire_map, bench_fire_map, bench_fire_map_final]
+    normalized_attributes: []
+    agent_speed: 4
+    num_agents: 1
+    agent_initialization_method: manual
+    initial_agent_positions: [[0, 64]]
+    # Defines the class that will be used to perform reward calculation at each timestep.
+    reward_cls_partial:
+      _target_: simharness2.rewards.base_reward.AreaSavedPropReward
+      _partial_: true
+    randomize_initial_agent_pos: false
+    benchmark_sim: ${.sim} # FIXME: Verify this interpolation works as expected.
+
+exploration:
+  exploration_config:
+    type: EpsilonGreedy
+    #For 20000 episodes
+    #Average 512 timesteps per episodes
+    initial_epsilon: 1.0
+    final_epsilon: 0.05
+    warmup_timesteps: 972800
+    epsilon_timesteps: 8755200
+
+resources:
+  num_gpus: 1
+
+simulation:
+  train:
+    fire:
+      diagonal_spread: true
+
+  eval:
+    fire:
+      diagonal_spread: true
+
+training:
+  ## For SARL DQN with episode based PER - AreaSavedPropReward
+  v_min: 0
+  v_max: 5
+  noisy: true
+  lr: 0.00454119
+  n_step: 4
+  num_atoms: 10
+  num_steps_sampled_before_learning_starts: 200000
+  target_network_update_freq: 3000
+  train_batch_size: 1
+  gamma: 0.95
