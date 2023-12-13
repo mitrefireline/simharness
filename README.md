@@ -64,6 +64,7 @@ environment.
 
     ```bash
     git clone https://github.com/mitrefireline/simharness.git
+    cd simharness
     ```
 
 2. **Setup Pyenv Virtual Environment**
@@ -102,7 +103,6 @@ environment.
 4. **Install required packages**
 
     ```bash
-    cd simharness
     poetry shell
     poetry install --only main
     ```

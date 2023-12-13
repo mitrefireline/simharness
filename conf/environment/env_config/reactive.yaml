@@ -23,14 +23,15 @@ harness_analytics_partial:
       movement_types: ${....movements}
       interaction_types: ${....interactions}
 reward_cls_partial:
-  _target_: simharness2.rewards.base_reward.ComprehensiveReward
+  _target_: simharness2.rewards.base_reward.SimpleReward
   _partial_: true
-  fixed_reward: 100
-  static_penalty: 50
-  invalid_movement_penalty: 5
-initial_agent_pos: [50, 50]
-randomize_initial_agent_pos: false
-benchmark_sim: ${.sim}
+  # fixed_reward: 100
+  # static_penalty: 50
+  # invalid_movement_penalty: 5
+
+agent_initialization_method: manual
+initial_agent_positions: [[50, 50]]
+# benchmark_sim: ${.sim}
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
 # NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).
 # benchmark_sim: null
