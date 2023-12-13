@@ -1,8 +1,8 @@
-sim:
-  _target_: simfire.sim.simulation.FireSimulation
-  config:
-    _target_: simfire.utils.config.Config
-    config_dict: ${simulation.train}
+defaults:
+  - base_env_config
+  - sim: fire_simulation
+  - action_space_cls: multi_discrete
+
 movements: [none, up, down, left, right]
 interactions: [fireline, none, wetline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
@@ -35,6 +35,6 @@ initial_agent_positions: [[50, 50]]
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
 # NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).
 # benchmark_sim: null
-action_space_cls:
-  _target_: hydra.utils.get_class
-  path: gymnasium.spaces.Discrete
+# action_space_cls:
+#   _target_: hydra.utils.get_class
+#   path: gymnasium.spaces.Discrete

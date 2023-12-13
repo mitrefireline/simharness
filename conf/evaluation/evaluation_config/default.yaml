@@ -1,5 +1,5 @@
 defaults:
-  - _self_
+  # - _self_
   # Override value (s) to use eval simulation instead of train simulation, etc.
   - env_config: reactive
 

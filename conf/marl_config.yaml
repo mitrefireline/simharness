@@ -15,7 +15,7 @@ defaults:
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
   run_hash: null
-  repo: ${cli.data_dir}/simharness/aim
+  repo: ${data_dir}/simharness/aim
   experiment: debug_alex
   system_tracking_interval: null
   log_system_params: true
@@ -40,7 +40,7 @@ run:
   # Directory to store results in (will be local_dir/name)
   storage_path: ${hydra:run.dir}
   # Log stdout and stderr to files in trial directories. If this is `False` (default), no
-  # files are written. If `true`, outputs are written to `trialdir/stdout` and 
+  # files are written. If `true`, outputs are written to `trialdir/stdout` and
   # `trialdir/stderr`, respectively.
   log_to_file: true
 # Specify configuration used to create the ray.air.CheckpointConfig object

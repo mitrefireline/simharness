@@ -48,23 +48,6 @@ batch_mode: "truncate_episodes"
 # process.
 validate_workers_after_construction: True
 
-# Whether to attempt to continue training if a worker crashes. The number of currently
-# healthy workers is reported as the “num_healthy_workers” metric.
-ignore_worker_failures: False
-
-# Whether - upon a worker failure - RLlib will try to recreate the lost worker as an
-# identical copy of the failed one. The new worker will only differ from the failed one
-# in its `self.recreated_worker=True` property value. It will have the same
-# `worker_index` as the original one. If True, the `ignore_worker_failures` setting will
-# be ignored.
-recreate_failed_workers: False
-
-# If True and any sub-environment (within a vectorized env) throws any error during env
-# stepping, the Sampler will try to restart the faulty sub-environment. This is done
-# without disturbing the other (still intact) sub-environment and without the
-# RolloutWorker crashing.
-restart_failed_sub_environments: False
-
 # Whether to LZ4 compress individual observations in the SampleBatches collected during
 # rollouts.
 compress_observations: False

@@ -1,0 +1,6 @@
+defaults:
+  - base_environment
+  - env_config: reactive
+
+# The environment specifier.
+env: simharness2.environments.ReactiveHarness

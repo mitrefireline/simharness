@@ -1,4 +1,5 @@
 defaults:
+  - simharness_base_config
   - simulation: simfire
   - training: simfire
   - environment: default
@@ -15,28 +16,28 @@ defaults:
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
   run_hash: null
-  repo: ${cli.data_dir}/simharness/aim
+  repo: ${data_dir}/simharness/aim
   experiment: debug_alex
   system_tracking_interval: null
   log_system_params: true
   capture_terminal_logs: true
   log_hydra_config: false
-cli:
-  # Specify the run mode. Supported options: train, tune, view
-  mode: ??? # Force command-line override
-  # Specify the root directory used to save data for the experiment.
-  # TODO: Ensure any values that use `data_dir` are properly updated to use
-  # /nfs/lslab2/fireline/simharness
-  data_dir: /nfs/lslab2/fireline
-algo:
-  name: DQN
-  # The path (str) to the checkpoint directory to use.
-  checkpoint_path: null
+# Specify the run mode. Supported options: train, tune, view
+mode: ??? # Force command-line override
+
+# Specify the root directory used to save data for the experiment.
+# TODO: Ensure any values that use `data_dir` are properly updated to use
+# /nfs/lslab2/fireline/simharness
+data_dir: /nfs/lslab2/fireline
+
+trainable_class: DQN
+# The path (str) to the checkpoint directory to use.
+checkpoint_path: null
 # Specify configuration used to create the ray.air.RunConfig object
 run:
   # Name of the training run (directory name)
   name: null
-  # Directory to store results in (will be local_dir/name)
+  # Directory to store results in (will be storage_path/name)
   storage_path: ${hydra:run.dir}
   log_to_file: true
 # Specify configuration used to create the ray.air.CheckpointConfig object
@@ -77,3 +78,5 @@ debugging:
       _target_: hydra.utils.get_class
       path: ray.tune.logger.TBXLogger
     logdir: ${hydra:run.dir}
+
+# ray_init:
