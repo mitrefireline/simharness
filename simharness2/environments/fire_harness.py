@@ -22,8 +22,8 @@ from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 from simfire.utils.config import Config
 
-from simharness2.agents import ReactiveAgent
-from simharness2.environments import Harness
+from simharness2.agents.agent import ReactiveAgent
+from simharness2.environments.harness import Harness
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         self, action: np.ndarray
     ) -> tuple[np.ndarray, SupportsFloat, bool, bool, dict[str, Any]]:
         """Run one timestep of the environment's dynamics."""
-        self._do_one_agent_step(action)
+        self._do_one_agent_step(action=action)
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_agent_step(

@@ -251,10 +251,11 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
-        .multi_agent(
-            policies=agent_ids,
-            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
-        )
+        # FIXME: Enable passing multi_agent settings to the algorithm config.
+        # .multi_agent(
+        #     policies=agent_ids,
+        #     policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+        # )
     )
 
     return algo_cfg
