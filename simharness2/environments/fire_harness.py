@@ -25,6 +25,7 @@ from simfire.utils.config import Config
 from simharness2.agents.agent import ReactiveAgent
 from simharness2.environments.harness import Harness
 
+
 logger = logging.getLogger(__name__)
 
 AnyFireSimulation = TypeVar("AnyFireSimulation", bound=FireSimulation)
@@ -55,7 +56,7 @@ class FireHarness(Harness[AnyFireSimulation]):
             normalized_attributes=normalized_attributes,
             in_evaluation=in_evaluation,
         )
-
+        # TODO: Define `benchmark_sim` in `DamageAwareReactiveHarness`.
         # Define attributes that are specific to the FireHarness.
         self.benchmark_sim = benchmark_sim
         # TODO: use more apt name, ex: `available_movements`, `possible_movements`.
@@ -119,21 +120,6 @@ class FireHarness(Harness[AnyFireSimulation]):
         self._setup_harness_analytics(harness_analytics_partial)
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial)
-        # Bool to toggle the ability to terminate the agent simulation early if at the current timestep of the agent simulation
-        #   , the agents have caused more burn damage (burned + burning) than the final state of the benchmark fire map
-        # TODO Have this value set in the configs
-        self._terminate_if_greater_damage = True
-
-        if self.benchmark_sim:
-            #Validate that benchmark and sim match seeds
-            assert self.sim.get_seeds() == self.benchmark_sim.get_seeds()
-
-            #use this to store the firemaps from the benchmark simulation if used in the state
-            if "bench_fire_map" in self.attributes:
-                #create static list to store the episode benchsim firemaps
-                self.max_bench_length = 600
-                self.bench_firemaps = [0] * self.max_bench_lenght
-
 
     def get_observation_space(self) -> spaces.Space:
         """TODO."""
@@ -180,39 +166,22 @@ class FireHarness(Harness[AnyFireSimulation]):
                 timestep=self.timesteps
             )
 
-        # TODO(afennelly): Need to handle truncation properly. For now, we assume that
-        # the episode will never be truncated, but this isn't necessarily true.
-        truncated = False
-        # TODO: Ask @mdoyle to fix the below issue.
-        # FIXME `fire_status` is set in `FireSimulation.__init__()`, while `active` is
-        # set in `FireSimulation.run()`, so attribute DNE prior to first call to `run()`.
-        # terminated = self.sim.fire_status == GameStatus.QUIT
-        # The simulation has not yet been run via `run()`
-        if self.sim.elapsed_steps == 0:
-            terminated = False
-        else:
-            terminated = not self.sim.active
+        truncated = self._should_truncate()
+        terminated = self._should_terminate()
 
         # Calculate the reward for the current timestep
         # FIXME: pass `terminated` into `get_reward` method
-        reward = self.reward_cls.get_reward(self.timesteps, sim_run)
-
-        # Terminate episode early if burn damage in Agent Sim is larger than final bench fire map
-        if self.benchmark_sim:
-            if self._terminate_if_greater_damage:
-                total_area = self.sim.fire_map.size
-
-                sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
-                benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
-
-                if sim_damaged_total > benchsim_damaged_total:
-                    terminated = True
-                    # TODO potentially add a static negative penalty for making the fire worse
+        reward = self.reward_cls.get_reward(
+            timestep=self.timesteps,
+            sim_run=sim_run,
+            agents=self.agents,
+            agent_speed=self.agent_speed,
+        )
 
         # FIXME account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        #if terminated:
-            #reward += 10
+        # if terminated:
+        # reward += 10
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
@@ -335,42 +304,6 @@ class FireHarness(Harness[AnyFireSimulation]):
         """Run the simulation (s) for one timestep."""
         self.sim.run(1)
 
-    def _run_benchmark(self):
-        """Runs the entire benchmark sim and stores the data needed for the rewards and bench fire maps within each episode"""
-        #use timesteps_copy to track the matching timestep that each benchsim fire map will match with the sim fire map
-        timesteps_copy = 0
-        #if the benchmark simulation has not been updated yet
-        if self.benchmark_sim.elapsed_steps == 0:          
-            self.benchmark_sim.run(1)
-            #update the benchsim metrics at this timesteps_copy in the harness analytics
-            if self.harness_analytics:     
-                self.harness_analytics.update_bench_after_one_simulation_step(
-            timestep=timesteps_copy
-            )
-            #update timesteps_copy to next time the simulation with the agent will update
-            timesteps_copy = timesteps_copy + self.agent_speed           
-            #store the bench fire map at the sim step
-            self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
-        #continue to run the benchmark simulation and update the benchsim data/metrics after each sim step    
-        while self.benchmark_sim.active == True:
-            self.benchmark_sim.run(1)
-            #update the benchsim metrics at this timesteps_copy in the harness analytics
-            if self.harness_analytics:     
-                self.harness_analytics.update_bench_after_one_simulation_step(
-            timestep=timesteps_copy
-            )
-            #update timesteps_copy to next time the simulation with the agent will update
-            timesteps_copy = timesteps_copy + self.agent_speed
-           #update the size of self.bench_firemaps if this benchmark simulation has lasted longer than any previous benchmark simulations
-           if ((self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1) > (self.max_bench_length - 1):
-                #append the bench fire map to the self.bench_firemaps
-                self.bench_firemaps.append(np.copy(self.benchmark_sim.fire_map))
-                #update the max length of the benchsim when defining future lists for self.bench_firemaps
-                self.max_bench_length = self.max_bench_length + 1
-           #else store the bench fire map at the sim step
-           else:
-                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
-
     def _update_state(self):
         """Modify environment's state to contain updates from the current timestep."""
         # Copy the fire map from the simulation so we don't overwrite it.
@@ -381,21 +314,23 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Modify the state to contain the updated fire map
         self.state[..., self.attributes.index("fire_map")] = fire_map
 
-        #Modify the state to contain the bench fire map at that sim step
-        if "bench_fire_map" in self.attributes:
-            bench_fire_map_idx = self.attributes.index("bench_fire_map")
-            #if the simulation has lasted longer that the benchmark sim, use the final state of the benchsim fire map
-            if (self.harness_analytics.benchmark_sim_analytics.num_sim_steps < self.harness_analytics.sim_analytics.num_sim_steps):
-                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
-            #else get the benchmark sim fire map from the same sim step as the simulation fire map
-            else:
-                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.sim_analytics.num_sim_steps) - 1]
+    def _should_truncate(self) -> bool:
+        # TODO(afennelly): Need to handle truncation properly. For now, we assume that
+        # the episode will never be truncated, but this isn't necessarily true.
+        return False
 
-        #Modify the state to contain the final state of bench fire map       
-        if "bench_fire_map_final" in self.attributes:
-            bench_fire_map_final_idx = self.attributes.index("bench_fire_map_final")
-            self.state[..., (bench_fire_map_final_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
+    def _should_terminate(self) -> bool:
+        # TODO: Ask @mdoyle to fix the below issue.
+        # FIXME `fire_status` is set in `FireSimulation.__init__()`, while `active` is
+        # set in `FireSimulation.run()`, so attribute DNE prior to first call to `run()`.
+        # terminated = self.sim.fire_status == GameStatus.QUIT
+        # The simulation has not yet been run via `run()`
+        if self.sim.elapsed_steps == 0:
+            terminated = False
+        else:
+            terminated = not self.sim.active
 
+        return terminated
 
     def reset(
         self,
@@ -411,12 +346,6 @@ class FireHarness(Harness[AnyFireSimulation]):
         logger.debug("Resetting `self.sim`...")
         self.sim.reset()
 
-        if self.benchmark_sim:
-            # set the benchmark seeds to match the sim seeds
-            self.benchmark_sim.set_seeds(seed_dict)
-            # reset benchmark simulation          
-            self.benchmark_sim.reset()
-            
         # Reset the agent's contained within the `FireSimulation`.
         logger.debug("Resetting `self.agents`...")
         for agent_id in self.agents.keys():
@@ -434,11 +363,6 @@ class FireHarness(Harness[AnyFireSimulation]):
         self._num_eval_iters = 0
 
         self._log_env_reset()
-
-        #Run the new benchsim to completion to obtain the benchsim data used to generate the rewards and policy
-        if self.benchmark_sim:
-            #run benchmark sim to generate the benchmark sim firemaps and metrics for this episode
-            self._run_benchmark()       
 
         return self.state, {}
 
@@ -550,11 +474,10 @@ class FireHarness(Harness[AnyFireSimulation]):
     def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:  # noqa
         nonsim_data = ordered_dict()
         nonsim_data["fire_map"] = self.prepare_fire_map()
-        nonsim_data["bench_fire_map"] = self.prepare_fire_map(is_benchmark = True)
-        nonsim_data["bench_fire_map_final"] = self.prepare_fire_map(is_benchmark = True)
         return nonsim_data
 
-    def prepare_fire_map(self, is_benchmark: bool = False) -> np.ndarray:
+    # FIXME: `prepare_initial_fire_map` is a better name for this method?
+    def prepare_fire_map(self, place_agents: bool = True) -> np.ndarray:
         """Prepare initial state of the `fire_map` attribute.
 
         Creates an ndarray of entirely `BurnStatus.UNBURNED`, except for:
@@ -568,8 +491,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         logger.debug(f"Placing initial fire position at row={row}, col={col}.")
         fire_map[row, col] = BurnStatus.BURNING
 
-        # The benchmark simulation will not contain any agents!
-        if is_benchmark:
+        # Enable the user to choose whether agent ids should be placed on fire_map.
+        if not place_agents:
             return fire_map
 
         agent_points = []
@@ -603,8 +526,6 @@ class FireHarness(Harness[AnyFireSimulation]):
             "min": 0,
             "max": max(self._sim_agent_ids),
         }
-        nonsim_min_maxes["bench_fire_map"] = {"min": 0, "max": max(self.sim.get_status_categories())}
-        nonsim_min_maxes["bench_fire_map_final"] = {"min": 0, "max": max(self.sim.get_status_categories())}
         return nonsim_min_maxes
 
     def _get_min_maxes(self) -> OrderedDict[str, Dict[str, Tuple[int, int]]]:
@@ -678,6 +599,7 @@ class FireHarness(Harness[AnyFireSimulation]):
             try:
                 self.harness_analytics = analytics_partial(
                     sim=self.sim,
+                    # TODO: Define `benchmark_sim` in `DamageAwareReactiveHarness`.
                     benchmark_sim=self.benchmark_sim,
                     agent_ids=self._agent_ids,
                 )
@@ -716,7 +638,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         else:
             self.reward_cls = None
 
-    def _get_status_categories(self, disaster_categories: List[str]) -> List[str]:
+    def _get_non_interaction_disaster_categories(self) -> Dict[str, int]:
         """Get disaster categories that aren't interactions.
 
         Arguments:
@@ -725,10 +647,11 @@ class FireHarness(Harness[AnyFireSimulation]):
         Returns:
             A list containing disaster categories (str), with interactions removed.
         """
-        categories = []
-        for cat in disaster_categories:
-            if cat not in self.interactions:
-                categories.append(cat)
+        categories = {}
+        enum_names_for_sim_actions = [v.name for v in self.sim.get_actions().values()]
+        for enum_name, enum_val in self.sim.get_disaster_categories().items():
+            if enum_name not in enum_names_for_sim_actions:
+                categories[enum_name] = enum_val
         return categories
 
 
@@ -778,3 +701,150 @@ class MultiAgentAsTupleActionReactiveHarness(ReactiveHarness[AnyFireSimulation])
             ].item()
             agent_action = action[agent_idx]
             super()._do_one_agent_step(agent=agent, action=agent_action)
+
+
+class DamageAwareReactiveHarness(ReactiveHarness[AnyFireSimulation]):
+    def __init__(
+        self,
+        *,
+        terminate_if_greater_damage: bool = True,
+        max_bench_length: int = 600,
+        **kwargs,
+    ):
+        # TODO: Verify this call to super init when using **kwargs
+        super().__init__(**kwargs)
+        # Bool to toggle the ability to terminate the agent simulation early if at the
+        # current timestep of the agent simulation, the agents have caused more burn
+        # damage (burned + burning) than the final state of the benchmark fire map.
+        # TODO Have this value set in the configs
+        self._terminate_if_greater_damage = terminate_if_greater_damage
+
+        # TODO: Define `benchmark_sim` here, and make it required (ie. never None).
+        if self.benchmark_sim:
+            # FIXME: Remove this once external env seeding is fully integrated.
+            # Validate that benchmark and sim match seeds
+            assert self.sim.get_seeds() == self.benchmark_sim.get_seeds()
+
+            # Store the firemaps from the benchmark simulation if used in the state.
+            if "bench_fire_map" in self.attributes:
+                # Create static list to store the episode benchsim firemaps
+                self._max_bench_length = max_bench_length
+                self._bench_firemaps = [0] * self._max_bench_length
+
+    def _should_terminate(self) -> bool:
+        # Retrieve original value, based on `FireHarness` definition of terminated.
+        terminated = super()._should_terminate()
+
+        # Terminate episode early if burn damage in Agent Sim > final bench firemap
+        if self.benchmark_sim:
+            if self._terminate_if_greater_damage:
+                total_area = self.sim.fire_map.size
+
+                sim_data = self.harness_analytics.sim_analytics.data
+                sim_damaged_total = sim_data.burned + sim_data.burning
+                benchsim_data = self.harness_analytics.benchmark_sim_analytics.data
+                benchsim_damaged_total = total_area - benchsim_data.unburned
+
+                if sim_damaged_total > benchsim_damaged_total:
+                    terminated = True
+                    # TODO potentially add a static negative penalty for making the fire worse
+
+        return terminated
+
+    def _update_state(self) -> None:
+        super()._update_state()
+
+        # Modify the state to contain the bench fire map at that sim step
+        if "bench_fire_map" in self.attributes:
+            bench_fire_map_idx = self.attributes.index("bench_fire_map")
+            # if the simulation has lasted longer that the benchmark sim, use the final state of the benchsim fire map
+            if (
+                self.harness_analytics.benchmark_sim_analytics.num_sim_steps
+                < self.harness_analytics.sim_analytics.num_sim_steps
+            ):
+                self.state[..., (bench_fire_map_idx)] = self._bench_firemaps[
+                    (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+                ]
+            # else get the benchmark sim fire map from the same sim step as the simulation fire map
+            else:
+                self.state[..., (bench_fire_map_idx)] = self._bench_firemaps[
+                    (self.harness_analytics.sim_analytics.num_sim_steps) - 1
+                ]
+
+        # Modify the state to contain the final state of bench fire map
+        if "bench_fire_map_final" in self.attributes:
+            bench_fire_map_final_idx = self.attributes.index("bench_fire_map_final")
+            self.state[..., (bench_fire_map_final_idx)] = self._bench_firemaps[
+                (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+            ]
+
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[dict] = None,
+    ) -> Tuple[np.ndarray, dict]:
+        """Reset environment to an initial state, returning an initial obs and info."""
+        # Use the following line to seed `self.np_random`
+        super().reset(seed=seed, options=options)
+
+        # Run the new benchsim to completion to obtain the benchsim data used to generate
+        # the rewards and policy
+        self.benchmark_sim.reset()
+        # TODO: Only call _run_benchmark if fire scenario differs from previous episode.
+        # This is somewhat tricky - must ensure that analytics.data is NOT reset!
+        self._run_benchmark()
+
+        return self.state, {}
+
+    def _run_benchmark(self):
+        """Run the entire benchmark sim and store the data needed for the rewards and bench fire maps within each episode."""
+        # TODO: We can remove the benchmark_sim entirely, and get this behavior by simply
+        # running self.sim until it terminates, then reset self.sim to the initial state.
+
+        # if self.sim.elapsed_steps > 0:
+        if self.benchmark_sim.elapsed_steps > 0:
+            raise RuntimeError(
+                "Benchmark simulation must be reset before running it again."
+            )
+
+        timesteps = 0
+        while self.benchmark_sim.active:
+            run_sim = timesteps % self.agent_speed == 0
+
+            if run_sim:
+                # TODO: Refactor logic into a method, and call it here.
+                # Run for one timestep, then update respective metrics.
+                self.benchmark_sim.run(1)
+                # FIXME: This method call is VERY redundant (see method logic)
+                self.harness_analytics.update_bench_after_one_simulation_step(
+                    timestep=timesteps
+                )
+
+                curr_step = self.harness_analytics.benchmark_sim_analytics.num_sim_steps
+                # Store the bench fire map at the sim step
+                if curr_step < self._max_bench_length - 1:
+                    self._bench_firemaps[curr_step - 1] = np.copy(
+                        self.benchmark_sim.fire_map
+                    )
+                else:
+                    self._bench_firemaps.append(np.copy(self.benchmark_sim.fire_map))
+                    self._max_bench_length += 1
+
+            timesteps += 1
+
+    def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:  # noqa
+        nonsim_data = super().get_nonsim_attribute_data()
+        nonsim_data["bench_fire_map"] = self.prepare_fire_map(place_agents=False)
+        nonsim_data["bench_fire_map_final"] = self.prepare_fire_map(place_agents=False)
+        return nonsim_data
+
+    def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:  # noqa
+        nonsim_min_maxes = super().get_nonsim_attribute_bounds()
+        bench_values = self._get_non_interaction_disaster_categories().values()
+        min_max_dict = {"min": min(bench_values), "max": max(bench_values)}
+        # TODO: Verify that using same min-max dict ref for both bench fire maps is ok.
+        nonsim_min_maxes.update(
+            {"bench_fire_map": min_max_dict, "bench_fire_map_final": min_max_dict}
+        )
+        return nonsim_min_maxes
