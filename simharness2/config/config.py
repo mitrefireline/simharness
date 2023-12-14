@@ -139,12 +139,12 @@ class SimulationConfig:
 
 @dataclass
 class TrainingConfig:
-    gamma: Optional[float] = None
+    gamma: float = 0.99
     # TODO: Enable user to specify a lr schedule.
     # NOTE: Using `LearningRateOrSchedule` type ann will raise:
     # omegaconf.errors.ConfigValueError: Unions of containers are not supported
     # lr: Optional[LearningRateOrSchedule] = None
-    lr: Optional[float] = None
+    lr: float = 0.001
     grad_clip: Optional[float] = None
     grad_clip_by: str = "global_norm"
     train_batch_size: Optional[int] = None
@@ -188,7 +188,7 @@ class RolloutsConfig:
     validate_workers_after_construction: bool = True
     preprocessor_pref: Optional[str] = None
     # Either "NoFilter" or "MeanStdFilter"
-    observation_filter: Optional[str] = None
+    observation_filter: str = "NoFilter"
     compress_observations: bool = False
 
     # FIXME: Ommitting these for now, but we should enable user to specify these later.

@@ -33,19 +33,19 @@ from simfire.enums import BurnStatus
 import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
+from simharness2.config import SimHarnessConfig, register_configs
 
+register_configs()
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
-# Register custom resolvers that are used within the config files
-OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 39))
-OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
-OmegaConf.register_new_resolver("square", lambda x: x**2)
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> None:
+def _set_variable_hyperparameters(
+    algo_cfg: AlgorithmConfig, cfg: SimHarnessConfig
+) -> None:
     """Override the algo_cfg hyperparameters we would like to tune over.
 
     Args:
@@ -72,7 +72,7 @@ def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) ->
     algo_cfg.training(**tunables["training"])
 
 
-def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
+def train_with_tune(algo_cfg: AlgorithmConfig, cfg: SimHarnessConfig) -> ResultGrid:
     """Iterate through combinations of hyperparameters to find optimal training runs.
 
     Args:
@@ -82,7 +82,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     Returns:
         ResultGrid: Set of Results objects from running Tuner.fit()
     """
-    trainable_algo_str = cfg.algo.name
+    trainable_algo_str = cfg.trainable_class
     param_space = algo_cfg
 
     # Override the variables we want to tune on ()`param_space` is updated in-place).
@@ -121,7 +121,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     return results
 
 
-def train(algo: Algorithm, cfg: DictConfig) -> None:
+def train(algo: Algorithm, cfg: SimHarnessConfig) -> None:
     """Train the given algorithm within RLlib.
 
     Args:
@@ -156,7 +156,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
 
 
 def _instantiate_config(
-    cfg: DictConfig,
+    cfg: SimHarnessConfig,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     """Instantiate the algorithm config used to build the RLlib training algorithm.
 
@@ -173,17 +173,8 @@ def _instantiate_config(
     # Instantiate the env and eval settings objects from the config.
     # NOTE: We are instantiating to a NEW object on purpose; otherwise a
     # `TypeError` will be raised when attempting to log the cfg to Aim.
-    env_settings = instantiate(cfg.environment, _convert_="partial")
-    eval_settings = instantiate(cfg.evaluation, _convert_="partial")
-
-    # FIXME: Fire scenario configuration disabled for now. Fix this in new MR.
-    # Get the operational fires we want to run evaluation with
-    # operational_fires = get_default_operational_fires(cfg)
-
-    # Inject operational fires into the evaluation settings
-    # eval_settings["evaluation_config"]["env_config"].update(
-    #     {"scenarios": operational_fires}
-    # )
+    env_settings = instantiate(cfg.environment, _convert_="all")  # FIXME!!!
+    eval_settings = instantiate(cfg.evaluation, _convert_="all")  # FIXME!!!
 
     # Prepare exploration options for the algorithm
     exploration_cfg = OmegaConf.to_container(
@@ -198,7 +189,7 @@ def _instantiate_config(
     # - The `Trainable._create_logger` method can be found here:
     # https://github.com/ray-project/ray/blob/8d2dc9a3997482100034b60568b06aad7fd9fc59/python/ray/tune/trainable/trainable.py#L1067
 
-    debug_settings = instantiate(cfg.debugging, _convert_="partial")
+    debug_settings = instantiate(cfg.debugging, _convert_="all")
 
     # Register the environment with Ray
     # NOTE: Assume that same environment cls is used for training and evaluation.
@@ -210,7 +201,7 @@ def _instantiate_config(
     return env_settings, eval_settings, debug_settings, exploration_cfg
 
 
-def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
+def _build_algo_cfg(cfg: SimHarnessConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     """Build the algorithm config and object for training an RLlib model.
 
     Args:
@@ -240,7 +231,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     agent_ids = {f"agent_{i}" for i in sim_agent_ids}
 
     algo_cfg = (
-        get_trainable_cls(cfg.algo.name)
+        get_trainable_cls(cfg.trainable_class)
         .get_default_config()
         .training(**cfg.training)
         .environment(**env_settings)
@@ -279,7 +270,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
-def main(cfg: DictConfig) -> None:
+def main(cfg: SimHarnessConfig) -> None:
     """Main entry-point for training a SimHarness model with RLlib.
 
     Args:
@@ -298,10 +289,10 @@ def main(cfg: DictConfig) -> None:
     # Build the algorithm config.
     algo_cfg = _build_algo_cfg(cfg)
 
-    if cfg.cli.mode == "train":
+    if cfg.mode == "train":
         algo = algo_cfg.build()
-        if cfg.algo.checkpoint_path:
-            ckpt_path = cfg.algo.checkpoint_path
+        if cfg.checkpoint_path:
+            ckpt_path = cfg.checkpoint_path
             LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
 
             if not os.path.isfile(ckpt_path):

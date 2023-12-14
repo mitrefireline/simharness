@@ -1,4 +1,5 @@
 defaults:
+  # See simharness.config
   - base_environment
   - env_config: reactive
 
