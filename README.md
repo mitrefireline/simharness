@@ -8,13 +8,10 @@ defined by [RLlib](https://docs.ray.io/en/latest/rllib/index.html).
 
 Documentation is available [here](https://mitrefireline.github.io/simharness/).
 
-<figure>
-    <p align="center">
-        <p align="center">
-            <img src="docs/images/workflow.png">
-            Conceptual workflow for training an RL model using SimHarness within the SimFire environment.
-        </p>
-</figure>
+<p align="center">
+    <img src="docs/images/workflow.png" width="1000"/> 
+</p>
+Conceptual workflow for training an RL model using SimHarness within the SimFire environment.
 
 **Table of Contents**
 
@@ -44,7 +41,7 @@ placing mitigations such as firelines to limit the spread of the fire within the
 
 The SimHarness training loop functions similarly to a traditional RL training loop, except
 it expects the passed-in environment to be a child class of `Simulation` as opposed to a
-[gymnasium](https://gymnasium.farama.org) environment. `Simulation`` is currently a class
+[gymnasium](https://gymnasium.farama.org) environment. `Simulation` is currently a class
 within the SimFire package, but is expected to be moved to a separate,
 non-disaster-specific package in the future. The simulated environment outputs training
 signals such as observations and rewards to the SimHarness agent(s) which use the
