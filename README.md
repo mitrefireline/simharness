@@ -8,10 +8,13 @@ defined by [RLlib](https://docs.ray.io/en/latest/rllib/index.html).
 
 Documentation is available [here](https://mitrefireline.github.io/simharness/).
 
-<p align="center">
-    <img src="docs/images/workflow.png" width="1000"/> 
-</p>
-Conceptual workflow for training an RL model using SimHarness within the SimFire environment.
+<div style="text-align: center">
+    <p align="center">
+        <img src="docs/images/workflow.png" />
+        <figcaption> Conceptual workflow for training an RL model using SimHarness within the SimFire environment. </figcaption> 
+    </p>
+</div>
+
 
 **Table of Contents**
 
