@@ -11,8 +11,8 @@ Documentation is available [here](https://mitrefireline.github.io/simharness/).
 <div style="text-align: center">
     <p align="center">
         <img src="docs/images/workflow.png" />
-        <figcaption> Conceptual workflow for training an RL model using SimHarness within the SimFire environment. </figcaption> 
     </p>
+    Conceptual workflow for training an RL model using SimHarness within the SimFire environment.
 </div>
 
 
