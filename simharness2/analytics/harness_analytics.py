@@ -119,13 +119,12 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             benchmark_sim=benchmark_sim,
         )
 
-       
         # Define attributes that are needed/accessed within `ComprehensiveReward` class.
         # TODO: Address where these attributes should be stored, see
         # https://gitlab.mitre.org/fireline/reinforcementlearning/simharness2/-/merge_requests/6#note_1504742
 
         if self.benchmark_sim_analytics:
-            #track the existence of the benchmark sim to generate the comparative (ex. area saved or burn rate reduction) metrics
+            # track the existence of the benchmark sim to generate the comparative (ex. area saved or burn rate reduction) metrics
             self.sim_analytics.benchmark_exists = True
 
         # Track the latest episode reward
@@ -167,14 +166,14 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             timestep: An integer indicating the current timestep of the episode.
         """
         sim_area = self.sim_analytics.sim.fire_map.size
-        
-        if self.benchmark_exists:
-            #update the sim metrics with comparison metrics that use the benchmark sim in sim_analytics
-            self.sim_analytics.update_sim_bench_comparison_metrics(timestep, benchmark_data = self.benchmark_sim_analytics.data.damaged)
+
+        if self.sim_analytics.benchmark_exists:
+            # update the sim metrics with comparison metrics that use the benchmark sim in sim_analytics
+            self.sim_analytics.update(
+                timestep, benchmark_data=self.benchmark_sim_analytics.data.damaged
+            )
         else:
             self.sim_analytics.update(timestep)
-        
-        return
 
     def update_bench_after_one_simulation_step(self, *, timestep: int) -> None:
         """Updates `self.benchmark_sim_analytics`, if exists.
@@ -185,7 +184,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         Arguments:
             timestep: An integer indicating the current timestep of the episode.
         """
-        
+
         if self.benchmark_sim_analytics:
             self.benchmark_sim_analytics.update(timestep)
 
@@ -237,7 +236,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         """
 
         self.sim_analytics.reset(env_is_rendering)
-        if self.benchmark_exists: bool = True
+        if self.benchmark_sim_analytics is not None:
             self.sim_analytics.benchmark_exists = True
 
         if self.benchmark_sim_analytics:
