@@ -16,7 +16,7 @@ stop_conditions:
   episode_reward_mean: 10000000
 
 environment:
-  env: simharness2.environments.reactive.ReactiveHarness
+  env: simharness2.environments.DamageAwareReactiveHarness
   env_config:
     movements: [up, down, left, right]
     interactions: [fireline]
@@ -30,8 +30,12 @@ environment:
     reward_cls_partial:
       _target_: simharness2.rewards.base_reward.AreaSavedPropReward
       _partial_: true
-    randomize_initial_agent_pos: false
     benchmark_sim: ${.sim} # FIXME: Verify this interpolation works as expected.
+
+evaluation:
+  evaluation_config:
+    env: ${environment.env}
+    env_config: ${environment.env_config}
 
 exploration:
   exploration_config:
