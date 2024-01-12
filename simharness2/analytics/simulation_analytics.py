@@ -7,9 +7,10 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import InitVar, dataclass
+from dataclasses import InitVar, dataclass, field
 from functools import partial
-from typing import Optional
+from typing import List, Optional
+import math
 
 import numpy as np
 import pandas as pd
@@ -36,6 +37,18 @@ class SimulationData:
 
     is_benchmark: bool = False
     save_history: InitVar[bool] = False
+
+    ## For Benchmark Simulations
+    # track damaged at each sim step
+    damaged: List[int] = field(default_factory=list)
+
+    ## For Agent Simulations
+    # track the new damaged squares
+    new_damaged: int = 0
+    # track the total value of damaged squares
+    total_damaged: int = 0
+    # track if this is the first simulation step occuring in episode
+    first_step: bool = True
 
     def __post_init__(self, save_history):
         """TODO"""
@@ -65,11 +78,41 @@ class SimulationData:
         self.burned = timestep_dict["burned"]
         self.unburned = timestep_dict["unburned"]
         self.burning = timestep_dict["burning"]
+        self.burn_rate = timestep_dict["burn_rate"]
+        self.size = timestep_dict["size"]
+
+        if self.is_benchmark:
+            # track the number of damaged squares at each benchmark simulation step
+            self.damaged.append((timestep_dict["size"] - timestep_dict["unburned"]))
 
         if not self.is_benchmark:
             self.mitigated = timestep_dict["mitigated"]
             # self.agent_interactions = timestep_dict["agent_interactions"]
             # self.agent_movements = timestep_dict["agent_movements"]
+
+            # store the operational comparison metrics if they were computed in the update step
+            if "area_saved" in timestep_dict:
+                self.area_saved = timestep_dict["area_saved"]
+                self.burn_rate_reduction = timestep_dict["burn_rate_reduction"]
+                self.bench_episode_length = timestep_dict["bench_episode_length"]
+                self.timesteps_saved = timestep_dict["timesteps_saved"]
+                self.area_saved_prop = timestep_dict["area_saved_prop"]
+
+                # calculate the damaged squares at this timestep
+                damaged_ts = timestep_dict["size"] - timestep_dict["unburned"]
+
+                # calculate the new number of damaged squares at this timestep
+                if self.first_step == True:
+                    # if this is the first timestep set the new_damaged and total_damaged as the same
+                    self.new_damaged = damaged_ts
+                    self.total_damaged = damaged_ts
+                    # set first step to false for rest of episode
+                    self.first_step = False
+                else:
+                    # use previously stored value of total_damaged at last ts to calculate new number of damaged squares at this timestep
+                    self.new_damaged = damaged_ts - self.total_damaged
+                    # update the value of total_damaged to the current timestep total damaged
+                    self.total_damaged = damaged_ts
 
     def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
         """Save episode history to CSV file."""
@@ -200,8 +243,14 @@ class FireSimulationAnalytics(SimulationAnalytics):
         self.file_type = file_type
         self.custom_file_name = custom_file_name
 
-    def update(self, timestep: int) -> None:
+        self.num_sim_steps = 0
+
+        # track if there exists a benchmark simulation that has been run already, value should be False within benchmark_simulation_analytics (if self._is_benchmark == True)
+        self.benchmark_exists = False
+
+    def update(self, timestep: int, benchmark_data: List[np.ndarray] = []) -> None:
         """TODO Add docstring."""
+        # FIXME (afennelly): Remove this logic after simfire updates are merged!
         # Only access `active` attribute if the sim has been updated at least once.
         if self.sim.elapsed_steps != 0:
             self.active = self.sim.active
@@ -211,6 +260,8 @@ class FireSimulationAnalytics(SimulationAnalytics):
         burned_total = np.sum(fire_map == BurnStatus.BURNED)
         burning_total = np.sum(fire_map == BurnStatus.BURNING)
         unburned_total = np.sum(fire_map == BurnStatus.UNBURNED)
+        burn_rate = (burned_total + burning_total) / (timestep + 1.0)
+        agent_speed = 4  # FIXME: Hardcoded - this is not always true.
 
         sim_timestep_dict = {
             "sim_step": self.num_sim_steps,
@@ -218,6 +269,8 @@ class FireSimulationAnalytics(SimulationAnalytics):
             "burned": burned_total,
             "burning": burning_total,
             "unburned": unburned_total,
+            "burn_rate": burn_rate,
+            "size": fire_map.size,
         }
 
         if not self.is_benchmark:
@@ -230,6 +283,49 @@ class FireSimulationAnalytics(SimulationAnalytics):
                     # "agent_movements": self.agent_analytics.num_movements_since_last_sim_step,  # noqa: E501
                 }
             )
+
+            # generate the comparison metrics if the benchmark simulation exists
+            if self.benchmark_exists:
+                # calculate the number of simulation steps taken by the benchmark simulation
+                bench_sim_steps = len(benchmark_data)
+
+                # calculate the amount damaged in the benchmark simulation at this current simulation step within the agent(s) simulation
+                bench_num_damaged = 0
+                if bench_sim_steps < self.num_sim_steps:
+                    # condition if the benchmark simulation ended faster than the agent(s) simulation
+                    bench_num_damaged = int(benchmark_data[-1])
+                else:
+                    bench_num_damaged = int(benchmark_data[self.num_sim_steps - 1])
+
+                # calculate the amount undamaged in the benchmark simulation at this current simulation step within the agent(s) simulation
+                bench_num_unburned = int(fire_map.size) - bench_num_damaged
+
+                # calculate the burn rate in the benchmark simulation at this current simulation step within the agent(s) simulation
+                bench_burn_rate = bench_num_damaged / ((int(timestep) + 1.0) * 1.0)
+
+                # calculate the total amount of damaged squares at the end of the benchmark simulation
+                bench_total_damaged = int(benchmark_data[len(benchmark_data) - 1])
+
+                # calculate the proportion of area saved between the agent(s) simulation and the benchmark simulation at this timestep
+                area_saved_prop = float(
+                    (bench_num_damaged * 1.0 - (int(fire_map.size) - unburned_total))
+                ) / (bench_total_damaged * 1.0)
+                # add threshold to area_saved_prop so that it remains at -0.01 if the agent(s) simulation has damaged more area than the benchmark simulation at the timestep
+                if area_saved_prop < 0.0:
+                    area_saved_prop = -0.01
+
+                # update the sim_timestep_dict with the comparison metrics
+                sim_timestep_dict.update(
+                    {
+                        "area_saved": (unburned_total - bench_num_unburned),
+                        "burn_rate_reduction": (bench_burn_rate - burn_rate),
+                        "bench_episode_length": ((bench_sim_steps) * agent_speed),
+                        "timesteps_saved": (
+                            (bench_sim_steps - self.num_sim_steps) * agent_speed
+                        ),  # multiplied by the agent speed
+                        "area_saved_prop": (area_saved_prop),
+                    }
+                )
 
         # Update the dataclass that stores the simulation's behavior.
         self.data.update(sim_timestep_dict)
