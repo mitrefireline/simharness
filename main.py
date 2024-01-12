@@ -258,6 +258,23 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         # )
     )
 
+    #Use Prioritized Replay Buffer
+    replay_buffer_config = {
+            "_enable_replay_buffer_api": True,
+            "type": "MultiAgentPrioritizedReplayBuffer",
+            #capacity of 800 for 20000 episode exp, adjust accordingly
+            "capacity": 800,
+            "prioritized_replay_alpha": 0.6,
+            "prioritized_replay_beta": 0.4,
+            #"prioritized_replay_eps": 1e-7,
+            "storage_unit": "episodes",
+            "replay_sequence_length": 1,
+            
+        }
+    
+    algo_cfg = algo_cfg.training(replay_buffer_config=replay_buffer_config)
+
+
     return algo_cfg
 
 

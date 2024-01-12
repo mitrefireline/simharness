@@ -38,6 +38,7 @@ run:
   name: null
   # Directory to store results in (will be local_dir/name)
   storage_path: ${hydra:run.dir}
+  log_to_file: true
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
