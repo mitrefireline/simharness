@@ -23,4 +23,41 @@ defaults:
 screen_size: 128
 screen_height: ${.screen_size}
 screen_width: ${.screen_size}
-fire_start_seed: 2
+
+fire_initial_position:
+  # Configure the generation of candidate initial fire positions.
+  generator:
+    # If true, then all possible fire initial positions will be included in the
+    # generated "dataset".
+    make_all_positions: false
+    # Number of candidate initial fire positions to generate. Ignored when
+    # `make_all_postions == true`.
+    output_size: 1 # or, is `dataset_size` more apt? maybe `population_size`?
+    # The root location to save the generated dataset.
+    save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
+  # To disable usage of generator, simply set to null.
+  # Configure the sampling of new initial fire positions.
+  sampler:
+    # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
+    # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
+    resample_interval: 1
+    # Number of samples to draw from the distribution, ie. take `sample_size` initial
+    # fire positions and distribute them across the respective RolloutWorker's.
+    sample_size:
+      train: 8
+      eval: 1
+    # Filter generated "dataset" using the following condition.
+    # NOTE: This is applied to the generated dataset, not the sampled positions.
+    # For more information on the query string to evaluate, see:
+    # - https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html#pandas.DataFrame.query
+    # Examples:
+    # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
+    # - "(A < elapsed_steps) & (C < percent_area_burned)"
+    query: "50 < elapsed_steps < 150"
+    # Number of samples available in resulting "dataset" after filtering with `query`.
+    # NOTE: This allows the user to control the total number of distinct fire positions
+    # that will be used to produce sample batches (or trajectories) of experiences. If
+    # set to `None`, the population size will be equal to the size of the generated
+    # "dataset" after filtering with `query`.
+    # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.ß
+    population_size: 1024
