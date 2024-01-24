@@ -1,3 +1,4 @@
+from simharness2.environments.complex_harness import ComplexObsReactiveHarness
 from simharness2.environments.fire_harness import (
     DamageAwareReactiveHarness,
     FireHarness,
@@ -13,4 +14,5 @@ __all__ = [
     "MultiAgentFireHarness",
     "ReactiveHarness",
     "DamageAwareReactiveHarness",
+    "ComplexObsReactiveHarness",
 ]

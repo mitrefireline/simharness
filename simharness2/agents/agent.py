@@ -1,6 +1,9 @@
 import logging
-from typing import Tuple, Any
 from dataclasses import dataclass
+from typing import Any, Tuple
+
+import numpy as np
+
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -63,6 +66,10 @@ class ReactiveAgent:
         self._current_position = self.initial_position
         self.x, self.y = self.initial_position
         self.row, self.col = self.y, self.x
+
+    def get_normalized_position(self, max_x: int, max_y: int) -> np.ndarray:
+        """Returns the current position of the agent normalized to the map size."""
+        return np.asarray([self.x / max_x, self.y / max_y])
 
     @property
     def current_position(self) -> Tuple[int, int]:
