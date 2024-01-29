@@ -21,11 +21,11 @@ class ComplexObsReactiveHarness(ReactiveHarness[AnyFireSimulation]):
         super().__init__(**kwargs)
 
         # FIXME: Expand to include SimFire data layers (ie. `self.sim_attributes`).
-        if self.attributes != [FIRE_MAP_KEY, POSITION_KEY]:
-            raise AssertionError(
-                f"The `ComplexObsReactiveHarness` requires `self.attributes` to be "
-                f"[{FIRE_MAP_KEY}, {POSITION_KEY}]."
-            )
+        # if self.attributes != [FIRE_MAP_KEY, POSITION_KEY]:
+        #     raise AssertionError(
+        #         f"The `ComplexObsReactiveHarness` requires `self.attributes` to be "
+        #         f"[{FIRE_MAP_KEY}, {POSITION_KEY}]."
+        #     )
 
         if self.num_agents > 1:
             raise NotImplementedError(
@@ -39,7 +39,13 @@ class ComplexObsReactiveHarness(ReactiveHarness[AnyFireSimulation]):
         # }
         # return nonsim_data
         # TODO: Verify if this method is called when using ComplexObsReactiveHarness.
-        nonsim_data = {}
+        max_y, max_x = self.sim.fire_map.shape
+        default_agent = self.agents[self.default_agent_id]
+        pos_state = default_agent.get_normalized_position(max_x=max_x, max_y=max_y)
+        nonsim_data = {
+            FIRE_MAP_KEY: np.copy(self.sim.fire_map),
+            POSITION_KEY: pos_state,
+        }
         return nonsim_data
 
     def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:
@@ -55,17 +61,52 @@ class ComplexObsReactiveHarness(ReactiveHarness[AnyFireSimulation]):
         }
         return nonsim_min_maxes
 
-    # FIXME: Add new logic. Current code is just a placeholder.
-    def get_initial_state(self) -> np.ndarray:
-        """TODO."""
-        fire_map_state = super().get_initial_state()
+    def _get_state(self):
+        sim_observations = super()._select_from_dict(
+            self.sim.get_attribute_data(), self.sim_attributes
+        )
+        nonsim_observations = super()._select_from_dict(
+            self.get_nonsim_attribute_data(), self.nonsim_attributes
+        )
+
+        firemap_attributes = ["fire_map"]
+
+        observations = super()._normalize_obs({**sim_observations, **nonsim_observations})
+
+        fire_map_obs = [observations[attribute] for attribute in firemap_attributes]
 
         max_y, max_x = self.sim.fire_map.shape
         default_agent = self.agents[self.default_agent_id]
         pos_state = default_agent.get_normalized_position(max_x=max_x, max_y=max_y)
 
         return {
-            FIRE_MAP_KEY: fire_map_state,
+            FIRE_MAP_KEY: np.stack(fire_map_obs, axis=-1).astype(np.float32),
+            POSITION_KEY: pos_state,
+        }
+
+    # FIXME: Add new logic. Current code is just a placeholder.
+    def get_initial_state(self) -> np.ndarray:
+        """TODO."""
+        #fire_map_state = super().get_initial_state()
+        sim_observations = super()._select_from_dict(
+            self.sim.get_attribute_data(), self.sim_attributes
+        )
+        nonsim_observations = super()._select_from_dict(
+            self.get_nonsim_attribute_data(), self.nonsim_attributes
+        )
+
+        firemap_attributes = ["fire_map"]
+
+        observations = super()._normalize_obs({**sim_observations, **nonsim_observations})
+
+        fire_map_obs = [observations[attribute] for attribute in firemap_attributes]
+
+        max_y, max_x = self.sim.fire_map.shape
+        default_agent = self.agents[self.default_agent_id]
+        pos_state = default_agent.get_normalized_position(max_x=max_x, max_y=max_y)
+
+        return {
+            FIRE_MAP_KEY: np.stack(fire_map_obs, axis=-1).astype(np.float32),
             POSITION_KEY: pos_state,
         }
 
@@ -81,8 +122,10 @@ class ComplexObsReactiveHarness(ReactiveHarness[AnyFireSimulation]):
     def _get_fire_map_observation_space(self) -> spaces.Box:
         """TODO."""
         # Ensure POSITION_KEY is not in `self.sim_attributes`.
+        """
         if POSITION_KEY in self.nonsim_attributes:
             self.nonsim_attributes.pop(self.nonsim_attributes.index(POSITION_KEY))
+        """
 
         fire_map_attributes = self.attributes.copy()
         fire_map_attributes.pop(fire_map_attributes.index(POSITION_KEY))
@@ -115,9 +158,12 @@ class ComplexObsReactiveHarness(ReactiveHarness[AnyFireSimulation]):
     def _update_state(self):
         """Modify environment's state to contain updates from the current timestep."""
         # Copy the fire map from the simulation so we don't overwrite it.
+        """
         fire_map = np.copy(self.sim.fire_map)
         # Update the fire map with the numeric identifier for the agent.
         for agent in self.agents.values():
             fire_map[agent.row, agent.col] = agent.sim_id
         # Modify the state to contain the updated fire map
         self.state[..., self.attributes.index("fire_map")] = fire_map
+        """
+        self.state = self._get_state()

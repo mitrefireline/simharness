@@ -291,11 +291,12 @@ class FireSimulationAnalytics(SimulationAnalytics):
 
                 # calculate the amount damaged in the benchmark simulation at this current simulation step within the agent(s) simulation
                 bench_num_damaged = 0
-                if bench_sim_steps < self.num_sim_steps:
-                    # condition if the benchmark simulation ended faster than the agent(s) simulation
-                    bench_num_damaged = int(benchmark_data[-1])
-                else:
-                    bench_num_damaged = int(benchmark_data[self.num_sim_steps - 1])
+                if bench_sim_steps > 0:
+                    if bench_sim_steps < self.num_sim_steps:
+                        # condition if the benchmark simulation ended faster than the agent(s) simulation
+                        bench_num_damaged = int(benchmark_data[-1])
+                    else:
+                        bench_num_damaged = int(benchmark_data[self.num_sim_steps - 1])
 
                 # calculate the amount undamaged in the benchmark simulation at this current simulation step within the agent(s) simulation
                 bench_num_unburned = int(fire_map.size) - bench_num_damaged
@@ -304,12 +305,18 @@ class FireSimulationAnalytics(SimulationAnalytics):
                 bench_burn_rate = bench_num_damaged / ((int(timestep) + 1.0) * 1.0)
 
                 # calculate the total amount of damaged squares at the end of the benchmark simulation
-                bench_total_damaged = int(benchmark_data[len(benchmark_data) - 1])
+                if len(benchmark_data) > 0:
+                    bench_total_damaged = int(benchmark_data[len(benchmark_data) - 1])
+                else:
+                    bench_total_damaged = 0
 
                 # calculate the proportion of area saved between the agent(s) simulation and the benchmark simulation at this timestep
-                area_saved_prop = float(
-                    (bench_num_damaged * 1.0 - (int(fire_map.size) - unburned_total))
-                ) / (bench_total_damaged * 1.0)
+                if bench_total_damaged > 0:
+                    area_saved_prop = float(
+                        (bench_num_damaged * 1.0 - (int(fire_map.size) - unburned_total))
+                    ) / (bench_total_damaged * 1.0)
+                else:
+                    area_saved_prop = 1.0
                 # add threshold to area_saved_prop so that it remains at -0.01 if the agent(s) simulation has damaged more area than the benchmark simulation at the timestep
                 if area_saved_prop < 0.0:
                     area_saved_prop = -0.01
