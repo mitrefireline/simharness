@@ -175,8 +175,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         reward = self.reward_cls.get_reward(
             timestep=self.timesteps,
             sim_run=sim_run,
-            agents=self.agents,
-            agent_speed=self.agent_speed,
+            #agents=self.agents,
+            #agent_speed=self.agent_speed,
         )
 
         # FIXME account for below updates in the reward_cls.calculate_reward() method
