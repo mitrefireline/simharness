@@ -33,19 +33,20 @@ from simfire.enums import BurnStatus
 import simharness2.models  # noqa
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.logger.aim import AimLoggerCallback
-from simharness2.config import SimHarnessConfig, register_configs
+from simharness2.config.config import SimHarnessConfig
 
-register_configs()
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
+# Register custom resolvers that are used within the config files
+OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 39))
+OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
+OmegaConf.register_new_resolver("square", lambda x: x**2)
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _set_variable_hyperparameters(
-    algo_cfg: AlgorithmConfig, cfg: SimHarnessConfig
-) -> None:
+def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> None:
     """Override the algo_cfg hyperparameters we would like to tune over.
 
     Args:
@@ -72,7 +73,7 @@ def _set_variable_hyperparameters(
     algo_cfg.training(**tunables["training"])
 
 
-def train_with_tune(algo_cfg: AlgorithmConfig, cfg: SimHarnessConfig) -> ResultGrid:
+def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     """Iterate through combinations of hyperparameters to find optimal training runs.
 
     Args:
@@ -82,7 +83,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: SimHarnessConfig) -> ResultG
     Returns:
         ResultGrid: Set of Results objects from running Tuner.fit()
     """
-    trainable_algo_str = cfg.trainable_class
+    trainable_algo_str = cfg.algo.name
     param_space = algo_cfg
 
     # Override the variables we want to tune on ()`param_space` is updated in-place).
@@ -121,7 +122,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: SimHarnessConfig) -> ResultG
     return results
 
 
-def train(algo: Algorithm, cfg: SimHarnessConfig) -> None:
+def train(algo: Algorithm, cfg: DictConfig) -> None:
     """Train the given algorithm within RLlib.
 
     Args:
@@ -156,12 +157,12 @@ def train(algo: Algorithm, cfg: SimHarnessConfig) -> None:
 
 
 def _instantiate_config(
-    cfg: SimHarnessConfig,
+    cfg: SimHarnessConfig,  # TODO: Fix return type annotations
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     """Instantiate the algorithm config used to build the RLlib training algorithm.
 
     Args:
-        cfg (DictConfig): Hydra config with all required parameters.
+        cfg (SimHarnessConfig): Hydra config with all required parameters.
 
     Returns:
         Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
@@ -170,11 +171,22 @@ def _instantiate_config(
         debug_settings: Settings needed for debugging.
         exploration_cfg: RLlib exploration configurations.
     """
+    from ray.tune.registry import register_env
+
     # Instantiate the env and eval settings objects from the config.
     # NOTE: We are instantiating to a NEW object on purpose; otherwise a
     # `TypeError` will be raised when attempting to log the cfg to Aim.
-    env_settings = instantiate(cfg.environment, _convert_="all")  # FIXME!!!
-    eval_settings = instantiate(cfg.evaluation, _convert_="all")  # FIXME!!!
+    env_settings = instantiate(cfg.environment, _convert_="partial")
+    eval_settings = instantiate(cfg.evaluation, _convert_="partial")
+
+    # FIXME: Fire scenario configuration disabled for now. Fix this in new MR.
+    # Get the operational fires we want to run evaluation with
+    # operational_fires = get_default_operational_fires(cfg)
+
+    # Inject operational fires into the evaluation settings
+    # eval_settings["evaluation_config"]["env_config"].update(
+    #     {"scenarios": operational_fires}
+    # )
 
     # Prepare exploration options for the algorithm
     exploration_cfg = OmegaConf.to_container(
@@ -201,39 +213,46 @@ def _instantiate_config(
     return env_settings, eval_settings, debug_settings, exploration_cfg
 
 
-def _build_algo_cfg(cfg: SimHarnessConfig) -> Tuple[Algorithm, AlgorithmConfig]:
+def _build_algo_cfg(cfg: SimHarnessConfig) -> "AlgorithmConfig":
     """Build the algorithm config and object for training an RLlib model.
 
     Args:
-        cfg (DictConfig): Hydra config with all required parameters.
+        cfg (SimHarnessConfig): Hydra config with all required parameters.
 
     Returns:
-        Tuple(Algorithm, AlgorithmConfig): Training algorithm and associated config.
+        algo_cfg (AlgorithmConfig): Associated config for the training algorithm.
     """
+    # FIXME: Callbacks should be modularized and specified from the config.
+    # FIXME: Below import is required to register custom model (s). Find better way.
+    import simharness2.models  # noqa
+    from ray.tune.registry import get_trainable_cls
+    from simharness2.callbacks.render_env import RenderEnv
+
     # Instantiate everything necessary for creating the algorithm config.
     env_settings, eval_settings, debug_settings, explor_cfg = _instantiate_config(cfg)
 
-    # Manually prepare agent_ids using same logic as within environments/rl_harness.py
-    num_agents = env_settings["env_config"].get("num_agents", 1)
-    interacts = env_settings["env_config"]["interactions"]
-    # map sh2 interactions to underlying BurnStatus category
-    interacts_map = {
-        "fireline": BurnStatus.FIRELINE,
-        "wetline": BurnStatus.WETLINE,
-        "scratchline": BurnStatus.SCRATCHLINE,
-    }
-    agent_id_start = (
-        max(set([int(v) for k, v in interacts_map.items() if k in interacts])) + 1
-    )
-    agent_id_stop = agent_id_start + num_agents
-    sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
-    # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
-    agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+    # FIXME: Enable specifying multi-agent options from within the config.
+    # # Manually prepare agent_ids using same logic as within environments/fire_harness.py
+    # num_agents = env_settings["env_config"].get("num_agents", 1)
+    # interacts = env_settings["env_config"]["interactions"]
+    # # map sh2 interactions to underlying BurnStatus category
+    # interacts_map = {
+    #     "fireline": BurnStatus.FIRELINE,
+    #     "wetline": BurnStatus.WETLINE,
+    #     "scratchline": BurnStatus.SCRATCHLINE,
+    # }
+    # agent_id_start = (
+    #     max(set([int(v) for k, v in interacts_map.items() if k in interacts])) + 1
+    # )
+    # agent_id_stop = agent_id_start + num_agents
+    # sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
+    # # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
+    # agent_ids = {f"agent_{i}" for i in sim_agent_ids}
 
+    trainable_cls = get_trainable_cls(cfg.trainable_class)
+    default_cfg: AlgorithmConfig = trainable_cls.get_default_config()
     algo_cfg = (
-        get_trainable_cls(cfg.trainable_class)
-        .get_default_config()
-        .training(**cfg.training)
+        default_cfg.training(**cfg.training)
         .environment(**env_settings)
         .framework(**cfg.framework)
         .rollouts(**cfg.rollouts)
@@ -242,29 +261,11 @@ def _build_algo_cfg(cfg: SimHarnessConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
-        # FIXME: Enable passing multi_agent settings to the algorithm config.
         # .multi_agent(
         #     policies=agent_ids,
         #     policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
         # )
     )
-
-    #Use Prioritized Replay Buffer
-    replay_buffer_config = {
-            "_enable_replay_buffer_api": True,
-            "type": "MultiAgentPrioritizedReplayBuffer",
-            #capacity of 800 for 20000 episode exp, adjust accordingly
-            "capacity": 800,
-            "prioritized_replay_alpha": 0.6,
-            "prioritized_replay_beta": 0.4,
-            #"prioritized_replay_eps": 1e-7,
-            "storage_unit": "episodes",
-            "replay_sequence_length": 1,
-            
-        }
-    
-    algo_cfg = algo_cfg.training(replay_buffer_config=replay_buffer_config)
-
 
     return algo_cfg
 
@@ -276,12 +277,10 @@ def main(cfg: SimHarnessConfig) -> None:
     Args:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
-    # NOTE: We are disabling logging to the driver. For reference, see
-    # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
-    # Thus, to use an existing ray cluster, we must set address="auto".
+    import ray
+
     # Start the Ray runtime
-    # ray.init(address="auto", log_to_driver=False)
-    ray.init()
+    ray.init(**cfg.ray_init)
 
     outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")
@@ -289,10 +288,10 @@ def main(cfg: SimHarnessConfig) -> None:
     # Build the algorithm config.
     algo_cfg = _build_algo_cfg(cfg)
 
-    if cfg.mode == "train":
+    if cfg.cli.mode == "train":
         algo = algo_cfg.build()
-        if cfg.checkpoint_path:
-            ckpt_path = cfg.checkpoint_path
+        if cfg.algo.checkpoint_path:
+            ckpt_path = cfg.algo.checkpoint_path
             LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
 
             if not os.path.isfile(ckpt_path):

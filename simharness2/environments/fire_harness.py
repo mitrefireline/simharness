@@ -31,6 +31,14 @@ logger = logging.getLogger(__name__)
 AnyFireSimulation = TypeVar("AnyFireSimulation", bound=FireSimulation)
 
 
+DEFAULT_MOVEMENTS = ["none", "up", "down", "left", "right"]
+DEFAULT_MOVEMENTS_WITHOUT_NONE = ["up", "down", "left", "right"]
+DEFAULT_INTERACTIONS = ["none", "fireline"]
+DEFAULT_INTERACTIONS_WITHOUT_NONE = ["fireline"]
+FULL_INTERACTIONS = ["none", "fireline", "scratchline", "wetline"]
+FULL_INTERACTIONS_WITHOUT_NONE = ["fireline", "scratchline", "wetline"]
+
+
 class FireHarness(Harness[AnyFireSimulation]):
     def __init__(
         self,

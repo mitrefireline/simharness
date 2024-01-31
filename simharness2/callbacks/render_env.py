@@ -14,8 +14,7 @@ from ray.rllib.utils.typing import PolicyID  # AgentID, EnvType,
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
 
-    from simharness2.environments.fire_harness import ReactiveHarness
-    from simfire.sim.simulation import FireSimulation
+    from simharness2.environments.fire_harness import FireHarness
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +80,7 @@ class RenderEnv(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env: ReactiveHarness[FireSimulation] = base_env.get_sub_environments()[env_index]
+        env: FireHarness = base_env.get_sub_environments()[env_index]
 
         if worker.config.in_evaluation:
             logger.info("Creating evaluation episode...")
@@ -129,11 +128,11 @@ class RenderEnv(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env: ReactiveHarness[FireSimulation] = base_env.get_sub_environments()[env_index]
+        env: FireHarness = base_env.get_sub_environments()[env_index]
         # Save a GIF from the last episode
         # TODO: Do we also want to save the fire spread graph?
         if worker.config.in_evaluation:
-            logdir = env.trial_logdir
+            logdir = env._trial_results_path
             eval_iters = env._num_eval_iters
             # Check if there is a gif "ready" to be saved
             if env._should_render and env.sim.rendering:

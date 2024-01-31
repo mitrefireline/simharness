@@ -1,0 +1,32 @@
+defaults:
+  - base_env_config
+
+# movements: [none, up, down, left, right]
+# interactions: [none, fireline]
+# attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
+# normalized_attributes: [elevation]
+# agent_speed: 9
+# Defines the class that will be used to monitor and track `ReactiveHarness`.
+# harness_analytics_partial:
+#   _target_: simharness2.analytics.harness_analytics.ReactiveHarnessAnalytics
+#   # Defines the class that will be used to monitor and track `FireSimulation`.
+#   sim_analytics_partial:
+#     _target_: simharness2.analytics.simulation_analytics.FireSimulationAnalytics
+#     # Defines the class that will be used to monitor and track agent behavior.
+#     agent_analytics_partial:
+#       _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
+# reward_cls_partial:
+#   _target_: simharness2.rewards.base_reward.SimpleReward
+  # fixed_reward: 100
+  # static_penalty: 50
+  # invalid_movement_penalty: 5
+
+# agent_initialization_method: manual
+# initial_agent_positions: [[50, 50]]
+# benchmark_sim: ${.sim}
+# TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
+# NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).
+# benchmark_sim: null
+# action_space_cls:
+#   _target_: hydra.utils.get_class
+#   path: gymnasium.spaces.Discrete
