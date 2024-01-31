@@ -10,8 +10,8 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
-import logging
 import copy
+import logging
 from abc import ABC, abstractmethod
 from collections import OrderedDict as ordered_dict
 from enum import IntEnum
@@ -31,6 +31,7 @@ import numpy as np
 from gymnasium import spaces
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simfire.sim.simulation import FireSimulation
+
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()

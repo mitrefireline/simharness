@@ -15,8 +15,6 @@ import os
 from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple
-import math
-import copy
 
 import numpy as np
 from gymnasium import spaces
@@ -28,6 +26,7 @@ from simfire.utils.config import Config
 from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
+
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -173,7 +172,6 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             benchmark_sim=config.get("benchmark_sim"),
         )
 
-
         self._log_env_init()
 
         # Set the agent's initial position on the map
@@ -193,28 +191,29 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If the square the agent is on is "empty", this is set to True.
         # If the agent places a mitigation, this is set to True.
         self.mitigation_placed: bool = False
-        # If the agent places an effective mitigation (not placed in already damaged/mitigated square), this is set to True.
+        # If the agent places an effective mitigation (not placed in already
+        # damaged/mitigated square), this is set to True.
         self.true_mitigation_placed: bool = False
         # If the agent attempts to move out of bounds, this is set to True.
         self._moved_off_map = False
 
-        # Bool to toggle the ability to terminate the agent simulation early if at the current timestep of the agent simulation
-        #   , the agents have caused more burn damage (burned + burning) than the final state of the benchmark fire map
+        # Bool to toggle the ability to terminate the agent simulation early if at the
+        # current timestep of the agent simulation, the agents have caused more burn
+        # damage (burned + burning) than the final state of the benchmark fire map
         # FIXME Have this value set in the configs
         self._terminate_if_greater_damage = True
 
         if self.benchmark_sim:
-            #Validate that benchmark and sim match seeds
+            # Validate that benchmark and sim match seeds
             assert self.sim.get_seeds() == self.benchmark_sim.get_seeds()
 
-            #create static list to store the episode benchsim firemaps
+            # create static list to store the episode benchsim firemaps
             self.max_bench_length = 600
             self.bench_firemaps = [0] * self.max_bench_lenght
 
-            #run the first benchmark sim to generate the benchmark sim firemaps and metrics for this episode
+            # run the first benchmark sim to generate the benchmark sim firemaps and
+            # metrics for this episode
             self._run_benchmark()
-
-
 
     def set_trial_results_path(self, path: str) -> None:
         """Set the path to the directory where (tune) trial results will be stored."""
@@ -233,7 +232,7 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
                 interaction=self._latest_interaction,
                 agent_pos=self.agent_pos,
                 moved_off_map=self._moved_off_map,
-                true_mitigation_placed = self.true_mitigation_placed
+                true_mitigation_placed=self.true_mitigation_placed,
             )
 
         # NOTE: `sim_run` indicates if `FireSimulation.run()` was called. This helps
@@ -261,25 +260,34 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # TODO pass `terminated` into `get_reward` method
         reward = self.reward_cls.get_reward(self.timesteps, sim_run)
 
-        # Terminate episode early if burn damage in Agent Sim is larger than final bench fire map
+        # Terminate episode early if burn damage in Agent Sim is larger than final bench
+        # fire map
         if self.benchmark_sim:
             if self._terminate_if_greater_damage:
-                total_area = self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
+                total_area = (
+                    self.harness_analytics.sim_analytics.sim.config.area.screen_size[0]
+                    ** 2
+                )
 
-                sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
+                sim_damaged_total = (
+                    self.harness_analytics.sim_analytics.data.burned
+                    + self.harness_analytics.sim_analytics.data.burning
+                )
 
-                benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
+                benchsim_damaged_total = (
+                    total_area
+                    - self.harness_analytics.benchmark_sim_analytics.data.unburned
+                )
 
                 if sim_damaged_total > benchsim_damaged_total:
                     terminated = True
-                    # TODO potentially add a static negative penalty for making the fire worse
+                    # TODO potentially add a static negative penalty for making the fire
+                    # worse
 
-        
-        
         # TODO account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        #if terminated:
-            #reward += 10
+        # if terminated:
+        # reward += 10
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
@@ -333,7 +341,8 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation()
         elif (not self._agent_pos_is_unburned()) and interact:
-            #set true_mitigation_placed to False if agent has placed mitigation in damaged/mitigated square
+            # set true_mitigation_placed to False if agent has placed mitigation in
+            # damaged/mitigated square
             self.true_mitigation_placed = False
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
@@ -400,7 +409,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.sim.update_mitigation([mitigation_update])
         # Store indicator that a mitigation was placed
         self.mitigation_placed = True
-        # Store indicator that a true mitigation was placed, which will be set back to False in self._do_one_agent_step if agent was in an already damaged/mitigated square
+        # Store indicator that a true mitigation was placed, which will be set back to
+        # False in self._do_one_agent_step if agent was in an already damaged/mitigated
+        # square
         self.true_mitigation_placed = False
 
     def _do_one_simulation_step(self) -> bool:
@@ -418,54 +429,60 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         self.sim.run(1)
 
     def _run_benchmark(self):
-        """Runs the entire benchmark sim and stores the data needed for the rewards and bench fire maps within each episode"""
+        """Runs the entire benchmark sim and stores the data needed for the reward."""
 
-        #use timesteps_copy to track the matching timestep that each benchsim fire map will match with the sim fire map
+        # use timesteps_copy to track the matching timestep that each benchsim fire map
+        # will match with the sim fire map
         timesteps_copy = 0
 
-        #if the benchmark simulation has not been updated yet
+        # if the benchmark simulation has not been updated yet
         if self.benchmark_sim.elapsed_steps == 0:
-            
             self.benchmark_sim.run(1)
 
-            #update the benchsim metrics at this timesteps_copy in the harness analytics
-            if self.harness_analytics:     
+            # update the benchsim metrics at this timesteps_copy in the harness analytics
+            if self.harness_analytics:
                 self.harness_analytics.update_bench_after_one_simulation_step(
-            timestep=timesteps_copy
-            )
+                    timestep=timesteps_copy
+                )
 
-            #update timesteps_copy to next time the simulation with the agent will update
+            # update timesteps_copy to next time simulation with the agent will update
             timesteps_copy = timesteps_copy + self.agent_speed
-            
-            #store the bench fire map at the sim step
-            self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
 
-        #continue to run the benchmark simulation and update the benchsim data/metrics after each sim step    
-        while self.benchmark_sim.active == True:
+            # store the bench fire map at the sim step
+            self.bench_firemaps[
+                (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+            ] = np.copy(self.benchmark_sim.fire_map)
 
+        # continue to run the benchmark simulation and update the benchsim data/metrics
+        # after each sim step
+        while self.benchmark_sim.active:
             self.benchmark_sim.run(1)
 
-            #update the benchsim metrics at this timesteps_copy in the harness analytics
-            if self.harness_analytics:     
+            # update the benchsim metrics at this timesteps_copy in the harness analytics
+            if self.harness_analytics:
                 self.harness_analytics.update_bench_after_one_simulation_step(
-            timestep=timesteps_copy
-            )
+                    timestep=timesteps_copy
+                )
 
-            #update timesteps_copy to next time the simulation with the agent will update
+            # update timesteps_copy to next time the simulation with the agent will update
             timesteps_copy = timesteps_copy + self.agent_speed
 
-           #update the size of self.bench_firemaps if this benchmark simulation has lasted longer than any previous benchmark simulations
-           if ((self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1) > (self.max_bench_length - 1):
-
-                #append the bench fire map to the self.bench_firemaps
+            # update the size of self.bench_firemaps if this benchmark simulation has
+            # lasted longer than any previous benchmark simulations
+            if ((self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1) > (
+                self.max_bench_length - 1
+            ):
+                # append the bench fire map to the self.bench_firemaps
                 self.bench_firemaps.append(np.copy(self.benchmark_sim.fire_map))
 
-                #update the max length of the benchsim when defining future lists for self.bench_firemaps
+                # update the max length of the benchsim when defining future lists for self.bench_firemaps
                 self.max_bench_length = self.max_bench_length + 1
 
-           #else store the bench fire map at the sim step
-           else:
-                self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
+            # else store the bench fire map at the sim step
+            else:
+                self.bench_firemaps[
+                    (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+                ] = np.copy(self.benchmark_sim.fire_map)
 
     def _update_state(self):
         """Modify environment's state to contain updates from the current timestep."""
@@ -477,23 +494,30 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         fire_map_idx = self.attributes.index("fire_map")
         self.state[..., fire_map_idx] = fire_map
 
-        #Modify the state to contain the bench fire map at that sim step
+        # Modify the state to contain the bench fire map at that sim step
         if "bench_fire_map" in self.attributes:
-
             bench_fire_map_idx = self.attributes.index("bench_fire_map")
 
-            #if the simulation has lasted longer that the benchmark sim, use the final state of the benchsim fire map
-            if (self.harness_analytics.benchmark_sim_analytics.num_sim_steps < self.harness_analytics.sim_analytics.num_sim_steps):
-                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
-            #else get the benchmark sim fire map from the same sim step as the simulation fire map
+            # if the simulation has lasted longer that the benchmark sim, use the final state of the benchsim fire map
+            if (
+                self.harness_analytics.benchmark_sim_analytics.num_sim_steps
+                < self.harness_analytics.sim_analytics.num_sim_steps
+            ):
+                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[
+                    (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+                ]
+            # else get the benchmark sim fire map from the same sim step as the simulation fire map
             else:
-                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[(self.harness_analytics.sim_analytics.num_sim_steps) - 1]
+                self.state[..., (bench_fire_map_idx)] = self.bench_firemaps[
+                    (self.harness_analytics.sim_analytics.num_sim_steps) - 1
+                ]
 
-        #Modify the state to contain the final state of bench fire map       
+        # Modify the state to contain the final state of bench fire map
         if "bench_fire_map_final" in self.attributes:
-
             bench_fire_map_final_idx = self.attributes.index("bench_fire_map_final")
-            self.state[..., (bench_fire_map_final_idx)] = self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1]
+            self.state[..., (bench_fire_map_final_idx)] = self.bench_firemaps[
+                (self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1
+            ]
 
     def reset(
         self,
@@ -532,14 +556,16 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
             # set the benchmark seeds to match the sim seeds
             self.benchmark_sim.set_seeds(seed_dict)
             # reset benchmark simulation
-            
+
             self.benchmark_sim.reset()
             bench_exists = True
 
         # Reset the `ReactiveHarnessData` to initial conditions, if it exists.
         if self.harness_analytics:
             render = self._should_render if hasattr(self, "_should_render") else False
-            self.harness_analytics.reset(env_is_rendering=render, benchmark_exists=bench_exists)
+            self.harness_analytics.reset(
+                env_is_rendering=render, benchmark_exists=bench_exists
+            )
 
         # Reset the agent's initial position on the map
         self._set_agent_pos_for_episode_start()
@@ -590,9 +616,9 @@ class ReactiveHarness(RLHarness):  # noqa: D205,D212,D415
         # If the agent attempts to move out of bounds, this is set to True.
         self._moved_off_map = False
 
-        #Run the new benchsim to obtain the benchsim data used to generate the rewards and policy
+        # Run the new benchsim to obtain the benchsim data used to generate the rewards and policy
         if self.benchmark_sim:
-            #run benchmark sim to generate the benchmark sim firemaps and metrics for this episode
+            # run benchmark sim to generate the benchmark sim firemaps and metrics for this episode
             self._run_benchmark()
 
         return self.state, {}
