@@ -5,6 +5,8 @@ on:
       - '**/*.py'
       - poetry.lock
       - .flake8
+      - pyproject.toml
+      - requirements.txt
   workflow_dispatch:
 
 jobs:
