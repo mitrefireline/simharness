@@ -7,3 +7,4 @@ Tutorials
    developing
    how_to
    examples
+   experiment_artifacts
