@@ -10,46 +10,104 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
-import logging
 import os
-import sys
-import time
-from typing import List, Tuple
+import logging
+from typing import List, Tuple, Dict
 import yaml
+
 import modin.pandas as pd
 import ray
-import yaml
-from hydra.utils import instantiate
-from omegaconf import DictConfig, OmegaConf
-from simfire.enums import BurnStatus
-from simfire.sim.simulation import FireSimulation
+import numpy as np
 
+from simfire.sim.simulation import FireSimulation
+from simfire.enums import BurnStatus
 from simharness2.utils.simfire import get_simulator_hash
 
 
-OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 39))
-OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
-OmegaConf.register_new_resolver("square", lambda x: x**2)
-
 logger = logging.getLogger(__name__)
 
+# Constants. TODO: Move to `constants.py` file.
+FIRE_DATA_DTYPES = {
+    "x": np.uint16,
+    "y": np.uint16,
+    "elapsed_steps": np.uint16,
+    "burned": np.uint32,
+    "unburned": np.uint32,
+    "percent_area_burned": np.float16,
+}
 
-# def get_fire_initial_position_data
+
+def filter_fire_initial_position_data(
+    *,
+    fire_df: pd.DataFrame,
+    sample_size: Dict[str, int],
+    query: str,
+    population_size: int = None,
+    **kwargs,
+) -> Tuple[np.recarray, np.recarray]:
+    """TODO"""
+    eval_size = sample_size.get("eval")
+    train_df, eval_df = pd.DataFrame({}), pd.DataFrame({})
+    logger.info(f"Applying the following condition to `fire_df`: {query}")
+    subset_fire_df: pd.DataFrame = fire_df.query(query)
+
+    # Compute absolute minimum positions needed for valid sampling. Recall that when
+    # `population_size` is None, the population is set to all remaining rows.
+    if population_size is None:
+        min_pos_needed = sum([v for v in sample_size.values()])
+    else:
+        min_pos_needed = sum([eval_size, population_size])
+
+    num_pos = len(subset_fire_df)
+    logger.info(f"There are {num_pos} positions after applying the condition.")
+
+    # Ensure that the filtered "dataset" is large enough to sample from.
+    if num_pos < min_pos_needed:
+        msg = (
+            f"There must be AT LEAST {min_pos_needed} positions to enable sampling. "
+            f"There are only {num_pos} positions when using the condition: {query}. "
+            "Try relaxing the `query` conditions, or decrease the `population_size`."
+        )
+        raise ValueError(msg)
+
+    # Extract data to be used for evaluation.
+    # TODO: Allow for user-provided evaluation dataset?
+    if eval_size:
+        eval_df: pd.DataFrame = subset_fire_df.sample(n=eval_size, replace=False)
+        # Ensure the evaluation data cannot be sampled again (ie for training data).
+        train_df: pd.DataFrame = subset_fire_df.drop(eval_df.index)
+        # Downsample the training data to have exactly `population_size` total samples.
+        if population_size:
+            train_df: pd.DataFrame = train_df.sample(n=population_size, replace=False)
+    else:
+        # TODO: hydra should ENFORCE the existence of the `sample_size.eval` key.
+        raise ValueError("`sample_size.eval` is required!")
+
+    logger.info(f"The eval dataset contains {len(eval_df)} samples after processing.")
+    logger.info(f"The train dataset contains {len(train_df)} samples after processing.")
+
+    # Convert filtered train/eval "dataset" to a structured NumPy array (for zero-copy).
+    train_arr = train_df.to_records(index=False)
+    eval_arr = eval_df.to_records(index=False)
+
+    return train_arr, eval_arr
+
+
 def generate_fire_initial_position_data(
     sim: FireSimulation,
     save_path: str,
     output_size: int = 1,
     make_all_positions: bool = False,
-):
+) -> pd.DataFrame:
     """Generate fire initial position data for a given fire simulation.
 
     Args:
-        sim (FireSimulation): A FireSimulation instance.
-        save_path (str): The path to save the generated data.
-        output_size (int, optional): The number of fire initial positions to generate.
-            Defaults to 1.
-        make_all_positions (bool, optional): Whether to generate all possible fire
-            initial positions. Defaults to False.
+        sim: A `FireSimulation` instance.
+        save_path: A `str` specifying the path to save the generated data.
+        output_size: An `int` representing the number of fire initial positions to
+            generate. Defaults to 1.
+        make_all_positions: A `bool` indicating whether to generate all possible fire
+            initial positions, or only `output_size` positions. Defaults to False.
     """
     sim_hash_data = get_simulator_hash(sim.config, return_params_subset=True)
     sim_hash_value = sim_hash_data["hash_value"]
@@ -61,13 +119,14 @@ def generate_fire_initial_position_data(
     coords = []
     # Create empty dataframe
     pos_df = pd.DataFrame({})
+    data_save_path = os.path.join(save_path, "fire_initial_positions.csv")
     # TODO: Move this if block into `load_fire_initial_position_data` (or similar).
     # Check if the fire initial position data has already been generated.
-    if os.path.exists(os.path.join(save_path, "fire_initial_positions.csv")):
+    if os.path.exists(data_save_path):
         logger.info(
             f"Fire initial position data for {sim_hash_value} has already been generated."
         )
-        pos_df = pd.read_csv(os.path.join(save_path, "fire_initial_positions.csv"))
+        pos_df = pd.read_csv(data_save_path, dtype=FIRE_DATA_DTYPES)
         total_pos = sim.fire_map.size if make_all_positions else output_size
         missing_pos = total_pos - len(pos_df)
         # Ensure all positions have been generated, and if not, generate them.
@@ -75,7 +134,7 @@ def generate_fire_initial_position_data(
             logger.warning(
                 f"Expected {output_size} positions, but only found {len(coords)}."
             )
-            curr_pos = [tuple(row) for row in pos_df[["pos_x", "pos_y"]].values]
+            curr_pos = [tuple(row) for row in pos_df[["x", "y"]].values]
             # NOTE: excluding the current positions, so we must update output_size!
             coords = _generate_initial_positions(
                 sim,
@@ -86,10 +145,9 @@ def generate_fire_initial_position_data(
         # No remaining calculations needed, just return the data
         else:
             logger.info(f"Found {len(pos_df)} positions, no more calculations needed.")
-            return
             # TODO: What should we return? We can put the object in shared object store
             # and return object id. Or, we can return the data directly. Any others?
-            # return pos_df
+            return pos_df
 
     # TODO: Move this if block into `generate_fire_initial_position_data` (or similar).
     else:
@@ -123,7 +181,10 @@ def generate_fire_initial_position_data(
         if not pos_df.empty:
             df = pd.concat([pos_df, df], ignore_index=True)
         # Save fire initial position data to CSV file.
-        df.to_csv(os.path.join(save_path, "fire_initial_positions.csv"), index=False)
+        logger.info(f"Saving fire initial position data to: {data_save_path}")
+        df.to_csv(data_save_path, index=False)
+
+        return df
 
 
 def _generate_initial_positions(
@@ -183,46 +244,9 @@ def _simulate_fire_propagation(
     logger.debug(f"total unburned squares == {unburned}\n")
 
     return {
-        "pos_x": fire_initial_position[0],
-        "pos_y": fire_initial_position[1],
+        "x": fire_initial_position[0],
+        "y": fire_initial_position[1],
         "elapsed_steps": sim.elapsed_steps,
         "burned": burned,
         "unburned": unburned,
     }
-
-
-@hydra.main(version_base=None, config_path="conf", config_name="config")
-def main(cfg: DictConfig) -> None:
-    """Main entry-point for generating gifs for different fire start locations.
-
-    Args:
-        cfg (DictConfig): Hydra config with all required parameters for training.
-    """
-    # Start the Ray runtime
-    ray.init(address="auto")
-    # save_dir = HydraConfig.get().run.dir
-    env_cfg = instantiate(cfg.environment.env_config, _convert_="partial")
-    sim: FireSimulation = env_cfg["sim"]
-
-    generator_cfg = cfg.simulation.fire_initial_position.generator
-    # FIXME: Decide "best" place to call this.
-    # Enable `generator` for generating dataset of fire start locations to sample from.
-    if generator_cfg:
-        start_time = time.time()
-        generate_fire_initial_position_data(sim, **generator_cfg)
-        end_time = time.time()
-        total_runtime = end_time - start_time
-        logger.info(f"Total generator runtime: {total_runtime} seconds.")
-        logger.info(f"Total generator runtime: {total_runtime/60:.2f} minutes")
-
-    # sampler_cfg = cfg.simulation.fire_initial_position.sampler
-    # if sampler_cfg:
-    #     pass
-    # Enable `sampler` to use for ()
-
-
-if __name__ == "__main__":
-    executed_command = " ".join(["%s" % arg for arg in sys.argv])
-    logger.info(f"Executed command: {executed_command}")
-    os.environ["SDL_VIDEODRIVER"] = "dummy"
-    main()

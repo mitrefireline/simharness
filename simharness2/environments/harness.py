@@ -1,6 +1,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, OrderedDict, Tuple, TypeVar
 
 import gymnasium as gym
@@ -11,6 +12,16 @@ logger = logging.getLogger(__name__)
 AnySimulation = TypeVar("AnySimulation", bound=Simulation)
 
 
+# FIXME: Where should this be defined (ie. what file)?
+@dataclass
+class RLlibEnvContextMetadata:
+    worker_index: int
+    vector_index: int
+    remote: bool
+    num_workers: int
+    recreated_worker: bool
+
+
 class Harness(gym.Env, ABC, Generic[AnySimulation]):
     def __init__(
         self,
@@ -19,6 +30,7 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         attributes: List[str],
         normalized_attributes: List[str],
         in_evaluation: bool = False,
+        **kwargs,
     ):
         self.sim = sim
 
@@ -70,6 +82,20 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         if not os.path.isdir(path):
             raise ValueError(f"{path} is not a valid directory.")
         self._trial_logdir = path
+
+    @property
+    def rllib_env_context(self) -> RLlibEnvContextMetadata:
+        """The extra metadata that RLlib passes to the environment.
+
+        The attributes of the returned object can be used to parameterize environments
+        per process. For example, `worker_index` can be used to control which data file
+        an environment reads in on initialization.
+        """
+        return self._rllib_env_context
+
+    @rllib_env_context.setter
+    def rllib_env_context(self, context: RLlibEnvContextMetadata):
+        self._rllib_env_context = context
 
     def _separate_sim_nonsim(self) -> Tuple[List[str], List[str]]:
         """Separate attributes based on if they are supported by the Simulation or not."""
