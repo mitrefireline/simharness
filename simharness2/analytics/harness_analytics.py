@@ -1,14 +1,16 @@
 """Base AnalyticsTracker for SimHarness and BaseReward."""
+
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 
 from simfire.sim.simulation import FireSimulation
 
-from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
 from simharness2.agents import ReactiveAgent
+from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
+
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -242,12 +244,12 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
         if self.benchmark_sim_analytics:
             self.benchmark_sim_analytics.reset(env_is_rendering)
 
-    def save_sim_history(self, logdir: str, total_iters: int) -> None:
+    def save_sim_history(self, logdir: str, env_id: str) -> None:
         """TODO Add docstring."""
-        self.sim_analytics.data.save_episode_history(logdir, total_iters)
+        self.sim_analytics.data.save_episode_history(logdir, env_id)
 
         if self.benchmark_sim_analytics:
-            self.benchmark_sim_analytics.data.save_episode_history(logdir, total_iters)
+            self.benchmark_sim_analytics.data.save_episode_history(logdir, env_id)
 
     # def log_dfs(self):
     #     """Log the dataframes that are being tracked by the analytics."""

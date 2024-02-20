@@ -355,7 +355,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Reset `ReactiveHarnessAnalytics` to initial conditions, if it exists.
         if self.harness_analytics:
             logger.debug("Resetting `self.harness_analytics`...")
-            self.harness_analytics.reset()
+            render = self._should_render if hasattr(self, "_should_render") else False
+            self.harness_analytics.reset(env_is_rendering=render)
 
         # Get the initial state of the `FireSimulation`, after it has been reset (above).
         self.state = self.get_initial_state()

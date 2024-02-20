@@ -6,7 +6,9 @@ from typing import Any, Dict, Generic, List, OrderedDict, Tuple, TypeVar
 
 import gymnasium as gym
 import numpy as np
+from ray.rllib.utils.typing import ResultDict
 from simfire.sim.simulation import Simulation
+
 
 logger = logging.getLogger(__name__)
 AnySimulation = TypeVar("AnySimulation", bound=Simulation)
@@ -51,6 +53,9 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         # Evaluation specific attributes.
         self.in_evaluation = in_evaluation
         self._num_eval_iters = 0
+
+        # Used to store recent episode results collected by Tune.
+        self.current_result: ResultDict = {}
 
     @abstractmethod
     def create_agents(self):

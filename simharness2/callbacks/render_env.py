@@ -1,6 +1,8 @@
 """Callback for rendering gifs during evaluation."""
+
 import logging
 import os
+from math import log
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
@@ -9,19 +11,43 @@ from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.policy import Policy
-from ray.rllib.utils.typing import PolicyID  # AgentID, EnvType,
+from ray.rllib.utils.typing import PolicyID, ResultDict  # AgentID, EnvType,
+
+import simharness2.utils.utils as utils
+
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
-
-    from simharness2.environments.fire_harness import ReactiveHarness
     from simfire.sim.simulation import FireSimulation
 
+    from simharness2.environments.fire_harness import FireHarness
+
 logger = logging.getLogger(__name__)
+
+TRAIN_KEY = "train"
+EVAL_KEY = "evaluation"
+# TODO: Add a config option to control rendering settings.
+# Switch to enable rendering of training environments.
+RENDER_TRAIN_ENVS = True
+# NOTE: Probably better to use a dictionary so that "eval" and "train" are not forced to
+# use the same interval setup, but good enough for the time being. When this update is
+# added, the logic in RenderEnv.should_render_env will need to be updated accordingly.
+# Options: "log" or "linear"
+RENDER_INTERVAL_TYPE = "linear"
+# Set the base for the logarithmic interval
+LOGARITHMIC_BASE = 10
+# Set the step size for the linear interval
+LINEAR_INTERVAL_STEP = 1  # 0
 
 
 class RenderEnv(DefaultCallbacks):
     """To use this callback, set {"callbacks": RenderEnv} in the algo config."""
+
+    def __init__(self, legacy_callbacks_dict: Dict[str, callable] = None):
+        super().__init__(legacy_callbacks_dict=legacy_callbacks_dict)
+        # Utilities used throughout methods in the callback.
+        self.render_current_episode = False
+        self.curr_iter = -1
 
     def on_algorithm_init(
         self,
@@ -38,13 +64,17 @@ class RenderEnv(DefaultCallbacks):
             algorithm: Reference to the Algorithm instance.
             kwargs: Forward compatibility placeholder.
         """
+        utils.validate_evaluation_config(algorithm.config)
         logdir = algorithm.logdir
+        workers = [algorithm.workers, algorithm.evaluation_workers]
         # TODO: Handle edge case where num_evaluation_workers == 0.
         # Make the trial result path accessible to each env (for gif saving).
-        algorithm.evaluation_workers.foreach_worker(
-            lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
-            local_worker=False,
-        )
+        for worker in workers:
+            worker.foreach_worker(
+                lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
+                local_worker=True,
+            )
+        # self.render_envs = algorithm.config.env_config.get("render_envs", "all")
 
     def on_episode_created(
         self,
@@ -81,21 +111,33 @@ class RenderEnv(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env: ReactiveHarness[FireSimulation] = base_env.get_sub_environments()[env_index]
+        env: FireHarness[FireSimulation] = base_env.get_sub_environments()[env_index]
+        env_type = EVAL_KEY if worker.config.in_evaluation else TRAIN_KEY
+        self.render_current_episode = self.should_render_env(env, env_type)
+        if self.render_current_episode:
+            env_ctx = worker.env_context
+            w_idx, v_idx = env_ctx.worker_index, env_ctx.vector_index
+            logger.info(
+                f"Preparing to render {env_type} environment (w: {w_idx}, v: {v_idx})..."
+            )
+            env._configure_env_rendering(True)
 
-        if worker.config.in_evaluation:
-            logger.info("Creating evaluation episode...")
-            # Ensure the evaluation env is rendering mode, if it should be.
-            if env._should_render and not env.sim.rendering:
-                logger.info("Enabling rendering for evaluation env.")
-                # TODO: Refactor below 3 lines into `env.render()` method?
-                os.environ["SDL_VIDEODRIVER"] = "dummy"
-                base_env.get_sub_environments()[env_index].sim.reset()
-                base_env.get_sub_environments()[env_index].sim.rendering = True
-            elif not env._should_render and env.sim.rendering:
-                logger.error(
-                    "Simulation is in rendering mode, but `env._should_render` is False."
-                )
+    def should_render_env(
+        self, env: "FireHarness[FireSimulation]", env_type: str
+    ) -> bool:
+        """Check if the environment should be rendered."""
+        if env_type == TRAIN_KEY:
+            self.curr_iter = env.current_result.get("training_iteration", 0)
+        else:
+            self.curr_iter = env._num_eval_iters
+
+        if env_type == TRAIN_KEY and RENDER_TRAIN_ENVS or env_type == EVAL_KEY:
+            # Use specified interval type to determine if the env should be rendered.
+            if RENDER_INTERVAL_TYPE == "log":
+                value = log(self.curr_iter, LOGARITHMIC_BASE)
+                return value.is_integer() and value > 0
+            elif RENDER_INTERVAL_TYPE == "linear":
+                return self.curr_iter % LINEAR_INTERVAL_STEP == 0
 
     def on_episode_end(
         self,
@@ -129,31 +171,57 @@ class RenderEnv(DefaultCallbacks):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env: ReactiveHarness[FireSimulation] = base_env.get_sub_environments()[env_index]
-        # Save a GIF from the last episode
-        # TODO: Do we also want to save the fire spread graph?
-        if worker.config.in_evaluation:
+        env: FireHarness[FireSimulation] = base_env.get_sub_environments()[env_index]
+        env_type = EVAL_KEY if worker.config.in_evaluation else TRAIN_KEY
+        # FIXME: Condition is overkill, but ensures callback, env, and env.sim are
+        # "on the same page".
+        if self.render_current_episode and env._should_render and env.sim.rendering:
             logdir = env.trial_logdir
-            eval_iters = env._num_eval_iters
+            env_ctx = worker.env_context
+            w_idx, v_idx = env_ctx.worker_index, env_ctx.vector_index
+
+            # Save a GIF from the last episode
             # Check if there is a gif "ready" to be saved
-            if env._should_render and env.sim.rendering:
-                # FIXME Update logic to handle saving same gif when writing to Aim UI
-                gif_save_path = os.path.join(
-                    logdir, "gifs", f"eval_iter_{eval_iters}.gif"
+            # FIXME Update logic to handle saving same gif when writing to Aim UI
+            context_dict = {}
+            # FIXME: Should we round lat, lon to a certain precision??
+            lat, lon = env.sim.config.landfire_lat_long_box.points[0]
+            op_data_lat_lon = f"operational_lat_{lat}_lon_{lon}"
+            fire_init_pos = env.sim.config.fire.fire_initial_position
+            context_dict.update({"fire_initial_position": str(fire_init_pos)})
+            # FIXME: Finalize path for saving gifs (and add note to docs) - for example,
+            # save each gif in a folder that relates it to episode iter?
+            env_episode_id = f"iter_{self.curr_iter}_w_{w_idx}_v_{v_idx}"
+            gif_save_path = os.path.join(
+                logdir,
+                env_type,
+                "gifs",
+                op_data_lat_lon,
+                f"fire_init_pos_x_{fire_init_pos[0]}_y_{fire_init_pos[1]}",
+                f"{env_episode_id}.gif",
+            )
+            logger.info(f"Saving GIF to {gif_save_path}...")
+            base_env.get_sub_environments()[env_index].sim.save_gif(gif_save_path)
+            # Save the gif_path so that we can write image to aim server, if desired
+            # NOTE: `save_path` is a list after the above; do element access for now
+            logger.debug(f"Type of gif_save_path: {type(gif_save_path)}")
+            gif_data = {
+                "path": gif_save_path,
+                "name": op_data_lat_lon,
+                "step": self.curr_iter,
+                # "epoch":
+                "context": context_dict,
+            }
+            episode.media.update({"gif_data": gif_data})
+
+            # Try to collect and log episode history, if it was saved.
+            if env.harness_analytics.sim_analytics.save_history:
+                episode_history_dir = os.path.join(logdir, env_type)
+                env.harness_analytics.save_sim_history(
+                    episode_history_dir, env_episode_id
                 )
-                # FIXME: Can we save each gif in a folder that relates it to episode iter?
-                logger.info(f"Saving GIF to {gif_save_path}...")
-                base_env.get_sub_environments()[env_index].sim.save_gif(gif_save_path)
-                # Save the gif_path so that we can write image to aim server, if desired
-                # NOTE: `save_path` is a list after the above; do element access for now
-                logger.debug(f"Type of gif_save_path: {type(gif_save_path)}")
-                episode.media.update({"gif": gif_save_path})
 
-                # Try to collect and log episode history, if it was saved.
-                if env.harness_analytics.sim_analytics.save_history:
-                    env.harness_analytics.save_sim_history(logdir, eval_iters)
-
-            # sim.save_spread_graph(save_dir)
+            env._configure_env_rendering(False)
 
     def on_evaluate_start(
         self,
@@ -178,38 +246,24 @@ class RenderEnv(DefaultCallbacks):
             lambda w: w.foreach_env(lambda env: env._increment_evaluation_iterations()),
             local_worker=False,
         )
-        # TODO: Use a function to decide if this round should be rendered (ie log10).
-        # TODO: Additionally, log the total number of episodes run so far.
-        # Enable the evaluation environment (s) to be rendered.
-        algorithm.evaluation_workers.foreach_worker(
-            lambda w: w.foreach_env(lambda env: env._configure_env_rendering(True)),
-            local_worker=False,
-        )
 
-    def on_evaluate_end(
+    def on_train_result(
         self,
         *,
         algorithm: "Algorithm",
-        evaluation_metrics: dict,
+        result: ResultDict,
         **kwargs,
     ) -> None:
-        """Runs when the evaluation is done.
-
-        Runs at the end of Algorithm.evaluate().
+        """Called at the end of Algorithm.train().
 
         Args:
-            algorithm: Reference to the algorithm instance.
-            evaluation_metrics: Results dict to be returned from algorithm.evaluate().
+            algorithm: Current Algorithm instance.
+            result: Dict of results returned from Algorithm.train() call.
                 You can mutate this object to add additional metrics.
             kwargs: Forward compatibility placeholder.
         """
-        # TODO: Add note in docs that the local worker IS NOT rendered. With this
-        # assumption, we should always set `evaluation.evaluation_num_workers >= 1`.
-        # TODO: Handle edge case where num_evaluation_workers == 0.
-
-        # TODO: Use a function to decide if this round should be rendered (ie log10).
-        # Disable the evaluation environment (s) to be rendered.
-        algorithm.evaluation_workers.foreach_worker(
-            lambda w: w.foreach_env(lambda env: env._configure_env_rendering(False)),
+        # Update the current result for each environment.
+        algorithm.workers.foreach_worker(
+            lambda w: w.foreach_env(lambda env: setattr(env, "current_result", result)),
             local_worker=False,
         )
