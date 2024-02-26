@@ -1,0 +1,140 @@
+defaults:
+  - config
+  - _self_
+
+cli:
+  mode: tune
+  data_dir: /dev/shm/fireline/simharness
+
+hydra:
+  job_logging:
+    root:
+      level: WARNING
+  run:
+    dir: ${cli.data_dir}/debug_experiments/${now:%Y-%m-%d_%H-%M-%S}
+
+# Specify configuration pass to the `AimLoggerCallback`
+aim:
+  repo: ${cli.data_dir}/aim
+  experiment: validate-simharness-updates
+  # TODO: Verify if there is a difference between specifying `null` vs. `int value`
+  system_tracking_interval: 30
+  # FIXME: Enable setting this value to `true`
+  log_hydra_config: false
+
+
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: 100
+  # Number of checkpoints to keep
+  num_to_keep: 5
+stop_conditions:
+  timesteps_total: 2000000000
+  episode_reward_mean: 10000000
+
+environment:
+  env: simharness2.environments.DamageAwareReactiveHarness
+  env_config:
+    movements: [up, down, left, right]
+    interactions: [fireline]
+    attributes: [fire_map, bench_fire_map, bench_fire_map_final]
+    normalized_attributes: []
+    agent_speed: 4
+    num_agents: 1
+    agent_initialization_method: manual
+    initial_agent_positions: [[0, 64]]
+    # Defines the class that will be used to perform reward calculation at each timestep.
+    reward_cls_partial:
+      _target_: simharness2.rewards.base_reward.AreaSavedPropReward
+      _partial_: true
+    benchmark_sim: ${.sim} # FIXME: Verify this interpolation works as expected.
+    fire_initial_position: ${simulation.fire_initial_position}
+
+evaluation:
+  evaluation_interval: 1 # FIXME !!!
+  evaluation_num_workers: 4
+  evaluation_config:
+    env: ${environment.env}
+    env_config: ${environment.env_config}
+
+exploration:
+  exploration_config:
+    type: EpsilonGreedy
+    #For 20000 episodes
+    #Average 512 timesteps per episodes
+    initial_epsilon: 1.0
+    final_epsilon: 0.05
+    warmup_timesteps: 972800
+    epsilon_timesteps: 8755200
+
+resources:
+  num_gpus: 1
+
+simulation:
+  train:
+    fire:
+      diagonal_spread: true
+      fire_initial_position:
+        type: static
+
+  eval:
+    fire:
+      diagonal_spread: true
+      fire_initial_position:
+        type: static
+
+
+  fire_initial_position:
+    # Configure the generation of candidate initial fire positions.
+    generator:
+      # Number of candidate initial fire positions to generate. Ignored when
+      # `make_all_postions == true`.
+      output_size: 2048 # 4096
+      # The root location to save the generated dataset.
+      save_path: /data/lslab2/fireline/simfire/data/fire_initial_positions
+    # To disable usage of generator, simply set to null.
+    # Configure the sampling of new initial fire positions.
+    sampler:
+      # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
+      # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
+      resample_interval: 1
+      # Number of samples to draw from the distribution, ie. take `sample_size` initial
+      # fire positions and distribute them across the respective RolloutWorker's.
+      sample_size:
+        train: 8
+        eval: ${evaluation.evaluation_num_workers}
+      # Filter generated "dataset" using the following condition.
+      # NOTE: This is applied to the generated dataset, not the sampled positions.
+      # For more information on the query string to evaluate, see:
+      # - https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html#pandas.DataFrame.query
+      # Examples:
+      # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
+      # - "(A < elapsed_steps) & (C < percent_area_burned)"
+      query: "0.4 < percent_area_burned"
+      # Number of samples available in resulting "dataset" after filtering with `query`.
+      # NOTE: This allows the user to control the total number of distinct fire positions
+      # that will be used to produce sample batches (or trajectories) of experiences. If
+      # set to `None`, the population size will be equal to the size of the generated
+      # "dataset" after filtering with `query`.
+      # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.ß
+      population_size: 1024
+
+training:
+  ## For SARL DQN with episode based PER - AreaSavedPropReward
+  v_min: 0
+  v_max: 5
+  noisy: true
+  lr: 0.00454119
+  n_step: 4
+  num_atoms: 10
+  num_steps_sampled_before_learning_starts: 200000
+  target_network_update_freq: 3000
+  train_batch_size: 1
+  gamma: 0.95
+
+debugging:
+  log_level: DEBUG
+  logger_config:
+    type:
+      path: ray.tune.logger.CSVLoggerCallback

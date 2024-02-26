@@ -54,10 +54,14 @@ simulation:
   train:
     fire:
       diagonal_spread: true
+      fire_initial_position:
+        type: static
 
   eval:
     fire:
       diagonal_spread: true
+      fire_initial_position:
+        type: static
 
 training:
   ## For SARL DQN with episode based PER - AreaSavedPropReward

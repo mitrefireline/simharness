@@ -3,14 +3,15 @@
 TODO: Add a list of any classes, exception, functions, and any other objects exported by
 the module.
 """
+
 import logging
+import math
 import os
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import InitVar, dataclass, field
 from functools import partial
 from typing import List, Optional
-import math
 
 import numpy as np
 import pandas as pd
@@ -18,6 +19,7 @@ from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
 from simharness2.analytics.agent_analytics import ReactiveAgentAnalytics
+
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -114,7 +116,7 @@ class SimulationData:
                     # update the value of total_damaged to the current timestep total damaged
                     self.total_damaged = damaged_ts
 
-    def save_episode_history(self, output_dir: str, total_eval_iters: int) -> None:
+    def save_episode_history(self, output_dir: str, env_id: str) -> None:
         """Save episode history to CSV file."""
         if self._history is None:
             return
@@ -128,9 +130,7 @@ class SimulationData:
             subdir = "sim_data"
 
         # TODO: Update logic to handle saving history from training episodes too.
-        sim_data_save_path = os.path.join(
-            output_dir, subdir, f"eval_iter_{total_eval_iters}.csv"
-        )
+        sim_data_save_path = os.path.join(output_dir, subdir, f"{env_id}.csv")
         # Converts deque to list of dicts, then to DataFrame.
         df = pd.DataFrame(list(self._history))
         # Write to CSV file.

@@ -49,6 +49,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         agent_speed: int = 1,
         agent_initialization_method: str = "automatic",
         initial_agent_positions: Optional[List[Tuple[int, int]]] = None,
+        **kwargs,
     ):
         super().__init__(
             sim=sim,
@@ -354,7 +355,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Reset `ReactiveHarnessAnalytics` to initial conditions, if it exists.
         if self.harness_analytics:
             logger.debug("Resetting `self.harness_analytics`...")
-            self.harness_analytics.reset()
+            render = self._should_render if hasattr(self, "_should_render") else False
+            self.harness_analytics.reset(env_is_rendering=render)
 
         # Get the initial state of the `FireSimulation`, after it has been reset (above).
         self.state = self.get_initial_state()
@@ -578,6 +580,45 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         # Indicate whether the environment's `FireSimulation` should be rendered.
         self._should_render = should_render
+
+    def _initialize_simfire(
+        self,
+        data: np.recarray,
+        num_envs_per_worker: int,
+    ) -> Tuple[int, int]:
+        """Update the `fire_initial_position` for the `FireSimulation` instance.
+
+        Arguments:
+            data: A np.recarray containing the sample of fire scenarios to choose from.
+            num_envs_per_worker: The number of environments that are contained within
+                each worker. This helps determine the index of the fire scenario that
+                should be used for the current environment.
+
+        Returns:
+            The selected initial position of the fire, as a tuple of (x, y) coordinates.
+        """
+        # Get the respective fire scenario for the current environment.
+        # NOTE: We use the modulo operator to ensure that the `fire_idx` is within the
+        # available indices of the provided data.
+        env_context = self.rllib_env_context
+        w_i, v_i = env_context.worker_index, env_context.vector_index
+        if env_context.num_workers == 0:
+            # Sub-environment (s) contained within only the `local_worker`.
+            fire_idx = ((w_i + 1) * v_i) % len(data)
+        else:
+            # Sub-environment (s) contained within only the `remote_worker` (s).
+            fire_idx = ((num_envs_per_worker * w_i) + v_i) % len(data)
+
+        # TODO: Maybe create custom recarray to use for type hints on attributes?
+        fire_pos_arr: np.recarray = data[fire_idx]
+
+        # Use the fire scenario to initialize the `FireSimulation`.
+        init_pos = (fire_pos_arr.x, fire_pos_arr.y)
+        self.sim.set_fire_initial_position(init_pos)
+        if self.benchmark_sim:
+            self.benchmark_sim.set_fire_initial_position(init_pos)
+
+        return init_pos
 
     def _setup_harness_analytics(self, analytics_partial: partial) -> None:
         """Instantiates `harness_analytics` used to monitor this `ReactiveHarness` obj.

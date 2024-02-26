@@ -63,7 +63,7 @@ terrain:
 
 fire:
   fire_initial_position:
-    type: random  # ${simulation.fire_initial_position.type}
+    type: static  # ${simulation.fire_initial_position.type}
     static:
       position:
         _target_: builtins.tuple
