@@ -1,0 +1,97 @@
+defaults:
+  - config
+  - _self_
+
+cli:
+  mode: train
+  data_dir: /dev/shm/fireline/simharness
+
+hydra:
+  # job_logging:
+  #   root:
+  #     level: WARNING
+  run:
+    dir: ${cli.data_dir}/debug_experiments/${now:%Y-%m-%d_%H-%M-%S}
+
+# Specify configuration pass to the `AimLoggerCallback`
+aim:
+  repo: ${cli.data_dir}/aim
+  experiment: validate-simharness-updates
+  # TODO: Verify if there is a difference between specifying `null` vs. `int value`
+  system_tracking_interval: 30
+  # FIXME: Enable setting this value to `true`
+  log_hydra_config: false
+
+
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: 100
+  # Number of checkpoints to keep
+  num_to_keep: 5
+stop_conditions:
+  timesteps_total: 2000000000
+  episode_reward_mean: 10000000
+
+environment:
+  env: simharness2.environments.MultiAgentComplexObsReactiveHarness
+  env_config:
+    movements: [up, down, left, right]
+    interactions: [none, fireline]
+    # TODO: Need better way of aligning yaml spec with constant keys in code.
+    attributes: [fire_map, agent_pos]
+    agent_speed: 4
+    num_agents: 3
+    agent_initialization_method: automatic
+    # initial_agent_positions: [[0, 64], ]
+    # Defines the class that will be used to perform reward calculation at each timestep.
+    # reward_cls_partial:
+    #   _target_: simharness2.rewards.base_reward.AreaSavedPropReward
+    #   _partial_: true
+    benchmark_sim: null
+    # fire_initial_position: ${simulation.fire_initial_position}
+
+evaluation:
+  evaluation_interval: 2 # FIXME !!!
+  evaluation_num_workers: 1
+  evaluation_config:
+    env: ${environment.env}
+    env_config: ${environment.env_config}
+
+exploration:
+  exploration_config:
+    type: EpsilonGreedy
+    #For 20000 episodes
+    #Average 512 timesteps per episodes
+    initial_epsilon: 1.0
+    final_epsilon: 0.05
+    warmup_timesteps: 972800
+    epsilon_timesteps: 8755200
+
+resources:
+  num_gpus: 1
+
+simulation:
+  train:
+    fire:
+      diagonal_spread: true
+      fire_initial_position:
+        type: static
+
+  eval:
+    fire:
+      diagonal_spread: true
+      fire_initial_position:
+        type: static
+
+training:
+  model:
+    custom_model: multimodal_network
+
+debugging:
+  log_level: INFO
+  logger_config:
+    type:
+      _target_: hydra.utils.get_class
+      path: ray.tune.logger.CSVLogger
+    logdir: ${hydra:run.dir}
