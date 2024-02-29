@@ -2,19 +2,8 @@ import copy
 import logging
 import os
 from abc import abstractmethod
-from collections import OrderedDict as ordered_dict
 from functools import partial
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    OrderedDict,
-    SupportsFloat,
-    Tuple,
-    TypeVar,
-)
+from typing import Any, Callable, Dict, List, Optional, SupportsFloat, Tuple, TypeVar
 
 import numpy as np
 from gymnasium import spaces
@@ -26,12 +15,15 @@ from simharness2.agents.agent import ReactiveAgent
 from simharness2.environments.harness import Harness, get_unsupported_attributes
 from simharness2.agents.initialization import AGENT_INITIALIZATION_METHODS
 
+from simharness2.models.custom_multimodal_torch_model import FIRE_MAP_KEY
+
 
 logger = logging.getLogger(__name__)
 
 AnyFireSimulation = TypeVar("AnyFireSimulation", bound=FireSimulation)
 
-FIRE_MAP_ATTRIBUTES = ["fire_map", "fire_map_with_agents"]
+
+FIRE_MAP_ATTRIBUTES = [FIRE_MAP_KEY, "fire_map_with_agents"]
 BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
 SIMFIRE_ATTRIBUTES = FireSimulation.supported_attributes()
 
