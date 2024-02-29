@@ -2,19 +2,8 @@ import copy
 import logging
 import os
 from abc import abstractmethod
-from collections import OrderedDict as ordered_dict
 from functools import partial
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    OrderedDict,
-    SupportsFloat,
-    Tuple,
-    TypeVar,
-)
+from typing import Any, Callable, Dict, List, Optional, SupportsFloat, Tuple, TypeVar
 
 import numpy as np
 from gymnasium import spaces
@@ -23,12 +12,17 @@ from simfire.sim.simulation import FireSimulation
 from simfire.utils.config import Config
 
 from simharness2.agents.agent import ReactiveAgent
-from simharness2.environments.harness import Harness
+from simharness2.environments.harness import Harness, get_unsupported_attributes
+from simharness2.models.custom_multimodal_torch_model import FIRE_MAP_KEY
 
 
 logger = logging.getLogger(__name__)
 
 AnyFireSimulation = TypeVar("AnyFireSimulation", bound=FireSimulation)
+
+FIRE_MAP_ATTRIBUTES = [FIRE_MAP_KEY, "fire_map_with_agents"]
+BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
+SIMFIRE_ATTRIBUTES = FireSimulation.supported_attributes()
 
 
 class FireHarness(Harness[AnyFireSimulation]):
@@ -469,6 +463,11 @@ class FireHarness(Harness[AnyFireSimulation]):
             raise ValueError(f"Invalid agent id provided: {agent_id}.")
         self._default_agent_id = agent_id if self.num_agents == 1 else ""
 
+    @staticmethod
+    def supported_attributes() -> List[str]:
+        """Return full list of attributes supported by the harness."""
+        return FIRE_MAP_ATTRIBUTES + SIMFIRE_ATTRIBUTES
+
     def render(self):
         """Render a visualization of the environment."""
         self._configure_env_rendering(should_render=True)
@@ -479,23 +478,20 @@ class FireHarness(Harness[AnyFireSimulation]):
         return nonsim_data
 
     # FIXME: `prepare_initial_fire_map` is a better name for this method?
-    def prepare_fire_map(self, place_agents: bool = True) -> np.ndarray:
+    def prepare_fire_map(
+        self, place_agents: bool = True, set_agent_positions: bool = True
+    ) -> np.ndarray:
         """Prepare initial state of the `fire_map` attribute.
 
         Creates an ndarray of entirely `BurnStatus.UNBURNED`, except for:
           - The initial fire postion, which is set to `BurnStatus.BURNING`.
           - Each respective agent position is set to the agent's `sim_id`.
         """
+        # Prepare inital state of fire map using known starting conditions.
         fire_map = np.full(self.sim.fire_map.shape, BurnStatus.UNBURNED)
-
-        # TODO: Verify that the initial fire position is as expected.
         col, row = self.sim.config.fire.fire_initial_position
         logger.debug(f"Placing initial fire position at row={row}, col={col}.")
         fire_map[row, col] = BurnStatus.BURNING
-
-        # Enable the user to choose whether agent ids should be placed on fire_map.
-        if not place_agents:
-            return fire_map
 
         agent_points = []
         for agent in self.agents.values():
@@ -503,14 +499,19 @@ class FireHarness(Harness[AnyFireSimulation]):
             if agent.initial_position != agent.current_position:
                 msg = f"The init and curr pos for agent {agent.agent_id} are different!"
                 raise RuntimeError(msg)
-            logger.debug(f"Placing {agent.sim_id} at row={agent.row}, col={agent.col}.")
-            fire_map[agent.row, agent.col] = agent.sim_id
+            # Enable the user to choose whether agent ids should be placed on fire_map.
+            if place_agents:
+                logger.debug(
+                    f"Placing {agent.sim_id} at row={agent.row}, col={agent.col}."
+                )
+                fire_map[agent.row, agent.col] = agent.sim_id
 
             agent_points.append([agent.col, agent.row, agent.sim_id])
 
         # Update the `FireSimulation` with the (new) initial agent positions.
-        logger.debug("Updating `self.sim` with (new) initial agent positions...")
-        self.sim.update_agent_positions(agent_points)
+        if set_agent_positions:
+            logger.debug("Updating `self.sim` with (new) initial agent positions...")
+            self.sim.update_agent_positions(agent_points)
 
         return fire_map
 
@@ -697,6 +698,25 @@ class FireHarness(Harness[AnyFireSimulation]):
 
 
 class ReactiveHarness(FireHarness[AnyFireSimulation]):
+    def __init__(self, **kwargs):
+        # TODO: Verify this call to super init when using **kwargs
+        super().__init__(**kwargs)
+
+        # TODO: Make this check more general, ie. not included in every subclass?
+        # Validate that the attributes provided are supported by this harness.
+        curr_cls = self.__class__
+        bad_attributes = get_unsupported_attributes(self.attributes, curr_cls)
+        if bad_attributes:
+            msg = (
+                f"The {curr_cls.__name__} class does not support the "
+                f"following attributes: {bad_attributes}."
+            )
+            raise AssertionError(msg)
+
+        if self.num_agents > 1:
+            msg = f"{self.__class__.__name__} only supports a single agent."
+            raise NotImplementedError(msg)
+
     def get_action_space(self, action_space_cls: Callable) -> spaces.Space:
         """TODO."""
         if action_space_cls is spaces.Discrete:
@@ -771,6 +791,21 @@ class DamageAwareReactiveHarness(ReactiveHarness[AnyFireSimulation]):
                 # Create static list to store the episode benchsim firemaps
                 self._max_bench_length = max_bench_length
                 self._bench_firemaps = [0] * self._max_bench_length
+
+        # TODO: Make this check more general, ie. not included in every subclass?
+        # Validate that the attributes provided are supported by this harness.
+        curr_cls = self.__class__
+        bad_attributes = get_unsupported_attributes(self.attributes, curr_cls)
+        if bad_attributes:
+            msg = (
+                f"The {curr_cls.__name__} class does not support the "
+                f"following attributes: {bad_attributes}."
+            )
+            raise AssertionError(msg)
+
+        if self.num_agents > 1:
+            msg = f"{self.__class__.__name__} only supports a single agent."
+            raise NotImplementedError(msg)
 
     def _should_terminate(self) -> bool:
         # Retrieve original value, based on `FireHarness` definition of terminated.
@@ -889,3 +924,7 @@ class DamageAwareReactiveHarness(ReactiveHarness[AnyFireSimulation]):
             {"bench_fire_map": min_max_dict, "bench_fire_map_final": min_max_dict}
         )
         return nonsim_min_maxes
+
+    @staticmethod
+    def supported_attributes() -> List[str]:
+        return FireHarness.supported_attributes() + BENCHMARK_ATTRIBUTES

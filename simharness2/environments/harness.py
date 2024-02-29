@@ -77,6 +77,12 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         """Get the mapping from harness actions to sim actions."""
         raise NotImplementedError
 
+    @staticmethod
+    @abstractmethod
+    def supported_attributes() -> List[str]:
+        """Return the full list of attributes supported by the harness."""
+        raise NotImplementedError
+
     @property
     def trial_logdir(self) -> str:
         """The path to the directory where (tune) trial results will be stored."""
@@ -197,3 +203,9 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         # self._episodes_debugged = 0
         # logger.debug(f"Initializing environment {hex(id(self))}")
         pass
+
+
+# TODO: Move to a more general file? maybe return a Set?
+def get_unsupported_attributes(attributes_provided: List[str], cls: Harness) -> List[str]:
+    """Return provided attributes that are NOT supported by class_name (a harness)."""
+    return list(set(attributes_provided).difference(set(cls.supported_attributes())))
