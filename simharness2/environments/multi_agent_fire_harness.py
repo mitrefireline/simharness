@@ -9,6 +9,7 @@ have the same speed/abilities or different.
 The reward function used is configurable depending on the fire manager intent displayed
 within the training config and corresponding reward class.
 """
+
 import logging
 from typing import Callable, Optional, Tuple, TypeVar
 
@@ -18,7 +19,8 @@ from ray.rllib.env import MultiAgentEnv
 from ray.rllib.utils.typing import MultiAgentDict
 from simfire.sim.simulation import FireSimulation
 
-from simharness2.environments import FireHarness
+from simharness2.environments.fire_harness import FireHarness
+
 
 logger = logging.getLogger(__name__)
 
@@ -92,51 +94,40 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
                 timestep=self.timesteps
             )
 
-        # TODO(afennelly): Need to handle truncation properly. For now, we assume that
-        # the episode will never be truncated, but this isn't necessarily true.
-        truncated = False
-        # The simulation has not yet been run via `run()`
-        if self.sim.elapsed_steps == 0:
-            terminated = False
-        else:
-            terminated = not self.sim.active
+        truncated = self._should_truncate()
+        terminated = self._should_terminate()
 
         # Calculate the reward for the current timestep
         # TODO pass `terminated` into `get_reward` method
         # FIXME: Update reward for MARL case!!
         # TODO: Give each agent the "same" simple reward for now.
-        reward = self.reward_cls.get_reward(self.timesteps, sim_run)
+        reward = self.reward_cls.get_reward(
+            timestep=self.timesteps,
+            sim_run=sim_run,
+            # agents=self.agents,
+            # agent_speed=self.agent_speed,
+        )
 
-        # Terminate episode early if burn damage in Agent Sim is larger than final bench fire map
-        self._terminate_if_greater_damage = False #FIXME get rid of this line when the fixme in the if statement below is implemented
-        if self.benchmark_sim:
-            if self._terminate_if_greater_damage:
-                total_area = self.sim.fire_map.size
-
-                sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
-                # FIXME Fix this damage calculation if needed to account for damage across all the agent sims
-                benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
-
-                if sim_damaged_total > benchsim_damaged_total:
-                    terminated = True
-                    # TODO potentially add a static negative penalty for making the fire worse
-
-        # TODO account for below updates in the reward_cls.calculate_reward() method
+        # FIXME account for below updates in the reward_cls.calculate_reward() method
         # "End of episode" reward
-        if terminated:
-            reward += 10
+        # if terminated:
+        # reward += 10
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
                 sim_run, terminated, reward, timestep=self.timesteps
             )
 
-        new_obs, rewards, truncateds, terminateds, infos = {}, {}, {}, {}, {}
+        rewards, truncateds, terminateds, infos = {}, {}, {}, {}
+        # new_obs, rewards, truncateds, terminateds, infos = {}, {}, {}, {}, {}
         truncs = set()
         terms = set()
         for agent_id, agent in self.agents.items():
-            new_obs[agent_id] = self.state
-            rewards[agent_id] = reward  # FIXME !!
+            # new_obs[agent_id] = self.state
+            # FIXME: All agents receive the SAME reward !!!
+            rewards[agent_id] = reward
+            # FIXME: Trunc/Term logic is the SAME for all agents.
+            # We may not always want this, but it's a good starting point.
             truncateds[agent_id] = truncated
             terminateds[agent_id] = terminated
             infos[agent_id] = {}
@@ -151,7 +142,8 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
-        return new_obs, rewards, terminateds, truncateds, infos
+        # return new_obs, rewards, terminateds, truncateds, infos
+        return self.state, rewards, terminateds, truncateds, infos
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
         """Parse the action into movement and interaction."""
@@ -176,11 +168,9 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         options: Optional[dict] = None,
     ) -> Tuple[MultiAgentDict, MultiAgentDict]:
         """TODO."""
-        # TODO: Verify this call to `super().reset()` works as desired!
+        # NOTE: Since super().reset() calls `self.get_initial_state()`, we can simply
+        # return `initial_state` and `infos` as is.
         initial_state, infos = super().reset(seed=seed, options=options)
-
-        # FIXME: Will need to update creation of `marl_obs` to handle POMDP.
-        marl_obs = {ag_id: initial_state for ag_id in self._agent_ids}
-        infos = {ag_id: {} for ag_id in self._agent_ids}
-
-        return marl_obs, infos
+        # marl_obs = {ag_id: initial_state for ag_id in self._agent_ids}
+        # infos = {ag_id: {} for ag_id in self._agent_ids}
+        return initial_state, infos
