@@ -1,66 +1,101 @@
 defaults:
   - config
+  - override environment: marl_complex_obs
+  - override training: ppo_with_custom_model
+  # UNCOMMENT BELOW TO "DISABLE" TUNING, ie. use tune for standalone trial.
+  # - override tunables: none
   - _self_
+
+algo:
+  name: PPO
+
+rollouts:
+  # NOTE: MultiAgentComplexObsHarness DOES NOT normalize returned observations!
+  # So, use the MeanStdFilter to ensure observations are normalized.
+  # See the MeanStdObservationFilterCAgentConnector class for more:
+  # https://github.com/ray-project/ray/blob/ad48682b4ec78a5699ba89a7c8a69327c264e47b/rllib/connectors/agent/mean_std_filter.py#L23
+  enable_connectors: true
+  observation_filter: MeanStdFilter
+
+  batch_mode: complete_episodes # truncate_episodes
+  # Scale experiment as desired
+  num_rollout_workers: 32 # FIXME!
+  # num_envs_per_worker: ??
 
 cli:
   mode: train
-  data_dir: /dev/shm/fireline/simharness
+  data_dir: ??
 
 hydra:
-  # job_logging:
-  #   root:
-  #     level: WARNING
   run:
-    dir: ${cli.data_dir}/debug_experiments/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${cli.data_dir}/debug_experiments/${now:%Y-%m-%d_%H-%M-%S} # FIXME!
 
+simulation:
+  fire_initial_position:
+    # Configure the generation of candidate initial fire positions.
+    generator:
+      # If true, then all possible fire initial positions will be included in the
+      # generated "dataset".
+      make_all_positions: false # FIXME!
+      # Number of candidate initial fire positions to generate. Ignored when
+      # `make_all_postions == true`.
+      output_size: 1024 # FIXME!
+      # The root location to save the generated dataset.
+      save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
+    # To disable usage of generator, simply set to null.
+    # Configure the sampling of new initial fire positions.
+    sampler:
+      # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
+      # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
+      resample_interval: 1 # FIXME!
+      # Number of samples to draw from the distribution, ie. take `sample_size` initial
+      # fire positions and distribute them across the respective RolloutWorker's.
+      sample_size:
+        train: ${rollouts.num_rollout_workers}
+        eval: ${evaluation.evaluation_num_workers}
+      # Filter generated "dataset" using the following condition.
+      # NOTE: This is applied to the generated dataset, not the sampled positions.
+      # For more information on the query string to evaluate, see:
+      # - https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html#pandas.DataFrame.query
+      # Examples:
+      # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
+      # - "(A < elapsed_steps) & (C < percent_area_burned)"
+      # query: "50 < elapsed_steps < 150"
+      query: "0.35 < percent_area_burned" # FIXME!
+      # Number of samples available in resulting "dataset" after filtering with `query`.
+      # NOTE: This allows the user to control the total number of distinct fire positions
+      # that will be used to produce sample batches (or trajectories) of experiences. If
+      # set to `None`, the population size will be equal to the size of the generated
+      # "dataset" after filtering with `query`.
+      # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.ß
+      population_size: 256 # FIXME!
+  train:
+    fire:
+      diagonal_spread: true
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
   repo: ${cli.data_dir}/aim
-  experiment: validate-simharness-updates
-  # TODO: Verify if there is a difference between specifying `null` vs. `int value`
+  experiment: test-multimodal-model-with-ppo
   system_tracking_interval: 30
-  # FIXME: Enable setting this value to `true`
   log_hydra_config: false
-
 
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
-  checkpoint_frequency: 100
+  checkpoint_frequency: ${evaluation.evaluation_interval}
   # Number of checkpoints to keep
-  num_to_keep: 5
+  num_to_keep: 20
+
 stop_conditions:
+  training_iteration: 1000
   timesteps_total: 2000000000
+  episodes_total: 1000000
   episode_reward_mean: 10000000
-
-environment:
-  env: simharness2.environments.MultiAgentComplexObsReactiveHarness
-  env_config:
-    movements: [up, down, left, right]
-    interactions: [none, fireline]
-    # TODO: Need better way of aligning yaml spec with constant keys in code.
-    attributes: [fire_map, agent_pos]
-    agent_speed: 4
-    num_agents: 3
-    agent_initialization_method: automatic
-    # initial_agent_positions: [[0, 64], ]
-    # Defines the class that will be used to perform reward calculation at each timestep.
-    # reward_cls_partial:
-    #   _target_: simharness2.rewards.base_reward.AreaSavedPropReward
-    #   _partial_: true
-    benchmark_sim: null
-    # fire_initial_position: ${simulation.fire_initial_position}
-
-evaluation:
-  evaluation_interval: 2 # FIXME !!!
-  evaluation_num_workers: 1
-  evaluation_config:
-    env: ${environment.env}
-    env_config: ${environment.env_config}
 
 exploration:
   exploration_config:
     type: EpsilonGreedy
+    # FIXME: Below isn't necessarily true for this exp; Update accordingly.
     #For 20000 episodes
     #Average 512 timesteps per episodes
     initial_epsilon: 1.0
@@ -71,27 +106,10 @@ exploration:
 resources:
   num_gpus: 1
 
-simulation:
-  train:
-    fire:
-      diagonal_spread: true
-      fire_initial_position:
-        type: static
-
-  eval:
-    fire:
-      diagonal_spread: true
-      fire_initial_position:
-        type: static
-
-training:
-  model:
-    custom_model: multimodal_network
-
 debugging:
   log_level: INFO
   logger_config:
     type:
       _target_: hydra.utils.get_class
-      path: ray.tune.logger.CSVLogger
+      path: ray.tune.logger.UnifiedLogger
     logdir: ${hydra:run.dir}
