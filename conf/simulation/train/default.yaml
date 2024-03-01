@@ -76,8 +76,6 @@ fire:
         #   "${calculate_half:${simulation.screen_width}}", # x position
         #   "${calculate_half:${simulation.screen_height}}" # y position
         # ]]
-    random:
-      seed: ${simulation.fire_start_seed}
   max_fire_duration: 4
   diagonal_spread: false
 

@@ -1,9 +1,5 @@
-# Override value (s) to use eval simulation instead of train simulation
-sim:
-  config:
-    config_dict: ${simulation.eval}
-benchmark_sim: ${.sim}
 in_evaluation: True
+
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 # NOTE: Override train settings to enable saving of data during evaluation.
 harness_analytics_partial:
