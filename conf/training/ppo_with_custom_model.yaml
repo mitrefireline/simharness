@@ -1,0 +1,9 @@
+defaults:
+  - model: screen_size_128
+
+model:
+  custom_model: multimodal_network
+
+# PPO parameter specs
+# ...
+train_batch_size: 1000
