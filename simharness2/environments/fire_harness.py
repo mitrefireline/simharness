@@ -3,7 +3,18 @@ import logging
 import os
 from abc import abstractmethod
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, SupportsFloat, Tuple, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    OrderedDict,
+    Optional,
+    SupportsFloat,
+    Tuple,
+    TypeVar,
+)
+from collections import OrderedDict as ordered_dict
 
 import numpy as np
 from gymnasium import spaces
@@ -105,7 +116,7 @@ class FireHarness(Harness[AnyFireSimulation]):
             )
         self.agents = self.create_agents(**input_kwargs)
 
-        self.min_maxes = self._get_min_maxes()
+        # self.min_maxes = self._get_min_maxes()
         self.observation_space = self.get_observation_space()
         self.action_space = self.get_action_space(action_space_cls)
 

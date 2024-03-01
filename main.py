@@ -10,6 +10,7 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+
 import logging
 import os
 from importlib import import_module
@@ -27,9 +28,11 @@ from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
+from ray.rllib.algorithms.callbacks import make_multi_callbacks
 from simfire.enums import BurnStatus
 
 from simharness2.callbacks.render_env import RenderEnv
+from simharness2.callbacks.initalize_simfire import InitializeSimfire
 from simharness2.logger.aim import AimLoggerCallback
 
 
@@ -252,7 +255,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(RenderEnv)
+        .callbacks(make_multi_callbacks([InitializeSimfire, RenderEnv]))
         # FIXME: Enable passing multi_agent settings to the algorithm config.
         .multi_agent(
             policies=agent_ids,
@@ -260,22 +263,24 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         )
     )
 
-    #Use Prioritized Replay Buffer
-    replay_buffer_config = {
-            "_enable_replay_buffer_api": True,
-            "type": "MultiAgentPrioritizedReplayBuffer",
-            #capacity of 800 for 20000 episode exp, adjust accordingly
-            "capacity": 800,
-            "prioritized_replay_alpha": 0.6,
-            "prioritized_replay_beta": 0.4,
-            #"prioritized_replay_eps": 1e-7,
-            "storage_unit": "episodes",
-            "replay_sequence_length": 1,
-            
-        }
-    
-    algo_cfg = algo_cfg.training(replay_buffer_config=replay_buffer_config)
+    algo_cfg.rl_module(_enable_rl_module_api=False)
+    algo_cfg.training(_enable_learner_api=False)
 
+    # NOTE: PPO doesn't use replay_buffer iirc; uncomment as needed
+    # Use Prioritized Replay Buffer
+    # replay_buffer_config = {
+    #     "_enable_replay_buffer_api": True,
+    #     "type": "MultiAgentPrioritizedReplayBuffer",
+    #     # capacity of 800 for 20000 episode exp, adjust accordingly
+    #     "capacity": 800,
+    #     "prioritized_replay_alpha": 0.6,
+    #     "prioritized_replay_beta": 0.4,
+    #     # "prioritized_replay_eps": 1e-7,
+    #     "storage_unit": "episodes",
+    #     "replay_sequence_length": 1,
+    # }
+
+    # algo_cfg = algo_cfg.training(replay_buffer_config=replay_buffer_config)
 
     return algo_cfg
 
@@ -291,8 +296,8 @@ def main(cfg: DictConfig) -> None:
     # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
-    # ray.init(address="auto", log_to_driver=False)
-    ray.init()
+    ray.init(address="auto", log_to_driver=False)
+    # ray.init()
 
     outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")

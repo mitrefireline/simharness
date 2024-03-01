@@ -10,12 +10,14 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+
 import os
 import logging
 from typing import List, Tuple, Dict
 import yaml
 
-import modin.pandas as pd
+# import modin.pandas as pd
+import pandas as pd
 import ray
 import numpy as np
 

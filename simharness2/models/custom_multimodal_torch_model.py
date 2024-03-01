@@ -132,3 +132,7 @@ class CustomMultimodalTorchModel(TorchModelV2, torch.nn.Module):
         self._features = torch.cat([conv_out, orig_obs[AGENT_POSITION_KEY]], dim=-1)
         out = self._fc_model(self._features)
         return out, state
+
+    @override(TorchModelV2)
+    def value_function(self) -> TensorType:
+        return self._fc_value(self._features).squeeze(1)

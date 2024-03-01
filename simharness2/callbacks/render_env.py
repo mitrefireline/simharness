@@ -33,7 +33,7 @@ RENDER_TRAIN_ENVS = True
 # use the same interval setup, but good enough for the time being. When this update is
 # added, the logic in RenderEnv.should_render_env will need to be updated accordingly.
 # Options: "log" or "linear"
-RENDER_INTERVAL_TYPE = "linear"
+RENDER_INTERVAL_TYPE = "log"
 # Set the base for the logarithmic interval
 LOGARITHMIC_BASE = 10
 # Set the step size for the linear interval
@@ -134,7 +134,8 @@ class RenderEnv(DefaultCallbacks):
         if env_type == TRAIN_KEY and RENDER_TRAIN_ENVS or env_type == EVAL_KEY:
             # Use specified interval type to determine if the env should be rendered.
             if RENDER_INTERVAL_TYPE == "log":
-                value = log(self.curr_iter, LOGARITHMIC_BASE)
+                # NOTE: +1 to avoid log(0) and to ensure the first iteration is rendered.
+                value = log(self.curr_iter + 1, LOGARITHMIC_BASE)
                 return value.is_integer() and value > 0
             elif RENDER_INTERVAL_TYPE == "linear":
                 return self.curr_iter % LINEAR_INTERVAL_STEP == 0
