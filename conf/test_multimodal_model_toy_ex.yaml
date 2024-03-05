@@ -72,11 +72,16 @@ simulation:
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.ß
       population_size: 4 # FIXME!
   train:
+    display:
+      fire_size: 1
+      control_line_size: 1
+      agent_size: 1
+      rescale_factor: 4
     area:
       pixel_scale: 50
       screen_size:
         _target_: builtins.tuple
-        _args_: [[12, 12]]
+        _args_: [[24, 24]]
     fire:
       diagonal_spread: true
     # Use functional terrain so that 12x12 fire_map stays "as is"

@@ -4,6 +4,7 @@ import logging
 import os
 from math import log
 from typing import TYPE_CHECKING, Dict, Optional, Union
+import time
 
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
@@ -189,13 +190,17 @@ class RenderEnv(DefaultCallbacks):
             # FIXME Update logic to handle saving same gif when writing to Aim UI
             context_dict = {}
             # FIXME: Should we round lat, lon to a certain precision??
-            lat, lon = env.sim.config.landfire_lat_long_box.points[0]
-            op_data_lat_lon = f"operational_lat_{lat}_lon_{lon}"
+            if env.sim.config.landfire_lat_long_box:
+                lat, lon = env.sim.config.landfire_lat_long_box.points[0]
+                op_data_lat_lon = f"operational_lat_{lat}_lon_{lon}"
+            else:
+                op_data_lat_lon = "functional"
             fire_init_pos = env.sim.config.fire.fire_initial_position
             context_dict.update({"fire_initial_position": str(fire_init_pos)})
             # FIXME: Finalize path for saving gifs (and add note to docs) - for example,
             # save each gif in a folder that relates it to episode iter?
-            env_episode_id = f"iter_{self.curr_iter}_w_{w_idx}_v_{v_idx}"
+            current_time = time.strftime("%Y%m%d-%H%M%S")
+            env_episode_id = f"iter_{self.curr_iter}_time_{current_time}_w_{w_idx}_v_{v_idx}"
             gif_save_path = os.path.join(
                 logdir,
                 env_type,
@@ -269,5 +274,5 @@ class RenderEnv(DefaultCallbacks):
         # Update the current result for each environment.
         algorithm.workers.foreach_worker(
             lambda w: w.foreach_env(lambda env: setattr(env, "current_result", result)),
-            local_worker=False,
+            local_worker=True,
         )

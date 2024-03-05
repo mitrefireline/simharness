@@ -104,6 +104,7 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         reward = self.reward_cls.get_reward(
             timestep=self.timesteps,
             sim_run=sim_run,
+            done_episode=terminated or truncated,
             # agents=self.agents,
             # agent_speed=self.agent_speed,
         )
@@ -113,6 +114,7 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         # if terminated:
         # reward += 10
 
+        # FIXME: We are passing the TIMESTEP reward, not CUMULATIVE reward!!
         if self.harness_analytics:
             self.harness_analytics.update_after_one_harness_step(
                 sim_run, terminated, reward, timestep=self.timesteps

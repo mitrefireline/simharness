@@ -3,6 +3,7 @@
 Reward Classes to be called in the main environment that derive rewards from the
 ReactiveHarnessAnalytics object.
 """
+
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict
@@ -33,12 +34,14 @@ class BaseReward(ABC):
         )
 
     @abstractmethod
-    def get_reward(self, *, timestep: int, sim_run: bool) -> float:
+    def get_reward(
+        self, *, timestep: int, sim_run: bool, done_episode: bool, **kwargs
+    ) -> float:
         """TODO Add docstring."""
         pass
 
     @abstractmethod
-    def get_timestep_intermediate_reward(self, timestep: int) -> float:
+    def get_timestep_intermediate_reward(self, timestep: int, **kwargs) -> float:
         """TODO Add docstring."""
         pass
 
@@ -50,18 +53,26 @@ class SimpleReward(BaseReward):
         """TODO Add constructor docstring."""
         super().__init__(harness_analytics)
 
-    def get_reward(self, timestep: int, sim_run: bool) -> float:
+    def get_reward(
+        self, timestep: int, sim_run: bool, done_episode: bool, **kwargs
+    ) -> float:
         """TODO Add function docstring."""
         if not sim_run:
             # No intermediate reward calculation used currently, so 0.0 is returned.
-            return self.get_timestep_intermediate_reward(timestep)
+            reward = self.get_timestep_intermediate_reward(timestep)
 
-        burning = self.harness_analytics.sim_analytics.data.burning
-        reward = -(burning / self._sim_area)
+        else:
+            burning = self.harness_analytics.sim_analytics.data.burning
+            reward = -(burning / self._sim_area)
 
         # update self.latest_reward and then return the reward
         self.latest_reward = reward
-        return reward
+
+        # FIXME: Finalize reward value for "finishing"
+        if done_episode:
+            self.latest_reward += 1
+
+        return self.latest_reward
 
     def get_timestep_intermediate_reward(self, timestep: int) -> float:
         """TODO Add function docstring."""
