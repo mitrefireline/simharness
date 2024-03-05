@@ -33,7 +33,7 @@ RENDER_TRAIN_ENVS = True
 # use the same interval setup, but good enough for the time being. When this update is
 # added, the logic in RenderEnv.should_render_env will need to be updated accordingly.
 # Options: "log" or "linear"
-RENDER_INTERVAL_TYPE = "log"
+RENDER_INTERVAL_TYPE = "linear"
 # Set the base for the logarithmic interval
 LOGARITHMIC_BASE = 10
 # Set the step size for the linear interval
@@ -121,6 +121,9 @@ class RenderEnv(DefaultCallbacks):
                 f"Preparing to render {env_type} environment (w: {w_idx}, v: {v_idx})..."
             )
             env._configure_env_rendering(True)
+
+            # FIXME: Remove later, using for debugging purposes!!
+            env.harness_analytics.reset(env_is_rendering=True)
 
     def should_render_env(
         self, env: "FireHarness[FireSimulation]", env_type: str

@@ -3,6 +3,7 @@
 TODO: Add a list of any classes, exception, functions, and any other objects exported by
 the module.
 """
+
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -38,6 +39,7 @@ class AgentData:
 
     def __post_init__(self, save_history):
         """TODO"""
+        # FIXME: (bug) value of `save_history` is not ALWAYS true when we expect it!
         # Create a deque that is (optionally) used to aggregate data across timesteps.
         if save_history:
             self._history = deque()
@@ -168,7 +170,7 @@ class AgentAnalytics(ABC):
 
         logging.debug(f"near_agent_arr:\n {near_agent_arr}")
         # Check if any tiles surrounding the agent have value `BurnStatus.BURNING`.
-        return np.any(near_agent_arr == BurnStatus.BURNING).astype(bool)
+        return bool(np.any(near_agent_arr == BurnStatus.BURNING))
 
     def connected_mitigation(self, fire_map: np.ndarray, agent_pos: List[int]) -> bool:
         """TODO docstring."""
