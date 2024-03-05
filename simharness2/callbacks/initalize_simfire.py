@@ -68,6 +68,9 @@ class InitializeSimfire(DefaultCallbacks):
         """
         # Set `rllib_env_context` for each env (needed w/in `env._initialize_simfire`).
         all_workers = [algorithm.workers, algorithm.evaluation_workers]
+        # Just in case evaluation is disable, ie. for debugging purposes.
+        if algorithm.evaluation_workers is None:
+            all_workers = [algorithm.workers]
         for worker in all_workers:
             worker.foreach_worker(
                 lambda w: w.foreach_env_with_context(_set_harness_env_context),
