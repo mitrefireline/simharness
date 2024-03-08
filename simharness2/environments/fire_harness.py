@@ -489,27 +489,33 @@ class FireHarness(Harness[AnyFireSimulation]):
 
     def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:  # noqa
         nonsim_data = ordered_dict()
-        nonsim_data["fire_map"] = self.prepare_fire_map()
+        fire_map_attr = set(FIRE_MAP_ATTRIBUTES).intersection(set(self.attributes))
+        # Ensure that only 1 attribute from FIRE_MAP_ATTRIBUTES is provided.
+        if len(fire_map_attr) == 1:
+            fire_map_attr = fire_map_attr.pop()
+            place_agents = True if "agents" in fire_map_attr else False
+            nonsim_data[fire_map_attr] = self.prepare_fire_map(place_agents=place_agents)
+        else:
+            raise AssertionError(
+                f"Expected 1 attribute from {FIRE_MAP_ATTRIBUTES}; got {len(fire_map_attr)}."
+            )
         return nonsim_data
 
     # FIXME: `prepare_initial_fire_map` is a better name for this method?
-    def prepare_fire_map(self, place_agents: bool = True) -> np.ndarray:
+    def prepare_fire_map(
+        self, place_agents: bool = True, set_agent_positions: bool = True
+    ) -> np.ndarray:
         """Prepare initial state of the `fire_map` attribute.
 
         Creates an ndarray of entirely `BurnStatus.UNBURNED`, except for:
           - The initial fire postion, which is set to `BurnStatus.BURNING`.
           - Each respective agent position is set to the agent's `sim_id`.
         """
+        # Prepare inital state of fire map using known starting conditions.
         fire_map = np.full(self.sim.fire_map.shape, BurnStatus.UNBURNED)
-
-        # TODO: Verify that the initial fire position is as expected.
         col, row = self.sim.config.fire.fire_initial_position
         logger.debug(f"Placing initial fire position at row={row}, col={col}.")
         fire_map[row, col] = BurnStatus.BURNING
-
-        # Enable the user to choose whether agent ids should be placed on fire_map.
-        if not place_agents:
-            return fire_map
 
         agent_points = []
         for agent in self.agents.values():
@@ -517,14 +523,19 @@ class FireHarness(Harness[AnyFireSimulation]):
             if agent.initial_position != agent.current_position:
                 msg = f"The init and curr pos for agent {agent.agent_id} are different!"
                 raise RuntimeError(msg)
-            logger.debug(f"Placing {agent.sim_id} at row={agent.row}, col={agent.col}.")
-            fire_map[agent.row, agent.col] = agent.sim_id
+            # Enable the user to choose whether agent ids should be placed on fire_map.
+            if place_agents:
+                logger.debug(
+                    f"Placing {agent.sim_id} at row={agent.row}, col={agent.col}."
+                )
+                fire_map[agent.row, agent.col] = agent.sim_id
 
             agent_points.append([agent.col, agent.row, agent.sim_id])
 
         # Update the `FireSimulation` with the (new) initial agent positions.
-        logger.debug("Updating `self.sim` with (new) initial agent positions...")
-        self.sim.update_agent_positions(agent_points)
+        if set_agent_positions:
+            logger.debug("Updating `self.sim` with (new) initial agent positions...")
+            self.sim.update_agent_positions(agent_points)
 
         return fire_map
 
@@ -924,8 +935,9 @@ class DamageAwareReactiveHarness(ReactiveHarness[AnyFireSimulation]):
 
     def get_nonsim_attribute_data(self) -> OrderedDict[str, np.ndarray]:  # noqa
         nonsim_data = super().get_nonsim_attribute_data()
-        nonsim_data["bench_fire_map"] = self.prepare_fire_map(place_agents=False)
-        nonsim_data["bench_fire_map_final"] = self.prepare_fire_map(place_agents=False)
+        fire_map_kwargs = {"place_agents": False, "set_agent_positions": False}
+        nonsim_data["bench_fire_map"] = self.prepare_fire_map(**fire_map_kwargs)
+        nonsim_data["bench_fire_map_final"] = self.prepare_fire_map(**fire_map_kwargs)
         return nonsim_data
 
     def get_nonsim_attribute_bounds(self) -> OrderedDict[str, Dict[str, int]]:  # noqa
