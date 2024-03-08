@@ -266,6 +266,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Store agent's current position in a temporary variable to avoid overwriting it.
         row_boundary, col_boundary = [x - 1 for x in self.sim.fire_map.shape]
 
+        # Reset the `moved_off_map` attribute for the current timestep.
+        moved_off_map = False
         # Update the agent's position based on the provided movement.
         movement_str = self.movements[agent.latest_movement]
         # First, check that the movement string is valid.
@@ -288,8 +290,11 @@ class FireHarness(Harness[AnyFireSimulation]):
             logger.debug(
                 f"Agent can't move {movement_str} from row={agent.row}, col={agent.col}."
             )
-            logger.debug("Setting `agent.moved_off_map = True` for agent...")
-            agent.moved_off_map = True
+            moved_off_map = True
+
+        # Update the `moved_off_map` attribute for the current timestep.
+        logger.debug(f"Setting `agent.moved_off_map = {moved_off_map}` for agent...")
+        agent.moved_off_map = moved_off_map
 
         # Update the Simulation with new agent position (s).
         point = [agent.col, agent.row, agent.sim_id]
