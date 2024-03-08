@@ -23,12 +23,16 @@ from simfire.sim.simulation import FireSimulation
 from simfire.utils.config import Config
 
 from simharness2.agents.agent import ReactiveAgent
-from simharness2.environments.harness import Harness
+from simharness2.environments.harness import Harness, get_unsupported_attributes
 
 
 logger = logging.getLogger(__name__)
 
 AnyFireSimulation = TypeVar("AnyFireSimulation", bound=FireSimulation)
+
+FIRE_MAP_ATTRIBUTES = ["fire_map", "fire_map_with_agents"]
+BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
+SIMFIRE_ATTRIBUTES = FireSimulation.supported_attributes()
 
 
 class FireHarness(Harness[AnyFireSimulation]):
@@ -469,6 +473,11 @@ class FireHarness(Harness[AnyFireSimulation]):
             raise ValueError(f"Invalid agent id provided: {agent_id}.")
         self._default_agent_id = agent_id if self.num_agents == 1 else ""
 
+    @staticmethod
+    def supported_attributes() -> List[str]:
+        """Return full list of attributes supported by the harness."""
+        return FIRE_MAP_ATTRIBUTES + SIMFIRE_ATTRIBUTES
+
     def render(self):
         """Render a visualization of the environment."""
         self._configure_env_rendering(should_render=True)
@@ -697,6 +706,25 @@ class FireHarness(Harness[AnyFireSimulation]):
 
 
 class ReactiveHarness(FireHarness[AnyFireSimulation]):
+    def __init__(self, **kwargs):
+        # TODO: Verify this call to super init when using **kwargs
+        super().__init__(**kwargs)
+
+        # TODO: Make this check more general, ie. not included in every subclass?
+        # Validate that the attributes provided are supported by this harness.
+        curr_cls = self.__class__
+        bad_attributes = get_unsupported_attributes(self.attributes, curr_cls)
+        if bad_attributes:
+            msg = (
+                f"The {curr_cls.__name__} class does not support the "
+                f"following attributes: {bad_attributes}."
+            )
+            raise AssertionError(msg)
+
+        if self.num_agents > 1:
+            msg = f"{self.__class__.__name__} only supports a single agent."
+            raise NotImplementedError(msg)
+
     def get_action_space(self, action_space_cls: Callable) -> spaces.Space:
         """TODO."""
         if action_space_cls is spaces.Discrete:
@@ -771,6 +799,21 @@ class DamageAwareReactiveHarness(ReactiveHarness[AnyFireSimulation]):
                 # Create static list to store the episode benchsim firemaps
                 self._max_bench_length = max_bench_length
                 self._bench_firemaps = [0] * self._max_bench_length
+
+        # TODO: Make this check more general, ie. not included in every subclass?
+        # Validate that the attributes provided are supported by this harness.
+        curr_cls = self.__class__
+        bad_attributes = get_unsupported_attributes(self.attributes, curr_cls)
+        if bad_attributes:
+            msg = (
+                f"The {curr_cls.__name__} class does not support the "
+                f"following attributes: {bad_attributes}."
+            )
+            raise AssertionError(msg)
+
+        if self.num_agents > 1:
+            msg = f"{self.__class__.__name__} only supports a single agent."
+            raise NotImplementedError(msg)
 
     def _should_terminate(self) -> bool:
         # Retrieve original value, based on `FireHarness` definition of terminated.
@@ -889,3 +932,7 @@ class DamageAwareReactiveHarness(ReactiveHarness[AnyFireSimulation]):
             {"bench_fire_map": min_max_dict, "bench_fire_map_final": min_max_dict}
         )
         return nonsim_min_maxes
+
+    @staticmethod
+    def supported_attributes() -> List[str]:
+        return FireHarness.supported_attributes() + BENCHMARK_ATTRIBUTES
