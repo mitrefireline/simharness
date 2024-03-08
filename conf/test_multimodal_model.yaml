@@ -94,14 +94,15 @@ stop_conditions:
 
 exploration:
   exploration_config:
-    type: EpsilonGreedy
-    # FIXME: Below isn't necessarily true for this exp; Update accordingly.
-    #For 20000 episodes
-    #Average 512 timesteps per episodes
-    initial_epsilon: 1.0
-    final_epsilon: 0.05
-    warmup_timesteps: 972800
-    epsilon_timesteps: 8755200
+    type: StochasticSampling
+    # type: EpsilonGreedy
+    # # FIXME: Below isn't necessarily true for this exp; Update accordingly.
+    # #For 20000 episodes
+    # #Average 512 timesteps per episodes
+    # initial_epsilon: 1.0
+    # final_epsilon: 0.05
+    # warmup_timesteps: 972800
+    # epsilon_timesteps: 8755200
 
 resources:
   num_gpus: 1

@@ -64,6 +64,7 @@ class ReactiveAgent:
 
     def __post_init__(self):
         self._current_position = self.initial_position
+        self._previous_position = self.initial_position
         self.x, self.y = self.initial_position
         self.row, self.col = self.y, self.x
 
@@ -77,6 +78,7 @@ class ReactiveAgent:
 
     @current_position.setter
     def current_position(self, value: Tuple[int, int]):
+        self._previous_position = self._current_position
         self._current_position = value
         self.x, self.y = value
         self.row, self.col = self.y, self.x

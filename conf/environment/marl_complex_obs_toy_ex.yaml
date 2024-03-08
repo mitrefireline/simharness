@@ -14,7 +14,7 @@ env_config:
   # TODO: Need better way of aligning yaml spec with constant keys in code.
   attributes: [fire_map, agent_pos]
   normalized_attributes: []
-  agent_speed: 4
+  agent_speed: 6
   num_agents: 1
   # agent_initialization_method: automatic
   agent_initialization_method: manual
@@ -39,7 +39,7 @@ env_config:
 
   # Defines the class that will be used to perform reward calculation at each timestep.
   reward_cls_partial:
-    _target_: simharness2.rewards.base_reward.SimpleReward
+    _target_: simharness2.rewards.forward_reward.ForwardReward
     _partial_: true
 
   action_space_cls:

@@ -105,8 +105,8 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
             timestep=self.timesteps,
             sim_run=sim_run,
             done_episode=terminated or truncated,
-            # agents=self.agents,
-            # agent_speed=self.agent_speed,
+            agents=self.agents,
+            agent_speed=self.agent_speed,
         )
 
         # FIXME account for below updates in the reward_cls.calculate_reward() method
