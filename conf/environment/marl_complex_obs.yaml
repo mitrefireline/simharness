@@ -10,15 +10,15 @@ env_config:
       _target_: simfire.utils.config.Config
       config_dict: ${simulation.train}
   movements: [none, up, down, left, right]
-  interactions: [none, fireline]
+  interactions: [fireline]
   # TODO: Need better way of aligning yaml spec with constant keys in code.
   attributes: [fire_map, agent_pos]
   normalized_attributes: []
   agent_speed: 4
-  num_agents: 3
+  num_agents: 1
   # agent_initialization_method: automatic
   agent_initialization_method: manual
-  initial_agent_positions: [[0, 64], [127, 64], [64, 127]]
+  initial_agent_positions: [[0, 64]]
   # Defines the class that will be used to perform reward calculation at each timestep.
   # reward_cls_partial:
   #   _target_: simharness2.rewards.base_reward.AreaSavedPropReward
@@ -41,7 +41,7 @@ env_config:
 
   # Defines the class that will be used to perform reward calculation at each timestep.
   reward_cls_partial:
-    _target_: simharness2.rewards.base_reward.SimpleReward
+    _target_: simharness2.rewards.forward_reward.ForwardReward
     _partial_: true
 
   action_space_cls:

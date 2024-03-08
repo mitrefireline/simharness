@@ -7,3 +7,6 @@ model:
 # PPO parameter specs
 # ...
 train_batch_size: 1000
+entropy_coeff: 0.1
+lambda_: 0.95
+clip_param: 0.1
