@@ -11,7 +11,7 @@ within the training config and corresponding reward class.
 """
 
 import logging
-from typing import Callable, Optional, OrderedDict, Tuple, TypeVar
+from typing import Callable, Dict, Optional, OrderedDict, Tuple, TypeVar
 
 import numpy as np
 from gymnasium import spaces
@@ -179,7 +179,7 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         initial_state, infos = super().reset(seed=seed, options=options)
         return initial_state, infos
 
-        marl_obs = {ag_id: initial_state for ag_id in self._agent_ids}
-        infos = {ag_id: {} for ag_id in self._agent_ids}
-
-        return marl_obs, infos
+    # FIXME: Naive way of disabling the usage of min/maxes in harness. This will be
+    # addressed in a future MR that refactors use of normalizing and min/maxes.
+    def _get_min_maxes(self) -> OrderedDict[str, Dict[str, Tuple[int, int]]]:
+        return {}
