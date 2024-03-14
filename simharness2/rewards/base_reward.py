@@ -33,6 +33,9 @@ class BaseReward(ABC):
             self.harness_analytics.sim_analytics.sim.config.area.screen_size[0] ** 2
         )
 
+        # TODO: Decide what to use for the initial value of latest_reward
+        self.latest_reward = -1
+
     @abstractmethod
     def get_reward(
         self, *, timestep: int, sim_run: bool, done_episode: bool, **kwargs
