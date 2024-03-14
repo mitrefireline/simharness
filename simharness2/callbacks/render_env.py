@@ -134,10 +134,15 @@ class RenderEnv(DefaultCallbacks):
     ) -> bool:
         """Check if the environment should be rendered."""
         if env_type == TRAIN_KEY:
-            self.curr_iter = env.current_result.get("training_iteration", 0)
+            if not env.current_result:
+                logger.info("No current_result, setting current iteration to 0...")
+                self.curr_iter = 0
+            else:
+                self.curr_iter = env.current_result["training_iteration"]
         else:
             self.curr_iter = env._num_eval_iters
 
+        logger.debug(f"Current iteration for {env_type}: {self.curr_iter}")
         if env_type == TRAIN_KEY and RENDER_TRAIN_ENVS or env_type == EVAL_KEY:
             # Use specified interval type to determine if the env should be rendered.
             if RENDER_INTERVAL_TYPE == "log":
@@ -214,6 +219,7 @@ class RenderEnv(DefaultCallbacks):
                 f"fire_init_pos_x_{fire_init_pos[0]}_y_{fire_init_pos[1]}",
                 f"{env_episode_id}.gif",
             )
+            logger.info(f"Total environment steps: {env.timesteps}")
             logger.info(f"Saving GIF to {gif_save_path}...")
             base_env.get_sub_environments()[env_index].sim.save_gif(gif_save_path)
             # Save the gif_path so that we can write image to aim server, if desired
