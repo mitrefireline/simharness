@@ -2,19 +2,19 @@ import copy
 import logging
 import os
 from abc import abstractmethod
+from collections import OrderedDict as ordered_dict
 from functools import partial
 from typing import (
     Any,
     Callable,
     Dict,
     List,
-    OrderedDict,
     Optional,
+    OrderedDict,
     SupportsFloat,
     Tuple,
     TypeVar,
 )
-from collections import OrderedDict as ordered_dict
 
 import numpy as np
 from gymnasium import spaces
@@ -129,6 +129,10 @@ class FireHarness(Harness[AnyFireSimulation]):
         self._setup_harness_analytics(harness_analytics_partial)
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial)
+
+        # TODO: Decide default value. Setting to False allows _initialize_simfire()
+        # to be the only method that should change this to True?
+        self._new_fire_scenario = False
 
     def get_observation_space(self) -> spaces.Space:
         """TODO."""
@@ -369,7 +373,11 @@ class FireHarness(Harness[AnyFireSimulation]):
         if self.harness_analytics:
             logger.debug("Resetting `self.harness_analytics`...")
             render = self._should_render if hasattr(self, "_should_render") else False
-            self.harness_analytics.reset(env_is_rendering=render)
+            # Don't reset benchmark analytics if the data is still being used!
+            self.harness_analytics.reset(
+                env_is_rendering=render,
+                reset_benchmark=self._new_fire_scenario,
+            )
 
         # Get the initial state of the `FireSimulation`, after it has been reset (above).
         self.state = self.get_initial_state()
@@ -665,9 +673,13 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         # Use the fire scenario to initialize the `FireSimulation`.
         init_pos = (fire_pos_arr.x, fire_pos_arr.y)
+        logger.info(f"Setting simulation fire initial position to {init_pos}...")
         self.sim.set_fire_initial_position(init_pos)
         if self.benchmark_sim:
             self.benchmark_sim.set_fire_initial_position(init_pos)
+
+        # TODO: Decide on how to indicate that fire scenario is "new"; works for now.
+        self._new_fire_scenario = True
 
         return init_pos
 

@@ -229,19 +229,20 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
             perf = self.best_episode_performance
             logger.info(f"Episode {self.episodes_total}: {perf}")
 
-    def reset(self, env_is_rendering: bool = False):
-        """Resets attributes that track data within each episode.
-
-        This method is intended to be called within after the call to
-        `ReactiveHarness._do_one_agent_step()` (within `ReactiveHarness.step()`).
-
-        """
+    def reset(
+        self,
+        env_is_rendering: bool = False,
+        reset_benchmark: bool = True,
+    ):
+        """Resets attributes that track data within each episode."""
 
         self.sim_analytics.reset(env_is_rendering)
         if self.benchmark_sim_analytics is not None:
             self.sim_analytics.benchmark_exists = True
 
-        if self.benchmark_sim_analytics:
+        # FIXME: We should ONLY reset this if self._new_fire_scenario; otherwise, we need
+        # to keep the data!
+        if reset_benchmark and self.benchmark_sim_analytics:
             self.benchmark_sim_analytics.reset(env_is_rendering)
 
     def save_sim_history(self, logdir: str, env_id: str) -> None:
