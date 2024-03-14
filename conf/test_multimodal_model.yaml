@@ -47,11 +47,11 @@ simulation:
     sampler:
       # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
       # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
-      resample_interval: 1 # FIXME!
+      resample_interval: -1 # FIXME!
       # Number of samples to draw from the distribution, ie. take `sample_size` initial
       # fire positions and distribute them across the respective RolloutWorker's.
       sample_size:
-        train: ${rollouts.num_rollout_workers}
+        train: 1
         eval: ${evaluation.evaluation_num_workers}
       # Filter generated "dataset" using the following condition.
       # NOTE: This is applied to the generated dataset, not the sampled positions.
