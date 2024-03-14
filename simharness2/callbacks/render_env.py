@@ -124,7 +124,7 @@ class RenderEnv(DefaultCallbacks):
             env._configure_env_rendering(True)
 
             # FIXME: Remove later, using for debugging purposes!!
-            env.harness_analytics.reset(env_is_rendering=True)
+            # env.harness_analytics.reset(env_is_rendering=True)
 
     def should_render_env(
         self, env: "FireHarness[FireSimulation]", env_type: str
@@ -200,7 +200,9 @@ class RenderEnv(DefaultCallbacks):
             # FIXME: Finalize path for saving gifs (and add note to docs) - for example,
             # save each gif in a folder that relates it to episode iter?
             current_time = time.strftime("%Y%m%d-%H%M%S")
-            env_episode_id = f"iter_{self.curr_iter}_time_{current_time}_w_{w_idx}_v_{v_idx}"
+            env_episode_id = (
+                f"iter_{self.curr_iter}_time_{current_time}_w_{w_idx}_v_{v_idx}"
+            )
             gif_save_path = os.path.join(
                 logdir,
                 env_type,
