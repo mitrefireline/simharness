@@ -233,6 +233,13 @@ class InitializeSimfire(DefaultCallbacks):
             kwargs: Forward compatibility placeholder.
         """
         curr_iter = algorithm.iteration
+        # NOTE: Allow user to set value to -1 to disable resampling.
+        if self.resample_interval == -1:
+            logger.debug(
+                "The `resample_interval` is set to -1, so the current train scenarios "
+                "will be used for the entire training process."
+            )
+            return
         # Only re-initialize the `FireSimulation` when the resample interval is met.
         if curr_iter % self.resample_interval == 0:
             logger.info(
