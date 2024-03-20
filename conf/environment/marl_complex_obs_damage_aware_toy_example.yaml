@@ -15,12 +15,10 @@ env_config:
   attributes: [fire_map, agent_pos]
   normalized_attributes: []
   agent_speed: 4
-  # num_agents: 1
-  num_agents: 3
+  num_agents: 1
   # agent_initialization_method: automatic
   agent_initialization_method: manual
-  # initial_agent_positions: [[0, 64]]
-  initial_agent_positions: [[0, 64], [127, 64], [64, 127]]
+  initial_agent_positions: [[0, 24]]
   benchmark_sim: ${.sim}
   # Defines the class that will be used to monitor and track `ReactiveHarness`.
   harness_analytics_partial:
@@ -39,6 +37,7 @@ env_config:
 
   # Defines the class that will be used to perform reward calculation at each timestep.
   reward_cls_partial:
+    # _target_: simharness2.rewards.forward_reward.ForwardRewardV2
     _target_: simharness2.rewards.base_reward.AreaSavedPropRewardV2
     _partial_: true
 

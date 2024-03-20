@@ -243,10 +243,11 @@ class AreaSavedPropRewardV2(BaseReward):
     ) -> float:
         """TODO Add function docstring."""
         if not sim_run:
+            reward = 0
             # No intermediate reward calculation used currently, so 0.0 is returned.
-            reward = self.get_timestep_intermediate_reward(
-                timestep=timestep, agents=agents, agent_speed=agent_speed
-            )
+            #reward = self.get_timestep_intermediate_reward(
+                #timestep=timestep, agents=agents, agent_speed=agent_speed
+            #)
         else:
             ## DEFINE VALUES NEEDED FOR REWARD CALCULATION
 
@@ -319,7 +320,7 @@ class AreaSavedPropRewardV2(BaseReward):
                     reward = 0.0
 
             # account for if the agent(s) simulation has ended in fewer steps than the benchmark simulation
-            if (self.harness_analytics.sim_analytics.active == False) & (
+            if (self.harness_analytics.sim_analytics.active == False) and (
                 sim_steps < bench_sim_steps_total
             ):
                 # augment the reward with the number of potential squares saved compared to the benchsim
@@ -333,21 +334,21 @@ class AreaSavedPropRewardV2(BaseReward):
 
                     sim_rest_damaged = 0.0
 
-                    reward = reward + (
-                        bench_rest_damaged * 1.0
-                        - sim_rest_damaged / bench_total_damaged * 1.0
-                    )
+                    # reward = reward + (
+                    #     bench_rest_damaged / bench_total_damaged
+                    # )
 
-        # update self.latest_reward and then return the reward
-        self.latest_reward = reward
+            # update self.latest_reward and then return the reward
+            self.latest_reward = reward
 
         # FIXME: Finalize reward value for "finishing"
         if done_episode:
-            self.latest_reward += 1
+            self.latest_reward += 1.0
+            reward += 1.0
 
         reward_msg = "Latest reward" if sim_run else "Latest intermediate reward"
         logger.debug(f"{reward_msg}: {self.latest_reward}")
-        return self.latest_reward
+        return reward
 
     def get_timestep_intermediate_reward(
         self,
