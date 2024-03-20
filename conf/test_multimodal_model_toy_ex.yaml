@@ -41,7 +41,7 @@ simulation:
       make_all_positions: false # FIXME!
       # Number of candidate initial fire positions to generate. Ignored when
       # `make_all_postions == true`.
-      output_size: 8 # FIXME!
+      output_size: 1024 # FIXME!
       # The root location to save the generated dataset.
       save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
     # To disable usage of generator, simply set to null.
@@ -49,12 +49,12 @@ simulation:
     sampler:
       # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
       # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
-      resample_interval: -1 # FIXME!
+      resample_interval: 1 # FIXME!
       # Number of samples to draw from the distribution, ie. take `sample_size` initial
       # fire positions and distribute them across the respective RolloutWorker's.
       sample_size:
-        train: 1 # ${rollouts.num_rollout_workers}
-        eval: 1 # ${evaluation.evaluation_num_workers}
+        train: ${rollouts.num_rollout_workers}
+        eval: ${evaluation.evaluation_num_workers}
       # Filter generated "dataset" using the following condition.
       # NOTE: This is applied to the generated dataset, not the sampled positions.
       # For more information on the query string to evaluate, see:
@@ -70,7 +70,7 @@ simulation:
       # set to `None`, the population size will be equal to the size of the generated
       # "dataset" after filtering with `query`.
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.ß
-      population_size: 4 # FIXME!
+      population_size: 128 # FIXME!
   train:
     display:
       fire_size: 1
@@ -81,7 +81,7 @@ simulation:
       pixel_scale: 50
       screen_size:
         _target_: builtins.tuple
-        _args_: [[24, 24]]
+        _args_: [[48, 48]]
     fire:
       diagonal_spread: true
     # Use functional terrain so that 12x12 fire_map stays "as is"

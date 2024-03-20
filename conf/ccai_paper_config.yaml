@@ -1,4 +1,4 @@
-defaults:
+`defaults:
   - config
   - _self_
 

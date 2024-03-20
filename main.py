@@ -242,7 +242,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     agent_id_stop = agent_id_start + num_agents
     sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
     # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
-    agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+    #agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+    agent_ids = {"agent"}
 
     algo_cfg = (
         get_trainable_cls(cfg.algo.name)
@@ -259,7 +260,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         # FIXME: Enable passing multi_agent settings to the algorithm config.
         .multi_agent(
             policies=agent_ids,
-            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+            #policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+            policy_mapping_fn=(lambda *args, **kwargs: "agent")
         )
     )
 

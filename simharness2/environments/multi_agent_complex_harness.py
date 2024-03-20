@@ -162,7 +162,7 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
 
         # Validate that the reward class provided is supported by this harness.
         reward_cls_name = self.reward_cls.__class__.__name__
-        supported_rewards = ["AreaSavedPropReward", "AreaSavedPropRewardV2"]
+        supported_rewards = ["AreaSavedPropReward", "AreaSavedPropRewardV2", "ForwardRewardV2"]
         if reward_cls_name not in supported_rewards:
             # FIXME: Raise a more specific error message.
             msg = (
