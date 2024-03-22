@@ -391,3 +391,44 @@ class AreaSavedPropRewardV2(BaseReward):
                     reward = reward - (mitigation_bonus / bench_total_damaged)
 
         return reward
+
+
+class MixedLocalAreaSavedPropRewardV2(AreaSavedPropRewardV2):
+
+    def __init__(
+        self, harness_analytics: ReactiveHarnessAnalytics, mixing_coefficient: float = 1.0
+    ):
+        """TODO Add constructor docstring."""
+        super().__init__(harness_analytics)
+
+        self.mixing_coefficient = mixing_coefficient
+
+    def get_reward(
+        self,
+        *,
+        timestep: int,
+        sim_run: bool,
+        done_episode: bool,
+        agents: Dict[Any, ReactiveAgent],
+        agent_speed: int,
+        **kwargs,
+    ) -> float:
+        """TODO Add function docstring."""
+        area_saved_reward = super().get_reward(
+            timestep=timestep, sim_run=sim_run, done_episode=done_episode
+        )
+
+        agent_rewards = {}
+
+        # take adj_matrix and logical_and with (fire_map == BURNING or fire_map == BURNED)
+
+        
+
+    def get_timestep_intermediate_reward(
+        self,
+        *,
+        timestep: int,
+        agents: Dict[Any, ReactiveAgent],
+        agent_speed: int,
+    ) -> float:
+        pass
