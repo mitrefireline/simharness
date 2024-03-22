@@ -430,6 +430,7 @@ class FireHarness(Harness[AnyFireSimulation]):
     ) -> Dict[str, ReactiveAgent]:
         """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
         agents_dict = {}
+        fire_map_shape = self.sim.fire_map.shape
         # Use the user-provided agent positions to initialize the agents on the map.
         if method == "manual":
             # NOTE: The provided pos_list must be the same length as the number of agents
@@ -447,7 +448,12 @@ class FireHarness(Harness[AnyFireSimulation]):
                 agent_ids, pos_list, self._sim_agent_ids
             ):
                 x, y = agent_info
-                agent = ReactiveAgent(agent_str, sim_id, (x, y))
+                agent = ReactiveAgent(
+                    agent_str,
+                    sim_id,
+                    (x, y),
+                    fire_map_shape,
+                )
                 agents_dict[agent_str] = agent
             return agents_dict
 
@@ -467,7 +473,7 @@ class FireHarness(Harness[AnyFireSimulation]):
             # Populate the `self.agents` dict with `ReactiveAgent` object (s).
             agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
             for agent_str, sim_id, loc in zip(agent_ids, self._sim_agent_ids, agent_locs):
-                agent = ReactiveAgent(agent_str, sim_id, tuple(loc))
+                agent = ReactiveAgent(agent_str, sim_id, tuple(loc), fire_map_shape)
                 agents_dict[agent_str] = agent
             return agents_dict
 

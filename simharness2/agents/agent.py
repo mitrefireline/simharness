@@ -55,6 +55,8 @@ class ReactiveAgent:
     agent_id: Any  # ex: "agent_0", "dozer_0", "handcrew_0", "ff_0", etc.
     sim_id: int  # should be contained within sim.agents.keys()
     initial_position: Tuple[int, int]
+    # FIXME: Maybe use InitVar since we only need this to build array in post_init.
+    fire_map_shape: Tuple[int, int]
 
     # Attributes with default values
     latest_movement: int = None
@@ -67,6 +69,9 @@ class ReactiveAgent:
         self._previous_position = self.initial_position
         self.x, self.y = self.initial_position
         self.row, self.col = self.y, self.x
+
+        # Create array used to store coords adjacent to "true" mitigations placed by.
+        self.adj_to_mitigation = np.zeros(self.fire_map_shape, dtype=bool)
 
     def get_normalized_position(self, max_x: int, max_y: int) -> np.ndarray:
         """Returns the current position of the agent normalized to the map size."""

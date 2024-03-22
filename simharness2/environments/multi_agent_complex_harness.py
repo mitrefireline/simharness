@@ -6,6 +6,7 @@ import numpy as np
 from gymnasium import spaces
 from simfire.sim.simulation import FireSimulation
 
+from simharness2.agents.agent import ReactiveAgent
 from simharness2.environments.harness import get_unsupported_attributes
 from simharness2.environments.multi_agent_fire_harness import MultiAgentFireHarness
 from simharness2.models.custom_multimodal_torch_model import (
@@ -162,7 +163,11 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
 
         # Validate that the reward class provided is supported by this harness.
         reward_cls_name = self.reward_cls.__class__.__name__
-        supported_rewards = ["AreaSavedPropReward", "AreaSavedPropRewardV2", "ForwardRewardV2"]
+        supported_rewards = [
+            "AreaSavedPropReward",
+            "AreaSavedPropRewardV2",
+            "ForwardRewardV2",
+        ]
         if reward_cls_name not in supported_rewards:
             # FIXME: Raise a more specific error message.
             msg = (
@@ -170,6 +175,41 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
                 f"{reward_cls_name} reward class."
             )
             raise AssertionError(msg)
+
+    def _update_mitigation(self, agent: ReactiveAgent) -> None:
+        """Interact with the environment by performing the provided interaction."""
+        # FIXME: Below code is what happens
+        # sim_interaction = self.harness_to_sim[agent.latest_interaction]
+        # mitigation_update = (agent.col, agent.row, sim_interaction)
+        # self.sim.update_mitigation([mitigation_update])
+        # agent.mitigation_placed = True
+
+        super()._update_mitigation(agent)
+
+        if agent.mitigation_placed:
+            # FIXME: Use actual adjacent points.
+            adj_points = self.get_adjacent_points(agent.current_position)
+
+            # adj_to_mitigation[adj_points] = 1
+            for point in adj_points:
+                agent.adj_to_mitigation[point] = 1
+
+    def get_adjacent_points(self, point: Tuple[int, int]) -> List[Tuple[int, int]]:
+        """Return the points adjacent to the provided point."""
+        row, col = point
+        # TODO: Update logic to handle non-square fire_map.
+        min_val, max_val = 0, max(self.sim.fire_map.shape)
+        # FIXME: will fail if point is on edge of map
+        adj_array = np.array(
+            [
+                (row - 1, col),
+                (row + 1, col),
+                (row, col - 1),
+                (row, col + 1),
+            ]
+        )
+        adj_array = np.clip(adj_array, a_min=min_val, a_max=max_val)
+        return adj_array
 
     def _should_terminate(self) -> bool:
         # Retrieve original value, based on `FireHarness` definition of terminated.
