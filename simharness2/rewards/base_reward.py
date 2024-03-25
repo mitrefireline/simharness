@@ -405,6 +405,8 @@ class MixedLocalAreaSavedPropRewardV2(AreaSavedPropRewardV2):
         # TODO: Decide if we want to keep this as is.
         if kwargs.get("debug"):
             self._in_debug_mode = True
+        else:
+            self._in_debug_mode = False
 
     def get_reward(
         self,
