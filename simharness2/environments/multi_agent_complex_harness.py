@@ -167,6 +167,7 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
             "AreaSavedPropReward",
             "AreaSavedPropRewardV2",
             "ForwardRewardV2",
+            "MixedLocalAreaSavedPropRewardV2",
         ]
         if reward_cls_name not in supported_rewards:
             # FIXME: Raise a more specific error message.
@@ -176,40 +177,80 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
             )
             raise AssertionError(msg)
 
+        # Indicator flag to determine if fire in the sim can spread diagonally.
+        self._fire_diagonal_spread = self.sim.config.fire.diagonal_spread
+
     def _update_mitigation(self, agent: ReactiveAgent) -> None:
         """Interact with the environment by performing the provided interaction."""
-        # FIXME: Below code is what happens
-        # sim_interaction = self.harness_to_sim[agent.latest_interaction]
-        # mitigation_update = (agent.col, agent.row, sim_interaction)
-        # self.sim.update_mitigation([mitigation_update])
-        # agent.mitigation_placed = True
-
         super()._update_mitigation(agent)
 
+        # NOTE: For testing, one case to verify is that the number of "new" adj
+        # mitigations should be <= 4, otherwise there is a clear logic error.
+        #  - When agent is on edge of map, should be <= 3. We can use moved_off_map to
+        #    verify the behavior for this case.
         if agent.mitigation_placed:
-            # FIXME: Use actual adjacent points.
-            adj_points = self.get_adjacent_points(agent.current_position)
+            row, col, shape = agent.row, agent.col, self.sim.fire_map.shape
+            diag_spread = self._fire_diagonal_spread
+            adj_rows, adj_cols = self.get_adjacent_points(row, col, shape, diag_spread)
+            agent.adj_to_mitigation[adj_rows, adj_cols] = 1
 
-            # adj_to_mitigation[adj_points] = 1
-            for point in adj_points:
-                agent.adj_to_mitigation[point] = 1
+    # TODO: Move method to FireHarness, or maybe to utils since method is general.
+    @staticmethod
+    def get_adjacent_points(
+        row: int, col: int, shape: Tuple[int, int], include_diagonals: bool = True
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Return points adjacent to the provided point (excluding point itself).
 
-    def get_adjacent_points(self, point: Tuple[int, int]) -> List[Tuple[int, int]]:
-        """Return the points adjacent to the provided point."""
-        row, col = point
-        # TODO: Update logic to handle non-square fire_map.
-        min_val, max_val = 0, max(self.sim.fire_map.shape)
-        # FIXME: will fail if point is on edge of map
-        adj_array = np.array(
-            [
-                (row - 1, col),
-                (row + 1, col),
-                (row, col - 1),
-                (row, col + 1),
-            ]
-        )
-        adj_array = np.clip(adj_array, a_min=min_val, a_max=max_val)
-        return adj_array
+        The current implementation considers the 4 cardinal directions (N, S, E, W) as
+        adjacent points. If `include_diagonals` is set to True, the diagonal points
+        (NE, NW, SE, SW) are also considered as adjacent points.
+
+        Arguments:
+            row: The row index of the current point.
+            col: The column index of the current point.
+            shape: A 2-tuple representing the shape of the map.
+            include_diagonals: A boolean indicating whether to include diagonal points
+                as adjacent points. Defaults to True.
+
+        Returns:
+            A tuple containing two numpy arrays, adjacent rows and adjacent columns. The
+            returned arrays can be used as an advanced index to access the adjacent
+            points, ex: `fire_map[adj_rows, adj_cols]`.
+        """
+        # TODO: Logic below is copied from a method in simfire, namely
+        # simfire.game.managers.fire.FireManager._get_new_locs(). It would be good to
+        # refactor this logic into a utility function in simfire, and then call it here.
+        x, y = col, row
+        # Generate all possible adjacent points around the current point.
+        if include_diagonals:
+            new_locs = (
+                (x + 1, y),
+                (x + 1, y + 1),
+                (x, y + 1),
+                (x - 1, y + 1),
+                (x - 1, y),
+                (x - 1, y - 1),
+                (x, y - 1),
+                (x + 1, y - 1),
+            )
+        else:
+            new_locs = (
+                (x + 1, y),
+                (x, y + 1),
+                (x - 1, y),
+                (x, y - 1),
+            )
+
+        col_coords, row_coords = zip(*new_locs)
+        adj_array = np.array([row_coords, col_coords], dtype=np.int32)
+
+        # Clip the adjacent points to ensure they are within the map boundaries
+        row_max, col_max = [dim - 1 for dim in shape]
+        adj_array = np.clip(adj_array, a_min=[[0], [0]], a_max=[[row_max], [col_max]])
+        # Remove the point itself from the list of adjacent points, if it exists.
+        adj_array = adj_array[:, ~np.all(adj_array == [[row], [col]], axis=0)]
+
+        return adj_array[0], adj_array[1]
 
     def _should_terminate(self) -> bool:
         # Retrieve original value, based on `FireHarness` definition of terminated.
