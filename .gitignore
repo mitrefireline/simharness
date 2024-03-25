@@ -6,3 +6,6 @@
 **/ckpts
 **/gifs
 **/.DS_Store
+**/data
+# Uncomment below to include conf/data
+# !conf/data/
