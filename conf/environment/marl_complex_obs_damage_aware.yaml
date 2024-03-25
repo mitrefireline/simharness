@@ -41,7 +41,7 @@ env_config:
   reward_cls_partial:
     _target_: simharness2.rewards.base_reward.MixedLocalAreaSavedPropRewardV2
     _partial_: true
-    mixing_coefficient: 1.0
+    mixing_coefficient: .95
 
   action_space_cls:
     _target_: hydra.utils.get_class
