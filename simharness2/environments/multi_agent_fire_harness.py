@@ -97,11 +97,8 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         truncated = self._should_truncate()
         terminated = self._should_terminate()
 
-        # Calculate the reward for the current timestep
-        # TODO pass `terminated` into `get_reward` method
-        # FIXME: Update reward for MARL case!!
-        # TODO: Give each agent the "same" simple reward for now.
-        reward = self.reward_cls.get_reward(
+        # Calculate the timestep reward for each agent.
+        rewards = self.reward_cls.get_reward(
             timestep=self.timesteps,
             sim_run=sim_run,
             done_episode=terminated or truncated,
@@ -109,25 +106,19 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
             agent_speed=self.agent_speed,
         )
 
-        # FIXME account for below updates in the reward_cls.calculate_reward() method
-        # "End of episode" reward
-        # if terminated:
-        # reward += 10
-
         # FIXME: We are passing the TIMESTEP reward, not CUMULATIVE reward!!
         if self.harness_analytics:
+            # FIXME: Decide if we should pass all agent rewards. For now, use the sum.
+            reward = sum(rewards.values())
             self.harness_analytics.update_after_one_harness_step(
                 sim_run, terminated, reward, timestep=self.timesteps
             )
 
-        rewards, truncateds, terminateds, infos = {}, {}, {}, {}
-        # new_obs, rewards, truncateds, terminateds, infos = {}, {}, {}, {}, {}
+        # TODO: Override _should_truncate() etc. to return Dict instead of single value.
+        truncateds, terminateds, infos = {}, {}, {}
         truncs = set()
         terms = set()
         for agent_id, agent in self.agents.items():
-            # new_obs[agent_id] = self.state
-            # FIXME: All agents receive the SAME reward !!!
-            rewards[agent_id] = reward
             # FIXME: Trunc/Term logic is the SAME for all agents.
             # We may not always want this, but it's a good starting point.
             truncateds[agent_id] = truncated
@@ -144,7 +135,6 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
-        # return new_obs, rewards, terminateds, truncateds, infos
         return self.state, rewards, terminateds, truncateds, infos
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
