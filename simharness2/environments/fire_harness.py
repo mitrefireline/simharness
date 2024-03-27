@@ -24,6 +24,7 @@ from simfire.utils.config import Config
 
 from simharness2.agents.agent import ReactiveAgent
 from simharness2.environments.harness import Harness, get_unsupported_attributes
+from simharness2.agents.initialization import AGENT_INITIALIZATION_METHODS
 
 
 logger = logging.getLogger(__name__)
@@ -417,9 +418,31 @@ class FireHarness(Harness[AnyFireSimulation]):
         return action_map
 
     def create_agents(
+        self, method: str = "random", **kwargs,
+    ):
+    """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
+        if method not in AGENT_INITIALIZATION_METHODS:
+            raise NotImplementedError(f"Agent spawn method {method} not implemented.")
+        agent_positions = AGENT_INITIALIZATION_METHODS[method](self.num_agents, **kwargs)
+        if len(agent_positions) != self.num_agents:
+            raise ValueError(
+                    f"Expected {self.num_agents} agent positions; got {len(pos_list)}."
+                )
+        agents_dict = {}
+        agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
+        for agent_str, pos, sim_id in zip(
+            agent_ids, agent_positions, self._sim_agent_ids
+        ):
+            x, y = pos
+            agent = ReactiveAgent(agent_str, sim_id, (x, y))
+            agents_dict[agent_str] = agent
+        return agents_dict
+
+    """
+    def create_agents(
         self, method: str = "random", pos_list: List = None
     ) -> Dict[str, ReactiveAgent]:
-        """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
+        
         agents_dict = {}
         # Use the user-provided agent positions to initialize the agents on the map.
         if method == "manual":
@@ -465,7 +488,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         # This should be caught within the init. To be safe, also raise error here.
         else:
             raise NotImplementedError(f"Agent spawn method {method} not implemented.")
-
+    """
     @property
     def default_agent_id(self) -> str:
         """Return the default agent id."""
