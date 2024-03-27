@@ -15,12 +15,12 @@ def register_agent_initialization(name: Optional[str] = None):
     return decorator
 
 
-@register_agent_initialization(name="manual"):
+@register_agent_initialization(name="manual")
 def fixed_initialization(num_agents, pos_list):
     return pos_list
 
 
-@register_agent_initialization(name="random"):
+@register_agent_initialization(name="random")
 def random_initialization(num_agents, width, height, start_x=0, start_y=0):
     pos_list = []
     for i in range(num_agents):

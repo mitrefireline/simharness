@@ -12,7 +12,8 @@ normalized_attributes: [elevation]
 agent_speed: 4
 num_agents: 3
 agent_initialization_method: manual
-initial_agent_positions: [[0, 64], [127, 64], [64, 127]]
+agent_initialization_kwargs:
+  pos_list: [[0, 64], [127, 64], [64, 127]]
 
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 harness_analytics_partial:

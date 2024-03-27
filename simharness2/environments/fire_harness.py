@@ -53,7 +53,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         num_agents: int = 1,
         agent_speed: int = 1,
         agent_initialization_method: str = "automatic",
-        initial_agent_positions: Optional[List[Tuple[int, int]]] = None,
+        agent_initialization_kwargs: Dict[str, Any] = {},
         **kwargs,
     ):
         super().__init__(
@@ -100,21 +100,21 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Spawn the agent (s) that will interact with the simulation
         logger.debug(f"Creating {self.num_agents} agent (s)...")
         input_kwargs = {}
-        if agent_initialization_method == "manual":
-            if initial_agent_positions is None:
-                raise ValueError(
-                    "Must provide 'initial_agent_positions' when using 'manual' agent "
-                    "initialization method."
-                )
-            input_kwargs.update({"method": "manual", "pos_list": initial_agent_positions})
-        elif agent_initialization_method == "automatic":
-            input_kwargs.update({"method": "random"})
-        else:
-            raise ValueError(
-                "Invalid agent initialization method. Must be either 'automatic' or "
-                "'manual'."
-            )
-        self.agents = self.create_agents(**input_kwargs)
+        # if agent_initialization_method == "manual":
+        #     if initial_agent_positions is None:
+        #         raise ValueError(
+        #             "Must provide 'initial_agent_positions' when using 'manual' agent "
+        #             "initialization method."
+        #         )
+        #     input_kwargs.update({"method": "manual", "pos_list": initial_agent_positions})
+        # elif agent_initialization_method == "automatic":
+        #     input_kwargs.update({"method": "random"})
+        # else:
+        #     raise ValueError(
+        #         "Invalid agent initialization method. Must be either 'automatic' or "
+        #         "'manual'."
+        #     )
+        self.agents = self.create_agents(agent_initialization_method, **agent_initialization_kwargs)
 
         self.min_maxes = self._get_min_maxes()
         self.observation_space = self.get_observation_space()
@@ -420,7 +420,7 @@ class FireHarness(Harness[AnyFireSimulation]):
     def create_agents(
         self, method: str = "random", **kwargs,
     ):
-    """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
+        """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
         if method not in AGENT_INITIALIZATION_METHODS:
             raise NotImplementedError(f"Agent spawn method {method} not implemented.")
         agent_positions = AGENT_INITIALIZATION_METHODS[method](self.num_agents, **kwargs)
