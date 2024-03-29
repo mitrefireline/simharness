@@ -5,7 +5,7 @@ num_cpus_per_worker: 1
 # Number of GPUs to allocate per worker. This can be fractional. This is usually needed
 # only if your env itself requires a GPU (i.e., it is a GPU-intensive video game), or
 # model inference is unusually expensive.
-num_gpus_per_worker: 0
+num_gpus_per_worker: 0.4
 # Number of CPUs to allocate for the algorithm. Note: this only takes effect when running
 # in Tune. Otherwise, the algorithm runs in the main program (driver).
 num_cpus_for_local_worker: 1
