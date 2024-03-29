@@ -20,7 +20,7 @@ rollouts:
   batch_mode: complete_episodes # truncate_episodes
   # Scale experiment as desired
   num_rollout_workers: 32 # FIXME!
-  # num_envs_per_worker: ??
+  num_envs_per_worker: 4
 
 cli:
   mode: train
