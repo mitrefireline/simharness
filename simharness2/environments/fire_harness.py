@@ -117,6 +117,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         #         "Invalid agent initialization method. Must be either 'automatic' or "
         #         "'manual'."
         #     )
+        self.agent_initialization_method = agent_initialization_method
+        self.agent_initialization_kwargs = agent_initialization_kwargs
         self.agents = self.create_agents(agent_initialization_method, **agent_initialization_kwargs)
 
         # self.min_maxes = self._get_min_maxes()
@@ -366,8 +368,9 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         # Reset the agent's contained within the `FireSimulation`.
         logger.debug("Resetting `self.agents`...")
-        for agent_id in self.agents.keys():
-            self.agents[agent_id].reset()
+        self.agents = self.create_agents(self.agent_initialization_method, **self.agent_initialization_kwargs)
+        # for agent_id in self.agents.keys():
+        #     self.agents[agent_id].reset()
 
         # Reset `ReactiveHarnessAnalytics` to initial conditions, if it exists.
         if self.harness_analytics:
@@ -445,7 +448,7 @@ class FireHarness(Harness[AnyFireSimulation]):
             agent_ids, agent_positions, self._sim_agent_ids
         ):
             x, y = pos
-            agent = ReactiveAgent(agent_str, sim_id, (x, y))
+            agent = ReactiveAgent(agent_str, sim_id, (x, y), self.sim.fire_map.shape)
             agents_dict[agent_str] = agent
         return agents_dict
 

@@ -28,3 +28,26 @@ def random_initialization(num_agents, width, height, start_x=0, start_y=0):
         y = np.random.randint(height) + start_y
         pos_list.append([x, y])
     return pos_list
+
+@register_agent_initialization(name="random_edge")
+def edge_random_initialization(num_agents, width, height, edges, start_x=0, start_y=0):
+    pos_list = []
+    for e in edges:
+        if e == "left":
+            x = start_x
+            y = np.random.randint(height) + start_y
+            pos_list.append([x, y])
+        elif e == "right":
+            x = start_x + width
+            y = np.random.randint(height) + start_y
+            pos_list.append([x, y])
+        elif e == "top":
+            x = np.random.randint(width) + start_x
+            y = start_y
+            pos_list.append([x, y])
+        elif e == "bottom":
+            x = np.random.randint(width) + start_x
+            y = start_y + height
+            pos_list.append([x, y])
+    return pos_list
+

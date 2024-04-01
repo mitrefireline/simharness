@@ -17,7 +17,7 @@ env_task_fn: null
 # implement the `render()` method which either:
 # a) handles window generation and rendering itself (returning True), or
 # b) returns a numpy uint8 image of shape [height x width x 3 (RGB)]
-render_env: False
+render_env: True
 # Whether to clip rewards during Policy’s postprocessing. Options are:
 # - None (default): Clip for Atari only (r=sign(r)).
 # - True: r=sign(r): Fixed rewards -1.0, 1.0, or 0.0.

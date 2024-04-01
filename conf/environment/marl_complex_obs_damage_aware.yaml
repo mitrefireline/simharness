@@ -18,9 +18,14 @@ env_config:
   # num_agents: 1
   num_agents: 3
   # agent_initialization_method: automatic
-  agent_initialization_method: manual
+  agent_initialization_method: random_edge
+  agent_initialization_kwargs:
+    edges: ["left", "bottom", "right"]
+    width: 127
+    height: 127
+    # pos_list: [[0, 64], [127, 64], [64, 127]]
   # initial_agent_positions: [[0, 64]]
-  initial_agent_positions: [[0, 64], [127, 64], [64, 127]]
+  # initial_agent_positions: [[0, 64], [127, 64], [64, 127]]
   benchmark_sim: ${.sim}
   # Defines the class that will be used to monitor and track `ReactiveHarness`.
   harness_analytics_partial:
@@ -50,3 +55,4 @@ env_config:
 
 
   fire_initial_position: ${simulation.fire_initial_position}
+  render_env: True
