@@ -37,6 +37,7 @@ class InitializeSimfire(DefaultCallbacks):
         # This will be updated with the user provided value from the config file.
         self.data_object_refs: Dict[str, ObjectRef] = {"train": None, "eval": None}
         self.fire_pos_cfg: Dict[str, Any] = None
+        self.op_locs_cfg: Dict[str, Any] = None
         # This will store each sampled fire position - the value will be the number of
         # times it has been sampled (ie. total episodes trained with this position).
         self.fire_pos_counter: Dict[Tuple[int, int], int] = {}
@@ -69,8 +70,6 @@ class InitializeSimfire(DefaultCallbacks):
         # Set `rllib_env_context` for each env (needed w/in `env._initialize_simfire`).
         all_workers = [algorithm.workers, algorithm.evaluation_workers]
         # Just in case evaluation is disable, ie. for debugging purposes.
-        if algorithm.evaluation_workers is None:
-            all_workers = [algorithm.workers]
         for worker in all_workers:
             worker.foreach_worker(
                 lambda w: w.foreach_env_with_context(_set_harness_env_context),
@@ -79,7 +78,14 @@ class InitializeSimfire(DefaultCallbacks):
 
         # TODO: Do we want to generate data using a deepcopy of `sim`?
         sim: "FireSimulation" = algorithm.config.env_config.get("sim")
+        # Validate the configuration for the `FireSimulation` object.
+        _check_terrain_is_operational(sim)
         _check_fire_init_pos_is_static(sim)
+
+        # NOTE: We are not doing any validation of the provided op_locs config.
+        op_locs_cfg = algorithm.config.env_config.get("operational_locations")
+        self.op_locs_cfg = op_locs_cfg
+
         fire_pos_cfg = algorithm.config.env_config.get("fire_initial_position")
         self.fire_pos_cfg = _validate_fire_init_config(fire_pos_cfg, sim.fire_map.size)
 
@@ -279,14 +285,28 @@ class InitializeSimfire(DefaultCallbacks):
         return self.fire_pos_cfg.get("sampler").get("resample_interval")
 
     @property
-    def train_sample_size(self) -> int:
-        """The number of scenarios to sample from the train dataset."""
+    def train_sample_size_per_location(self) -> int:
+        """The number of scenarios to sample from train dataset for each location."""
         return self.fire_pos_cfg.get("sampler").get("sample_size").get("train")
 
     @property
-    def eval_sample_size(self) -> int:
-        """The number of scenarios to sample from the eval dataset."""
+    def eval_sample_size_per_location(self) -> int:
+        """The number of scenarios to sample from eval dataset for each location."""
         return self.fire_pos_cfg.get("sampler").get("sample_size").get("eval")
+
+    @property
+    def train_scenarios(self) -> int:
+        """The total number of fire scenarios to use for each training iteration."""
+        num_fire_pos = self.fire_pos_cfg.get("sampler").get("sample_size").get("train")
+        num_op_locs = self.op_locs_cfg.get("sample_size").get("train")
+        return num_fire_pos * num_op_locs
+
+    @property
+    def eval_scenarios(self) -> int:
+        """The total number of fire scenarios to use for each eval iteration."""
+        num_fire_pos = self.fire_pos_cfg.get("sampler").get("sample_size").get("eval")
+        num_op_locs = self.op_locs_cfg.get("sample_size").get("eval")
+        return num_fire_pos * num_op_locs
 
     def _check_sample_size_vs_workers(self, algorithm: "Algorithm") -> None:
         """Ensure the sample size is valid wrt the number of workers/envs.
@@ -363,6 +383,19 @@ def _check_fire_init_pos_is_static(sim: "FireSimulation") -> None:
         msg = (
             "Invalid value for `fire.fire_initial_position.type`: "
             f"{fire_init_pos_type}. The value must be `static`."
+        )
+        raise ValueError(msg)
+
+
+def _check_terrain_is_operational(sim: "FireSimulation") -> None:
+    """Ensure `topography.type` and `fuel.type` are operational for `terrain`."""
+    topo_type = sim.config.yaml_data["terrain"]["topography"]["type"]
+    fuel_type = sim.config.yaml_data["terrain"]["fuel"]["type"]
+    if topo_type != "operational" or fuel_type != "operational":
+        msg = (
+            "Invalid value for `terrain.topography.type` or `terrain.fuel.type`: "
+            f"{topo_type} and {fuel_type}, respectively. The values must BOTH be "
+            "`operational`."
         )
         raise ValueError(msg)
 
