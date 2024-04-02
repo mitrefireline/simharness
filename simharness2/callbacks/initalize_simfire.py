@@ -69,7 +69,6 @@ class InitializeSimfire(DefaultCallbacks):
         """
         # Set `rllib_env_context` for each env (needed w/in `env._initialize_simfire`).
         all_workers = [algorithm.workers, algorithm.evaluation_workers]
-        # Just in case evaluation is disable, ie. for debugging purposes.
         for worker in all_workers:
             worker.foreach_worker(
                 lambda w: w.foreach_env_with_context(_set_harness_env_context),
@@ -89,17 +88,17 @@ class InitializeSimfire(DefaultCallbacks):
         fire_pos_cfg = algorithm.config.env_config.get("fire_initial_position")
         self.fire_pos_cfg = _validate_fire_init_config(fire_pos_cfg, sim.fire_map.size)
 
+        # Ensure number of scenarios to sample is valid wrt number of workers/envs.
+        self._check_sample_size_vs_workers(algorithm)
+
         # Retrieve the train/eval data using the provided fire initial position config.
         logdir = algorithm.logdir
         train_data, eval_data = _prepare_fire_map_data(sim, self.fire_pos_cfg, logdir)
 
-        # Final check to ensure the sample size is valid wrt the number of workers/envs.
-        self._check_sample_size_vs_workers(algorithm)
-
         # Initialize the `FireSimulation` for each training rollout.
         # Generate new indices randomly, w/o replacement, then create the array subset.
         train_indices = np.random.choice(
-            len(train_data), size=self.train_sample_size, replace=False
+            len(train_data), size=self.train_scenarios_per_location, replace=False
         )
         train_subset = train_data[train_indices]
         self._train_envs_per_worker = algorithm.config.num_envs_per_worker
@@ -127,7 +126,7 @@ class InitializeSimfire(DefaultCallbacks):
         # Initialize the `FireSimulation` for each evaluation rollout.
         # Generate new indices randomly, w/o replacement, then create the array subset.
         eval_indices = np.random.choice(
-            len(eval_data), size=self.eval_sample_size, replace=False
+            len(eval_data), size=self.eval_scenarios_per_location, replace=False
         )
         eval_subset = eval_data[eval_indices]
         self._eval_envs_per_worker = algorithm.config.evaluation_config.get(
@@ -148,75 +147,6 @@ class InitializeSimfire(DefaultCallbacks):
         # Put data into the distributed object store, and store the respective refs.
         self.data_object_refs["train"] = ray.put(train_data)
         self.data_object_refs["eval"] = ray.put(eval_data)
-
-    def on_episode_start(
-        self,
-        *,
-        worker: "RolloutWorker",
-        base_env: BaseEnv,
-        env_index: int,
-        **kwargs,
-    ) -> None:
-        """Callback run right after an Episode has started.
-
-        This method gets called after the Episode(V2)'s respective sub-environment's
-        (usually a gym.Env) `reset()` is called by RLlib.
-
-        1) Episode(V2) created: Triggers callback `on_episode_created`.
-        2) Respective sub-environment (gym.Env) is `reset()`.
-        3) Episode(V2) starts: This callback fires.
-        4) Stepping through sub-environment/episode commences.
-
-        Args:
-            worker: Reference to the current rollout worker.
-            base_env: BaseEnv running the episode. The underlying
-                sub environment objects can be retrieved by calling
-                `base_env.get_sub_environments()`.
-            policies: Mapping of policy id to policy objects. In single
-                agent mode there will only be a single "default" policy.
-            episode: Episode object which contains the episode's
-                state. You can use the `episode.user_data` dict to store
-                temporary data, and `episode.custom_metrics` to store custom
-                metrics for the episode.
-            env_index: The index of the sub-environment that started the episode
-                (within the vector of sub-environments of the BaseEnv).
-            kwargs: Forward compatibility placeholder.
-        """
-        env = base_env.get_sub_environments()[env_index]
-        # breakpoint()
-
-    def on_episode_end(
-        self,
-        *,
-        worker: "RolloutWorker",
-        base_env: BaseEnv,
-        env_index: int,
-        **kwargs,
-    ) -> None:
-        """Runs when an episode is done.
-
-        Args:
-            worker: Reference to the current rollout worker.
-            base_env: BaseEnv running the episode. The underlying
-                sub environment objects can be retrieved by calling
-                `base_env.get_sub_environments()`.
-            policies: Mapping of policy id to policy
-                objects. In single agent mode there will only be a single
-                "default_policy".
-            episode: Episode object which contains episode
-                state. You can use the `episode.user_data` dict to store
-                temporary data, and `episode.custom_metrics` to store custom
-                metrics for the episode.
-                In case of environment failures, episode may also be an Exception
-                that gets thrown from the environment before the episode finishes.
-                Users of this callback may then handle these error cases properly
-                with their custom logics.
-            env_index: The index of the sub-environment that ended the episode
-                (within the vector of sub-environments of the BaseEnv).
-            kwargs: Forward compatibility placeholder.
-        """
-        env = base_env.get_sub_environments()[env_index]
-        # breakpoint()
 
     def on_train_result(
         self,
@@ -255,7 +185,7 @@ class InitializeSimfire(DefaultCallbacks):
             # Generate new indices randomly, w/o replacement, then create the arr subset.
             # TODO: Would shuffling `train_data` and then sampling be more robust?
             train_indices = np.random.choice(
-                len(train_data), size=self.train_sample_size, replace=False
+                len(train_data), size=self.train_scenarios_per_location, replace=False
             )
             train_subset = train_data[train_indices]
             pos_used = algorithm.workers.foreach_worker(
@@ -279,34 +209,52 @@ class InitializeSimfire(DefaultCallbacks):
             # Put data back into the distributed object store and store the ref.
             self.data_object_refs["train"] = ray.put(train_data)
 
+    def on_evaluate_end(
+            self,
+            *,
+            algorithm: "Algorithm",
+            evaluation_metrics: dict,
+            **kwargs,
+        ) -> None:
+            """Runs when the evaluation is done.
+
+            Runs at the end of Algorithm.evaluate().
+
+            Args:
+                algorithm: Reference to the algorithm instance.
+                evaluation_metrics: Results dict to be returned from algorithm.evaluate().
+                    You can mutate this object to add additional metrics.
+                kwargs: Forward compatibility placeholder.
+            """
+            eval_workers = algorithm.evaluation_workers
+
+
     @property
     def resample_interval(self) -> int:
         """The number of training iterations between resampling the train dataset."""
         return self.fire_pos_cfg.get("sampler").get("resample_interval")
 
     @property
-    def train_sample_size_per_location(self) -> int:
+    def train_scenarios_per_location(self) -> int:
         """The number of scenarios to sample from train dataset for each location."""
         return self.fire_pos_cfg.get("sampler").get("sample_size").get("train")
 
     @property
-    def eval_sample_size_per_location(self) -> int:
+    def eval_scenarios_per_location(self) -> int:
         """The number of scenarios to sample from eval dataset for each location."""
         return self.fire_pos_cfg.get("sampler").get("sample_size").get("eval")
 
     @property
-    def train_scenarios(self) -> int:
+    def total_train_scenarios(self) -> int:
         """The total number of fire scenarios to use for each training iteration."""
-        num_fire_pos = self.fire_pos_cfg.get("sampler").get("sample_size").get("train")
         num_op_locs = self.op_locs_cfg.get("sample_size").get("train")
-        return num_fire_pos * num_op_locs
+        return self.train_scenarios_per_location * num_op_locs
 
     @property
-    def eval_scenarios(self) -> int:
-        """The total number of fire scenarios to use for each eval iteration."""
-        num_fire_pos = self.fire_pos_cfg.get("sampler").get("sample_size").get("eval")
+    def total_eval_scenarios(self) -> int:
+        """The total number of fire scenarios to use for each evaluation iteration."""
         num_op_locs = self.op_locs_cfg.get("sample_size").get("eval")
-        return num_fire_pos * num_op_locs
+        return self.eval_scenarios_per_location * num_op_locs
 
     def _check_sample_size_vs_workers(self, algorithm: "Algorithm") -> None:
         """Ensure the sample size is valid wrt the number of workers/envs.
@@ -323,39 +271,51 @@ class InitializeSimfire(DefaultCallbacks):
         logger.debug(f"Total number of evaluation envs: {eval_envs}")
 
         # Check training sample size.
-        if self.train_sample_size > train_envs:
+        if self.total_train_scenarios > train_envs:
             msg = (
-                "Invalid value for `sampler.sample_size.train`: "
-                f"{self.train_sample_size}. The value cannot be greater than the "
-                f"number of training envs, which is {train_envs}. Either decrease "
-                "the value of `sampler.sample_size.train` or increase the number of "
-                "training envs with `rollouts.num_rollout_workers` and/or "
-                "`rollouts.num_envs_per_worker."
-            )
+                "The total number of training scenarios ({}) cannot exceed the number "
+                "of training environments ({}). The total number of training scenarios "
+                "is calculated as the product of the number of locations "
+                "(`simulation.operational_location.sample_size.train`) and the number "
+                "of scenarios per location "
+                "(`simulation.fire_initial_position.sampler.sample_size.train)."
+            ).format(self.total_train_scenarios, train_envs)
             raise ValueError(msg)
-        elif self.train_sample_size < train_envs:
-            logger.warning(
-                "The number of training envs is greater than the number of scenarios "
-                "to sample from the train dataset. This will result in some scenarios "
-                "appearing more than once in collected sample batches of experiences."
-            )
+        elif self.total_train_scenarios < train_envs:
+            msg = (
+                "The number of training environments ({}) is greater than the total "
+                "number of training scenarios ({}). This will result in some scenarios "
+                "appearing more than once in collected sample batches of experiences. "
+                "Consider increasing the number of locations "
+                "(`simulation.operational_location.sample_size.train`) or the number of "
+                "scenarios per location "
+                "(`simulation.fire_initial_position.sampler.sample_size.train) to increase "
+                "the total number of training scenarios."
+            ).format(train_envs, self.total_train_scenarios)
+            logger.warning(msg)
         # Check evaluation sample size.
-        if self.eval_sample_size > eval_envs:
+        if self.total_eval_scenarios > eval_envs:
             msg = (
-                "Invalid value for `sampler.sample_size.eval`: "
-                f"{self.eval_sample_size}. The value cannot be greater than the "
-                f"number of evaluation envs, which is {eval_envs}. Either decrease "
-                "the value of `sampler.sample_size.eval` or increase the number of "
-                "evaluation envs with `evaluation.num_evaluation_workers` and "
-                "`evaluation.evaluation_duration`."
+                "The total number of eval scenarios ({}) cannot exceed the number "
+                "of eval environments ({}). The total number of evaluation scenarios "
+                "is calculated as the product of the number of locations "
+                "(`simulation.operational_location.sample_size.eval`) and the number "
+                "of scenarios per location "
+                "(`simulation.fire_initial_position.sampler.sample_size.eval)."
             )
             raise ValueError(msg)
-        elif self.eval_sample_size < eval_envs:
-            logger.warning(
-                "The number of evaluation envs is greater than the number of scenarios "
-                "to sample from the eval dataset. This will result in some scenarios "
-                "appearing more than once in collected sample batches of experiences."
-            )
+        elif self.total_eval_scenarios < eval_envs:
+            msg = (
+                "The number of evaluation environments ({}) is greater than the total "
+                "number of evaluation scenarios ({}). This will result in some scenarios "
+                "appearing more than once in collected sample batches of experiences. "
+                "Consider increasing the number of locations "
+                "(`simulation.operational_location.sample_size.eval`) or the number of "
+                "scenarios per location "
+                "(`simulation.fire_initial_position.sampler.sample_size.eval) to increase "
+                "the total number of evaluation scenarios."
+            ).format(eval_envs, self.total_eval_scenarios)
+            logger.warning(msg)
 
 
 # TODO: Move this method to a more "general" location; it's a utility!
@@ -474,15 +434,3 @@ def _prepare_fire_map_data(
     return fire_data.filter_fire_initial_position_data(
         fire_df=fire_df, logdir=logdir, **sampler_cfg
     )
-
-
-# import simfire.utils.config as simfire_cfg
-
-
-# def _fire_initial_position_data_is_generated(
-#     sim_cfg: simfire_cfg.Config,
-#     save_path: str,
-#     output_size: int = 1,
-#     make_all_positions: bool = False,
-# ):
-#     """Check if the fire initial position data has been generated."""

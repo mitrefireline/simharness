@@ -37,12 +37,12 @@ hydra:
 simulation:
   # TODO: Consolidate below controls into a "fire_generation" section, or similar.
   # NOTE: Assume samples are selected randomly from the BurnMD dataset
-  operational_location:
+  operational_locations:
     # Configure the sampling of lon, lat coords used for operational location (s).
     path_to_dataset: ${oc.env:BURNMD_DATASET_PATH}
     sample_size:
-      train: 4
-      eval: 2
+      train: 1
+      eval: 1
   fire_initial_position:
     # Configure the generation of candidate initial fire positions.
     generator:
@@ -63,8 +63,8 @@ simulation:
       # Number of samples to draw from the distribution, ie. take `sample_size` initial
       # fire positions and distribute them across the respective RolloutWorker's.
       sample_size:
-        train: 
-        eval: ${evaluation.evaluation_num_workers}
+        train: 2
+        eval: 2
       # Filter generated "dataset" using the following condition.
       # NOTE: This is applied to the generated dataset, not the sampled positions.
       # For more information on the query string to evaluate, see:
@@ -86,7 +86,8 @@ simulation:
       diagonal_spread: true
 
 environment:
-  operational_location: ${simulation.operational_location}
+  env_config:
+    operational_locations: ${simulation.operational_locations}
 
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
