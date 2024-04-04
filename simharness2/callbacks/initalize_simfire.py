@@ -1,8 +1,10 @@
-from typing import TYPE_CHECKING, Dict, Any, Tuple
+from typing import TYPE_CHECKING, Dict, Any, List, Tuple
 import logging
 import time
 from itertools import chain
 from pprint import pformat
+import json
+import random
 
 import ray
 from ray import ObjectRef
@@ -11,7 +13,7 @@ from ray.rllib.env.base_env import BaseEnv
 import simharness2.utils.utils as utils
 import simharness2.utils.fire_data as fire_data
 from simharness2.environments.harness import RLlibEnvContextMetadata
-
+from simharness2.environments.fire_harness import BurnMDOperationalLocation
 import numpy as np
 
 if TYPE_CHECKING:
@@ -41,8 +43,6 @@ class InitializeSimfire(DefaultCallbacks):
         # This will store each sampled fire position - the value will be the number of
         # times it has been sampled (ie. total episodes trained with this position).
         self.fire_pos_counter: Dict[Tuple[int, int], int] = {}
-        # self._train_envs_per_worker: int
-        # self._eval_envs_per_worker: int
 
     def on_algorithm_init(
         self,
@@ -91,6 +91,8 @@ class InitializeSimfire(DefaultCallbacks):
         # Ensure number of scenarios to sample is valid wrt number of workers/envs.
         self._check_sample_size_vs_workers(algorithm)
 
+        train_locs, eval_locs = self.get_operational_locations()
+
         # Retrieve the train/eval data using the provided fire initial position config.
         logdir = algorithm.logdir
         train_data, eval_data = _prepare_fire_map_data(sim, self.fire_pos_cfg, logdir)
@@ -98,7 +100,7 @@ class InitializeSimfire(DefaultCallbacks):
         # Initialize the `FireSimulation` for each training rollout.
         # Generate new indices randomly, w/o replacement, then create the array subset.
         train_indices = np.random.choice(
-            len(train_data), size=self.train_scenarios_per_location, replace=False
+            len(train_data), size=self.num_train_fire_init_pos, replace=False
         )
         train_subset = train_data[train_indices]
         self._train_envs_per_worker = algorithm.config.num_envs_per_worker
@@ -126,7 +128,7 @@ class InitializeSimfire(DefaultCallbacks):
         # Initialize the `FireSimulation` for each evaluation rollout.
         # Generate new indices randomly, w/o replacement, then create the array subset.
         eval_indices = np.random.choice(
-            len(eval_data), size=self.eval_scenarios_per_location, replace=False
+            len(eval_data), size=self.num_eval_fire_init_pos, replace=False
         )
         eval_subset = eval_data[eval_indices]
         self._eval_envs_per_worker = algorithm.config.evaluation_config.get(
@@ -147,6 +149,49 @@ class InitializeSimfire(DefaultCallbacks):
         # Put data into the distributed object store, and store the respective refs.
         self.data_object_refs["train"] = ray.put(train_data)
         self.data_object_refs["eval"] = ray.put(eval_data)
+
+    def get_operational_locations(
+        self,
+    ) -> Tuple[List[BurnMDOperationalLocation], List[BurnMDOperationalLocation]]:
+        """Sample operational locations from the BurnMD dataset.
+
+        Returns:
+            train_locs: List of `BurnMDOperationalLocation` objects for training.
+            eval_locs: List of `BurnMDOperationalLocation` objects for evaluation.
+        """
+        # Load BurnMD data to use for sampling random operational locations.
+        burnmd_fp = self.op_locs_cfg.get("burnmd_dataset_path")
+        logger.info(f"Loading BurnMD data from {burnmd_fp}")
+        with open(burnmd_fp, "r", encoding="utf-8") as j:
+            burnmd_op_locs = json.loads(j.read())
+
+        # Get the total number of locations to sample
+        total_locations = self.num_train_locations + self.num_eval_locations
+
+        # Randomly sample keys from the dictionary
+        logger.info(f"Sampling {total_locations} operational locations...")
+        sampled_keys = random.sample(list(burnmd_op_locs.keys()), total_locations)
+
+        # Split the sampled keys into train and eval sets
+        train_keys = sampled_keys[: self.num_train_locations]
+        eval_keys = sampled_keys[self.num_train_locations :]
+
+        # Extract the corresponding values from the dictionary
+        train_locations = {key: burnmd_op_locs[key] for key in train_keys}
+        eval_locations = {key: burnmd_op_locs[key] for key in eval_keys}
+
+        # Build the BurnMDOperationalLocation objects
+        train_locs = [
+            BurnMDOperationalLocation(uid=uid, **loc_data)
+            for uid, loc_data in train_locations.items()
+        ]
+        eval_locs = [
+            BurnMDOperationalLocation(uid=uid, **loc_data)
+            for uid, loc_data in eval_locations.items()
+        ]
+        logger.info(f"Sampled training locations: \n{pformat(train_locs)}")
+        logger.info(f"Sampled evaluation locations: \n{pformat(eval_locs)}")
+        return train_locs, eval_locs
 
     def on_train_result(
         self,
@@ -185,7 +230,7 @@ class InitializeSimfire(DefaultCallbacks):
             # Generate new indices randomly, w/o replacement, then create the arr subset.
             # TODO: Would shuffling `train_data` and then sampling be more robust?
             train_indices = np.random.choice(
-                len(train_data), size=self.train_scenarios_per_location, replace=False
+                len(train_data), size=self.num_train_fire_init_pos, replace=False
             )
             train_subset = train_data[train_indices]
             pos_used = algorithm.workers.foreach_worker(
@@ -209,52 +254,40 @@ class InitializeSimfire(DefaultCallbacks):
             # Put data back into the distributed object store and store the ref.
             self.data_object_refs["train"] = ray.put(train_data)
 
-    def on_evaluate_end(
-            self,
-            *,
-            algorithm: "Algorithm",
-            evaluation_metrics: dict,
-            **kwargs,
-        ) -> None:
-            """Runs when the evaluation is done.
-
-            Runs at the end of Algorithm.evaluate().
-
-            Args:
-                algorithm: Reference to the algorithm instance.
-                evaluation_metrics: Results dict to be returned from algorithm.evaluate().
-                    You can mutate this object to add additional metrics.
-                kwargs: Forward compatibility placeholder.
-            """
-            eval_workers = algorithm.evaluation_workers
-
-
     @property
     def resample_interval(self) -> int:
         """The number of training iterations between resampling the train dataset."""
         return self.fire_pos_cfg.get("sampler").get("resample_interval")
 
     @property
-    def train_scenarios_per_location(self) -> int:
-        """The number of scenarios to sample from train dataset for each location."""
+    def num_train_fire_init_pos(self) -> int:
+        """Number of fire initial positions to sample for each training location."""
         return self.fire_pos_cfg.get("sampler").get("sample_size").get("train")
 
     @property
-    def eval_scenarios_per_location(self) -> int:
-        """The number of scenarios to sample from eval dataset for each location."""
+    def num_eval_fire_init_pos(self) -> int:
+        """Number of fire initial positions to sample for each evaluation location."""
         return self.fire_pos_cfg.get("sampler").get("sample_size").get("eval")
+
+    @property
+    def num_train_locations(self) -> int:
+        """The number of operational locations to sample from for training."""
+        return self.op_locs_cfg.get("sample_size").get("train")
+
+    @property
+    def num_eval_locations(self) -> int:
+        """The number of operational locations to sample from for evaluation."""
+        return self.op_locs_cfg.get("sample_size").get("eval")
 
     @property
     def total_train_scenarios(self) -> int:
         """The total number of fire scenarios to use for each training iteration."""
-        num_op_locs = self.op_locs_cfg.get("sample_size").get("train")
-        return self.train_scenarios_per_location * num_op_locs
+        return self.num_train_fire_init_pos * self.num_train_locations
 
     @property
     def total_eval_scenarios(self) -> int:
         """The total number of fire scenarios to use for each evaluation iteration."""
-        num_op_locs = self.op_locs_cfg.get("sample_size").get("eval")
-        return self.eval_scenarios_per_location * num_op_locs
+        return self.num_train_fire_init_pos * self.num_eval_locations
 
     def _check_sample_size_vs_workers(self, algorithm: "Algorithm") -> None:
         """Ensure the sample size is valid wrt the number of workers/envs.
@@ -284,13 +317,13 @@ class InitializeSimfire(DefaultCallbacks):
         elif self.total_train_scenarios < train_envs:
             msg = (
                 "The number of training environments ({}) is greater than the total "
-                "number of training scenarios ({}). This will result in some scenarios "
-                "appearing more than once in collected sample batches of experiences. "
-                "Consider increasing the number of locations "
+                "number of training scenarios ({}). This will result in some "
+                "scenarios appearing more than once in collected sample batches of "
+                "experiences. Consider increasing the number of locations "
                 "(`simulation.operational_location.sample_size.train`) or the number of "
                 "scenarios per location "
-                "(`simulation.fire_initial_position.sampler.sample_size.train) to increase "
-                "the total number of training scenarios."
+                "(`simulation.fire_initial_position.sampler.sample_size.train) to "
+                "increase the total number of training scenarios."
             ).format(train_envs, self.total_train_scenarios)
             logger.warning(msg)
         # Check evaluation sample size.
@@ -307,13 +340,13 @@ class InitializeSimfire(DefaultCallbacks):
         elif self.total_eval_scenarios < eval_envs:
             msg = (
                 "The number of evaluation environments ({}) is greater than the total "
-                "number of evaluation scenarios ({}). This will result in some scenarios "
-                "appearing more than once in collected sample batches of experiences. "
-                "Consider increasing the number of locations "
+                "number of evaluation scenarios ({}). This will result in some "
+                "scenarios appearing more than once in collected sample batches of "
+                "experiences. Consider increasing the number of locations "
                 "(`simulation.operational_location.sample_size.eval`) or the number of "
                 "scenarios per location "
-                "(`simulation.fire_initial_position.sampler.sample_size.eval) to increase "
-                "the total number of evaluation scenarios."
+                "(`simulation.fire_initial_position.sampler.sample_size.eval) to "
+                "increase the total number of evaluation scenarios."
             ).format(eval_envs, self.total_eval_scenarios)
             logger.warning(msg)
 
