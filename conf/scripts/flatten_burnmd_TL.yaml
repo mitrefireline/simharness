@@ -1,0 +1,3 @@
+burnmd:
+  input_path: ${oc.env:SH_ROOT}/data/burnmd_TL.json
+  output_path: ${oc.env:SH_ROOT}/data/burnmd_TL_flat.json
