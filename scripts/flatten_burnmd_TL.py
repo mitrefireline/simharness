@@ -46,14 +46,15 @@ def main(cfg: DictConfig) -> None:
                 # Process lat_lon string into a tuple of floats.
                 lat_lon = tuple(map(float, lat_lon.strip("()").split(",")))
                 # Create a unique key for each fire.
+                fire_name = fire_name.replace(" ", "_")
                 key = f"{state}_{year}_{fire_name}"
                 logger.debug(f"Processing fire: {key}")
                 flat_burnmd_op_locs[key] = {
                     "state": state,
-                    "year": year,
+                    "year": int(year),
                     "fire_name": fire_name,
-                    "lat": lat_lon[0],
-                    "lon": lat_lon[1],
+                    "latitude": lat_lon[0],
+                    "longitude": lat_lon[1],
                 }
                 unique_fires += 1
 
