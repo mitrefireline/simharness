@@ -15,6 +15,7 @@ from typing import (
     Tuple,
     TypeVar,
 )
+from dataclasses import dataclass, field
 
 import numpy as np
 from gymnasium import spaces
@@ -34,6 +35,23 @@ AnyFireSimulation = TypeVar("AnyFireSimulation", bound=FireSimulation)
 FIRE_MAP_ATTRIBUTES = [FIRE_MAP_KEY, "fire_map_with_agents"]
 BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
 SIMFIRE_ATTRIBUTES = FireSimulation.supported_attributes()
+
+
+@dataclass(frozen=True)
+class BurnMDOperationalLocation:
+    """Dataclass to store the operational location of a BurnMD fire scenario."""
+
+    uid: str
+    state: str = field(repr=False)
+    year: int = field(repr=False)
+    fire_name: str = field(repr=False)
+    latitude: float
+    longitude: float
+
+    @property
+    def lat_lon(self) -> Tuple[float, float]:
+        """Return the latitude and longitude of the operational location."""
+        return self.latitude, self.longitude
 
 
 class FireHarness(Harness[AnyFireSimulation]):
