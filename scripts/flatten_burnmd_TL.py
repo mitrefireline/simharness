@@ -11,6 +11,9 @@ if f"{os.environ['HOME']}/simharness" not in sys.path:
 
 logger = logging.getLogger(__name__)
 
+# List of substrings that indicate a bad location in the BurnMD data.
+BAD_LOCATIONS = ["Oregon_2021"]
+
 
 @hydra.main(
     version_base=None,
@@ -48,6 +51,10 @@ def main(cfg: DictConfig) -> None:
                 # Create a unique key for each fire.
                 fire_name = fire_name.replace(" ", "_")
                 key = f"{state}_{year}_{fire_name}"
+                # Skip bad locations.
+                if any(bad_loc in key for bad_loc in BAD_LOCATIONS):
+                    logger.warning(f"Skipping bad location: {key}")
+                    continue
                 logger.debug(f"Processing fire: {key}")
                 flat_burnmd_op_locs[key] = {
                     "state": state,

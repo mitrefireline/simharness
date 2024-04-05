@@ -1364,48 +1364,6 @@
         "latitude": 44.01850834900006,
         "longitude": -118.01807102299995
     },
-    "Oregon_2021_Elbow_Creek": {
-        "state": "Oregon",
-        "year": 2021,
-        "fire_name": "Elbow_Creek",
-        "latitude": 5767801.1074,
-        "longitude": -13101629.6457
-    },
-    "Oregon_2021_Black_Butte": {
-        "state": "Oregon",
-        "year": 2021,
-        "fire_name": "Black_Butte",
-        "latitude": 5496412.1076000035,
-        "longitude": -13185632.4373
-    },
-    "Oregon_2021_Jack": {
-        "state": "Oregon",
-        "year": 2021,
-        "fire_name": "Jack",
-        "latitude": 5764478.785999998,
-        "longitude": -13663856.127500001
-    },
-    "Oregon_2021_Janus": {
-        "state": "Oregon",
-        "year": 2021,
-        "fire_name": "Janus",
-        "latitude": 5609394.194700003,
-        "longitude": -13597924.0158
-    },
-    "Oregon_2021_S-503": {
-        "state": "Oregon",
-        "year": 2021,
-        "fire_name": "S-503",
-        "latitude": 5636873.267999999,
-        "longitude": -13523084.443
-    },
-    "Oregon_2021_Joseph_Canyon": {
-        "state": "Oregon",
-        "year": 2021,
-        "fire_name": "Joseph_Canyon",
-        "latitude": 5783429.773900002,
-        "longitude": -13039399.6485
-    },
     "Utah_2018_Bear_Trap": {
         "state": "Utah",
         "year": 2018,
