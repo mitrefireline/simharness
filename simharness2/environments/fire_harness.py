@@ -202,8 +202,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         reward = self.reward_cls.get_reward(
             timestep=self.timesteps,
             sim_run=sim_run,
-            #agents=self.agents,
-            #agent_speed=self.agent_speed,
+            # agents=self.agents,
+            # agent_speed=self.agent_speed,
         )
 
         # FIXME account for below updates in the reward_cls.calculate_reward() method
@@ -630,8 +630,45 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Indicate whether the environment's `FireSimulation` should be rendered.
         self._should_render = should_render
 
+    def _set_operational_location(
+        self,
+        *,
+        locations: List[BurnMDOperationalLocation],
+        num_envs_per_worker: int,
+    ) -> str:
+        """Sets the operational location for the current environment.
+
+        Args:
+            locations: A list of `BurnMDOperationalLocation` objects that will be sampled
+                from to set the operational location for the current environment.
+            num_envs_per_worker: The number of sub environments per worker.
+
+        Returns:
+            The `uid` of the operational location that was selected for the current
+            environment. This value is structured as f"{state}_{year}_{fire_name}". For
+            example, "Oregon_2020_White_River".
+        """
+        # Get the index of the operational location to use for the current environment.
+        logger.debug(f"There are {len(locations)} operational locations provided.")
+        loc_idx = self._get_even_distribution_index(
+            data_length=len(locations), num_envs_per_worker=num_envs_per_worker
+        )
+        logger.debug(f"Operational location at index {loc_idx} will be used.")
+
+        # Prepare the environment and simulation for the selected operational location.
+        logger.info(f"Setting operational location to:\n\n {locations[loc_idx]}")
+        self._op_loc = locations[loc_idx]
+
+        # TODO: Create MR for simfire to add `set_operational_location` method and
+        # optimize/update the logic of `reset_terrain()`.
+        # FIXME: We have access to the "year" of the fire, but are not using it here.
+        self.sim.config.reset_terrain(location=self._op_loc.lat_lon)
+
+        return self._op_loc.uid
+
     def _initialize_simfire(
         self,
+        *,
         data: np.recarray,
         num_envs_per_worker: int,
     ) -> Tuple[int, int]:
@@ -646,17 +683,10 @@ class FireHarness(Harness[AnyFireSimulation]):
         Returns:
             The selected initial position of the fire, as a tuple of (x, y) coordinates.
         """
-        # Get the respective fire scenario for the current environment.
-        # NOTE: We use the modulo operator to ensure that the `fire_idx` is within the
-        # available indices of the provided data.
-        env_context = self.rllib_env_context
-        w_i, v_i = env_context.worker_index, env_context.vector_index
-        if env_context.num_workers == 0:
-            # Sub-environment (s) contained within only the `local_worker`.
-            fire_idx = ((w_i + 1) * v_i) % len(data)
-        else:
-            # Sub-environment (s) contained within only the `remote_worker` (s).
-            fire_idx = ((num_envs_per_worker * w_i) + v_i) % len(data)
+        # Get the index of the fire scenario to use for the current environment.
+        fire_idx = self._get_even_distribution_index(
+            data_length=len(data), num_envs_per_worker=num_envs_per_worker
+        )
 
         # TODO: Maybe create custom recarray to use for type hints on attributes?
         fire_pos_arr: np.recarray = data[fire_idx]
@@ -672,6 +702,37 @@ class FireHarness(Harness[AnyFireSimulation]):
         self._new_fire_scenario = True
 
         return init_pos
+
+    def _get_even_distribution_index(
+        self, *, data_length: int, num_envs_per_worker: int
+    ) -> int:
+        """Calculates an index for even distribution of data across all environments.
+
+        The index is used to sample the data in a way that spreads it across all
+        environments contained within the respective `WorkerSet` as evenly as possible.
+
+        TODO: Decide if this method should be made static, and passed the env context
+        data. This may make it easier to test and validate the method logic.
+
+        Arguments:
+            data_length: The length of the data being distributed.
+            num_envs_per_worker: The number of sub-environments within each worker.
+
+        Returns:
+            The index to use for the current environment when sampling the data.
+        """
+        env_context = self.rllib_env_context
+        w_i, v_i = env_context.worker_index, env_context.vector_index
+        # NOTE: We use the modulo operator to ensure that the `fire_idx` is within the
+        # available indices of the provided data.
+        if env_context.num_workers == 0:
+            # Sub-environment(s) contained within only the `local_worker`.
+            idx = ((w_i + 1) * v_i) % data_length
+        else:
+            # Sub-environment(s) contained within only the `remote_worker`(s).
+            idx = ((num_envs_per_worker * w_i) + v_i) % data_length
+
+        return idx
 
     def _setup_harness_analytics(self, analytics_partial: partial) -> None:
         """Instantiates `harness_analytics` used to monitor this `ReactiveHarness` obj.

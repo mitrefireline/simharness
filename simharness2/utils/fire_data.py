@@ -24,7 +24,7 @@ import numpy as np
 from simfire.sim.simulation import FireSimulation
 from simfire.enums import BurnStatus
 from simharness2.utils.simfire import get_simulator_hash
-
+from simharness2.environments.fire_harness import BurnMDOperationalLocation
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ def filter_fire_initial_position_data(
     sample_size: Dict[str, int],
     query: str,
     population_size: int = None,
+    operational_location: BurnMDOperationalLocation = None,
     **kwargs,
 ) -> Tuple[np.recarray, np.recarray]:
     """TODO"""
@@ -91,6 +92,11 @@ def filter_fire_initial_position_data(
     # Convert filtered train/eval "dataset" to a structured NumPy array (for zero-copy).
     train_arr = train_df.to_records(index=False)
     eval_arr = eval_df.to_records(index=False)
+
+    if operational_location:
+        # Add the operational location to the structured NumPy array.
+        train_arr = np.append(train_arr, np.array(operational_location), axis=0)
+        eval_arr = np.append(eval_arr, np.array(operational_location), axis=0)
 
     return train_arr, eval_arr
 

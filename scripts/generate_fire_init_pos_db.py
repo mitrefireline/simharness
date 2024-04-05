@@ -27,11 +27,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from simfire.sim.simulation import FireSimulation
 
-from simharness2.callbacks.initalize_simfire import (
-    _check_fire_init_pos_is_static,
-    _prepare_fire_map_data,
-    _validate_fire_init_config,
-)
+import simharness2.environments.utils as env_utils
 
 
 OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 39))
@@ -71,13 +67,13 @@ def main(cfg: DictConfig) -> None:
 
     env_cfg = instantiate(cfg.environment.env_config, _convert_="partial")
     sim: FireSimulation = env_cfg.get("sim")
-    _check_fire_init_pos_is_static(sim)
+    env_utils.check_fire_init_pos_is_static(sim)
     fire_pos_cfg = env_cfg.get("fire_initial_position")
-    _validate_fire_init_config(fire_pos_cfg, sim.fire_map.size)
+    env_utils.validate_fire_init_config(fire_pos_cfg, sim.fire_map.size)
 
     # Retrieve the train/eval data using the provided fire initial position config.
     # save_dir =
-    train_data, eval_data = _prepare_fire_map_data(sim, fire_pos_cfg)
+    train_data, eval_data = env_utils.prepare_fire_map_data(sim, fire_pos_cfg)
 
 
 if __name__ == "__main__":

@@ -102,6 +102,17 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         per process. For example, `worker_index` can be used to control which data file
         an environment reads in on initialization.
         """
+        # Error handling for when the context is not set.
+        if not hasattr(self, "_rllib_env_context"):
+            raise AttributeError(
+                "The RLlib environment context has not been set. This context is "
+                "required for parameterizing each environment. Please ensure that the "
+                "context is set before accessing it. This can be done by calling the "
+                "`set_harness_env_context()` method defined in "
+                "`simharness2/environments/utils.py`. For example usage, please refer to "
+                "the `InitializeSimfire.on_algorithm_init()` method in "
+                "`simharness2/callbacks/initialize_simfire.py`."
+            )
         return self._rllib_env_context
 
     @rllib_env_context.setter

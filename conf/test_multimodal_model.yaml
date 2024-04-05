@@ -41,8 +41,9 @@ simulation:
     # Configure the sampling of lon, lat coords used for operational location (s).
     burnmd_dataset_path: ${oc.env:SH_ROOT}/data/burnmd_TL_flat.json
     sample_size:
-      train: 1
-      eval: 1
+      train: 4
+      eval: 2
+    independent_eval_locations: false
   fire_initial_position:
     # Configure the generation of candidate initial fire positions.
     generator:
@@ -63,8 +64,8 @@ simulation:
       # Number of samples to draw from the distribution, ie. take `sample_size` initial
       # fire positions and distribute them across the respective RolloutWorker's.
       sample_size:
-        train: 2
-        eval: 2
+        train: 1
+        eval: 1
       # Filter generated "dataset" using the following condition.
       # NOTE: This is applied to the generated dataset, not the sampled positions.
       # For more information on the query string to evaluate, see:

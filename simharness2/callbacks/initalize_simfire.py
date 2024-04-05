@@ -1,28 +1,24 @@
 from typing import TYPE_CHECKING, Dict, Any, List, Tuple
 import logging
-import time
 from itertools import chain
 from pprint import pformat
 import json
 import random
 
+import numpy as np
 import ray
 from ray import ObjectRef
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
+
 import simharness2.utils.utils as utils
-import simharness2.utils.fire_data as fire_data
-from simharness2.environments.harness import RLlibEnvContextMetadata
 from simharness2.environments.fire_harness import BurnMDOperationalLocation
-import numpy as np
+import simharness2.environments.utils as env_utils
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
-    from ray.rllib.evaluation import RolloutWorker
-    from ray.rllib.env.env_context import EnvContext
-
     from simfire.sim.simulation import FireSimulation
-    from simharness2.environments.fire_harness import FireHarness
+
 
 logger = logging.getLogger(__name__)
 
@@ -71,31 +67,80 @@ class InitializeSimfire(DefaultCallbacks):
         all_workers = [algorithm.workers, algorithm.evaluation_workers]
         for worker in all_workers:
             worker.foreach_worker(
-                lambda w: w.foreach_env_with_context(_set_harness_env_context),
+                lambda w: w.foreach_env_with_context(env_utils.set_harness_env_context),
                 local_worker=True,
             )
 
         # TODO: Do we want to generate data using a deepcopy of `sim`?
         sim: "FireSimulation" = algorithm.config.env_config.get("sim")
         # Validate the configuration for the `FireSimulation` object.
-        _check_terrain_is_operational(sim)
-        _check_fire_init_pos_is_static(sim)
+        env_utils.check_terrain_is_operational(sim)
+        env_utils.check_fire_init_pos_is_static(sim)
 
         # NOTE: We are not doing any validation of the provided op_locs config.
         op_locs_cfg = algorithm.config.env_config.get("operational_locations")
         self.op_locs_cfg = op_locs_cfg
-
         fire_pos_cfg = algorithm.config.env_config.get("fire_initial_position")
-        self.fire_pos_cfg = _validate_fire_init_config(fire_pos_cfg, sim.fire_map.size)
-
+        self.fire_pos_cfg = env_utils.validate_fire_init_config(
+            fire_pos_cfg, sim.fire_map.size
+        )
         # Ensure number of scenarios to sample is valid wrt number of workers/envs.
         self._check_sample_size_vs_workers(algorithm)
+        self._train_envs_per_worker = algorithm.config.num_envs_per_worker
+        self._eval_envs_per_worker = algorithm.config.evaluation_config.get(
+            "num_envs_per_worker"
+        )
+        if self._eval_envs_per_worker is None:
+            self._eval_envs_per_worker = algorithm.config.num_envs_per_worker
 
+        # TODO: Add check to ensure each location is valid. For more info, see:
+        # https://github.com/mitrefireline/simfire/blob/0d46451db183a58d209ef789c509f00eca0daedf/simfire/utils/config.py#L306
+        # Seed each respective env with the operational locations.
         train_locs, eval_locs = self.get_operational_locations()
+
+        # TODO: Do we want to 'track' locations used for training and evaluation?
+        train_locs_used = algorithm.workers.foreach_worker(
+            lambda w: w.foreach_env(
+                lambda env: env._set_operational_location(
+                    locations=train_locs,
+                    num_envs_per_worker=self._train_envs_per_worker,
+                )
+            ),
+            local_worker=True,  # FIXME: Should this be True?
+        )
+        eval_locs_used = algorithm.evaluation_workers.foreach_worker(
+            lambda w: w.foreach_env(
+                lambda env: env._set_operational_location(
+                    locations=eval_locs,
+                    num_envs_per_worker=self._eval_envs_per_worker,
+                )
+            ),
+            local_worker=False,  # FIXME: Should this be True?
+        )
+
+        train_locs_set = set()
+        for loc in chain(*train_locs_used):
+            train_locs_set.add(loc)
+
+        eval_locs_set = set()
+        for loc in chain(*eval_locs_used):
+            eval_locs_set.add(loc)
+
+        # TODO: Final step - for each location, prepare the fire data and store it!
+        # FIXME: Need to refactor login in `prepare_fire_map_data()`; it returns both
+        # train and eval data, but we only need to store the data for each set.
+
+        # FIXME: Rather than preparing data based on train/eval, we should prepare data
+        # for each location, and then distribute the data to the respective envs.
 
         # Retrieve the train/eval data using the provided fire initial position config.
         logdir = algorithm.logdir
-        train_data, eval_data = _prepare_fire_map_data(sim, self.fire_pos_cfg, logdir)
+        train_data, eval_data = env_utils.prepare_fire_map_data(
+            sim,
+            self.fire_pos_cfg,
+            logdir,
+            locations=train_locs,
+        )
 
         # Initialize the `FireSimulation` for each training rollout.
         # Generate new indices randomly, w/o replacement, then create the array subset.
@@ -103,11 +148,11 @@ class InitializeSimfire(DefaultCallbacks):
             len(train_data), size=self.num_train_fire_init_pos, replace=False
         )
         train_subset = train_data[train_indices]
-        self._train_envs_per_worker = algorithm.config.num_envs_per_worker
         pos_used = algorithm.workers.foreach_worker(
             lambda w: w.foreach_env(
                 lambda env: env._initialize_simfire(
-                    train_subset, self._train_envs_per_worker
+                    data=train_subset,
+                    num_envs_per_worker=self._train_envs_per_worker,
                 )
             ),
             local_worker=True,  # FIXME: Should this be True?
@@ -131,16 +176,11 @@ class InitializeSimfire(DefaultCallbacks):
             len(eval_data), size=self.num_eval_fire_init_pos, replace=False
         )
         eval_subset = eval_data[eval_indices]
-        self._eval_envs_per_worker = algorithm.config.evaluation_config.get(
-            "num_envs_per_worker"
-        )
-        if self._eval_envs_per_worker is None:
-            self._eval_envs_per_worker = algorithm.config.num_envs_per_worker
-
         algorithm.evaluation_workers.foreach_worker(
             lambda w: w.foreach_env(
                 lambda env: env._initialize_simfire(
-                    eval_subset, self._eval_envs_per_worker
+                    data=eval_subset,
+                    num_envs_per_worker=self._eval_envs_per_worker,
                 )
             ),
             local_worker=False,  # FIXME: Should this be True?
@@ -155,6 +195,27 @@ class InitializeSimfire(DefaultCallbacks):
     ) -> Tuple[List[BurnMDOperationalLocation], List[BurnMDOperationalLocation]]:
         """Sample operational locations from the BurnMD dataset.
 
+        If the `independent_eval_locations` flag is set to `True` in the provided
+        operational locations config, then it is guranteed that the training and
+        evaluation locations will be mutually exclusive. Otherwise, the locations used
+        for evaluation may overlap with those used for training. In the latter case, it
+        is recommended to use mutually exclusive fire initial positions for training and
+        evaluation.
+
+        NOTE: If the `independent_eval_locations` flag is not provided, the default
+        behavior is to use distinct locations for training and evaluation.
+
+        FIXME: I see 2 options for sampling locs when `independent_eval_locations` is
+        False. Option 1 is to ensure eval_locs.issubset(train_locs), ie. we only evaluate
+        on locations that we have trained on. Option 2 is to allow eval_locs to be a
+        superset of train_locs, ie. we evaluate on locations that we may not have trained
+        on. We should decide which option to go with - for now, using option 1. An error
+        will be raised if num_eval_locs > num_train_locs.
+
+        TODO: Is above default behavior what we want? Should we enforce the flag?
+        TODO: Add support for sampling locations from a custom dataset.
+        TODO: Maybe move this method to `simharness2.environments.utils`?
+
         Returns:
             train_locs: List of `BurnMDOperationalLocation` objects for training.
             eval_locs: List of `BurnMDOperationalLocation` objects for evaluation.
@@ -166,15 +227,34 @@ class InitializeSimfire(DefaultCallbacks):
             burnmd_op_locs = json.loads(j.read())
 
         # Get the total number of locations to sample
-        total_locations = self.num_train_locations + self.num_eval_locations
+        independent_eval_locs = self.op_locs_cfg.get("independent_eval_locations", True)
+        if independent_eval_locs:
+            total_locations = self.num_train_locations + self.num_eval_locations
+        else:
+            # Address FIXME in docstr; for now, only evaluate on locations we train on
+            # and instead, let different fire initial positions create data diversity.
+            if self.num_eval_locations > self.num_train_locations:
+                raise ValueError(
+                    "The number of evaluation locations cannot exceed the number of "
+                    "training locations when `independent_eval_locations` is False. This "
+                    "ensures that the evaluation locations are a subset of the training "
+                    "locations."
+                )
+            # Use the maximum of the two values to ensure we have enough locations.
+            total_locations = max(self.num_train_locations, self.num_eval_locations)
 
         # Randomly sample keys from the dictionary
-        logger.info(f"Sampling {total_locations} operational locations...")
+        logger.info(f"Sampling {total_locations} operational locations from BurnMD...")
         sampled_keys = random.sample(list(burnmd_op_locs.keys()), total_locations)
 
         # Split the sampled keys into train and eval sets
-        train_keys = sampled_keys[: self.num_train_locations]
-        eval_keys = sampled_keys[self.num_train_locations :]
+        if independent_eval_locs:
+            train_keys = sampled_keys[: self.num_train_locations]
+            eval_keys = sampled_keys[self.num_train_locations :]
+        else:
+            train_keys = sampled_keys
+            # Set eval keys to be randomly sampled from train keys.
+            eval_keys = random.sample(train_keys, self.num_eval_locations)
 
         # Extract the corresponding values from the dictionary
         train_locations = {key: burnmd_op_locs[key] for key in train_keys}
@@ -236,7 +316,8 @@ class InitializeSimfire(DefaultCallbacks):
             pos_used = algorithm.workers.foreach_worker(
                 lambda w: w.foreach_env(
                     lambda env: env._initialize_simfire(
-                        train_subset, self._train_envs_per_worker
+                        data=train_subset,
+                        num_envs_per_worker=self._train_envs_per_worker,
                     )
                 ),
                 local_worker=True,  # FIXME: Should this be True?
@@ -349,121 +430,3 @@ class InitializeSimfire(DefaultCallbacks):
                 "increase the total number of evaluation scenarios."
             ).format(eval_envs, self.total_eval_scenarios)
             logger.warning(msg)
-
-
-# TODO: Move this method to a more "general" location; it's a utility!
-def _set_harness_env_context(harness: "FireHarness", env_context: "EnvContext"):
-    """Add the provided env context to the harness."""
-    # Extract rllib metadata from the env context.
-    w_idx, v_idx = env_context.worker_index, env_context.vector_index
-    remote, recreated_worker = env_context.remote, env_context.recreated_worker
-    num_workers = env_context.num_workers
-    # Create a new `RLlibEnvContextMetadata` object and add it to the harness.
-    env_context_data = RLlibEnvContextMetadata(
-        worker_index=w_idx,
-        vector_index=v_idx,
-        remote=remote,
-        num_workers=num_workers,
-        recreated_worker=recreated_worker,
-    )
-    harness.rllib_env_context = env_context_data
-
-
-def _check_fire_init_pos_is_static(sim: "FireSimulation") -> None:
-    """Ensure the `fire.fire_initial_position.type` is static."""
-    fire_init_pos_type = sim.config.yaml_data["fire"]["fire_initial_position"]["type"]
-    if fire_init_pos_type != "static":
-        msg = (
-            "Invalid value for `fire.fire_initial_position.type`: "
-            f"{fire_init_pos_type}. The value must be `static`."
-        )
-        raise ValueError(msg)
-
-
-def _check_terrain_is_operational(sim: "FireSimulation") -> None:
-    """Ensure `topography.type` and `fuel.type` are operational for `terrain`."""
-    topo_type = sim.config.yaml_data["terrain"]["topography"]["type"]
-    fuel_type = sim.config.yaml_data["terrain"]["fuel"]["type"]
-    if topo_type != "operational" or fuel_type != "operational":
-        msg = (
-            "Invalid value for `terrain.topography.type` or `terrain.fuel.type`: "
-            f"{topo_type} and {fuel_type}, respectively. The values must BOTH be "
-            "`operational`."
-        )
-        raise ValueError(msg)
-
-
-def _validate_fire_init_config(
-    fire_pos_cfg: Dict[str, Any], fire_map_size: int
-) -> Dict[str, Any]:
-    """Ensure the required environment configuration information has been provided."""
-    if fire_pos_cfg is None:
-        # TODO: Add more descriptive message about where to update the config.
-        msg = (
-            "The `fire_initial_position` key must be provided to use this callback. "
-            "This should be specified under the "
-            "`environment.env_config.fire_initial_position` key."
-        )
-        raise ValueError(msg)
-    elif fire_pos_cfg.get("generator") is None:
-        # TODO: Add more descriptive message about where to update the config.
-        msg = (
-            "The `generator` key must be provided to use this callback. Enable "
-            "`generator` for generating dataset of fire start locations to sample from."
-        )
-        raise ValueError(msg)
-    elif fire_pos_cfg.get("sampler") is None:
-        # TODO: Add more descriptive message about where to update the config.
-        msg = (
-            "The `sampler` key must be provided to use this callback. Enable "
-            "`sampler` to control sampling of new fire start locations."
-        )
-        raise ValueError(msg)
-    # Provided configuration is valid, so return it.
-    else:
-        # Ensure sampling config is valid wrt the expected "dataset" to be generated.
-        # TODO: hydra should ENFORCE the existence of the `output_size` key.
-        generator_output_size = fire_pos_cfg["generator"].get("output_size")
-        if fire_pos_cfg["generator"].get("make_all_positions"):
-            generator_output_size = fire_map_size
-
-        sampler_population_size = fire_pos_cfg["sampler"].get("population_size")
-        if sampler_population_size is not None:
-            # TODO: hydra should ENFORCE the existence of the `train` key.
-            train_sample_size = fire_pos_cfg["sampler"].get("sample_size").get("train")
-            if generator_output_size < sampler_population_size:
-                msg = (
-                    "Invalid value for `sampler.population_size`: "
-                    f"{sampler_population_size}. The value cannot be greater than the "
-                    f"`generator.output_size`, which is {generator_output_size}."
-                )
-                raise ValueError(msg)
-            elif sampler_population_size < train_sample_size:
-                msg = (
-                    "Invalid value for `sampler.sample_size.train`: "
-                    f"{train_sample_size}. The value cannot be greater than the "
-                    f"`sampler.population_size`, which is {sampler_population_size}."
-                )
-                raise ValueError(msg)
-        return fire_pos_cfg
-
-
-def _prepare_fire_map_data(
-    sim: "FireSimulation", fire_pos_cfg: Dict[str, Any], logdir: str = None
-) -> Tuple[np.recarray, np.recarray]:
-    """Prepare the fire map data for the environment."""
-    generator_cfg = fire_pos_cfg.get("generator")
-    sampler_cfg = fire_pos_cfg.get("sampler")
-
-    # Generate the dataset using the provided configuration for `generator`.
-    start_time = time.time()
-    fire_df = fire_data.generate_fire_initial_position_data(sim, **generator_cfg)
-    end_time = time.time()
-    total_runtime = end_time - start_time
-    logger.debug(f"Total generator runtime: {total_runtime} seconds.")
-    logger.debug(f"Total generator runtime: {total_runtime/60:.2f} minutes")
-
-    # Down sample the dataset using the provided configuration for `sampler`.
-    return fire_data.filter_fire_initial_position_data(
-        fire_df=fire_df, logdir=logdir, **sampler_cfg
-    )
