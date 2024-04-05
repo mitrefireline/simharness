@@ -33,6 +33,7 @@ from simfire.enums import BurnStatus
 
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.callbacks.initalize_simfire import InitializeSimfire
+from simharness2.callbacks.land_saved_metric import LandSavedMetric
 from simharness2.logger.aim import AimLoggerCallback
 
 
@@ -125,6 +126,10 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     logging.debug(result_df)
     return results
 
+def evaluate(algo: Algorithm, cfg: DictConfig) -> None:
+    #TODO: add evaluation loop
+    result = algo.evaluate()
+    print(result)
 
 def train(algo: Algorithm, cfg: DictConfig) -> None:
     """Train the given algorithm within RLlib.
@@ -256,7 +261,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(make_multi_callbacks([InitializeSimfire, RenderEnv]))
+        .callbacks(make_multi_callbacks([InitializeSimfire, RenderEnv, LandSavedMetric]))
         # FIXME: Enable passing multi_agent settings to the algorithm config.
         .multi_agent(
             policies=agent_ids,
@@ -324,6 +329,19 @@ def main(cfg: DictConfig) -> None:
     if cfg.cli.mode == "tune":
         LOGGER.info(f"Tuning model on {cfg.environment.env}.")
         train_with_tune(algo_cfg, cfg)
+    if cfg.cli.mode == "eval":
+        algo = algo_cfg.build()
+        if not cfg.algo.checkpoint_path:
+            raise ValueError(f"Error: Evaluating without a checkpoint path")
+        ckpt_path = cfg.algo.checkpoint_path
+        LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
+
+        if not os.path.isfile(ckpt_path):
+            raise ValueError(f"{ckpt_path} is not a valid file path.")
+
+        algo.restore(checkpoint_path=ckpt_path)
+        evaluate(algo, cfg)
+        
 
     ray.shutdown()
 
