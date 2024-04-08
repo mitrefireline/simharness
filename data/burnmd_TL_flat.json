@@ -209,69 +209,6 @@
         "latitude": 34.08472233400005,
         "longitude": -112.59986308399999
     },
-    "Arizona_2021_Tiger": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Tiger",
-        "latitude": 4058185.837200001,
-        "longitude": -12498130.4275
-    },
-    "Arizona_2021_Backbone": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Backbone",
-        "latitude": 4095798.6103999987,
-        "longitude": -12443570.1937
-    },
-    "Arizona_2021_Slate": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Slate",
-        "latitude": 4239138.759400003,
-        "longitude": -12451987.034400001
-    },
-    "Arizona_2021_Pinnacle": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Pinnacle",
-        "latitude": 3889781.9015000015,
-        "longitude": -12278996.3565
-    },
-    "Arizona_2021_Wyrick": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Wyrick",
-        "latitude": 4097373.891099997,
-        "longitude": -12322564.178
-    },
-    "Arizona_2021_Horton": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Horton",
-        "latitude": 3991777.7063999996,
-        "longitude": -12174417.4225
-    },
-    "Arizona_2021_Bear": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Bear",
-        "latitude": 3968724.539800003,
-        "longitude": -12184499.3724
-    },
-    "Arizona_2021_Walnut": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Walnut",
-        "latitude": 3779446.9958000034,
-        "longitude": -12263216.752700001
-    },
-    "Arizona_2021_Snap_Point": {
-        "state": "Arizona",
-        "year": 2021,
-        "fire_name": "Snap_Point",
-        "latitude": 4333130.329999998,
-        "longitude": -12676609.8572
-    },
     "California_2018_Boot": {
         "state": "California",
         "year": 2018,
@@ -510,48 +447,6 @@
         "latitude": 39.884045324000056,
         "longitude": -120.03962498799996
     },
-    "California_2021_Walkers": {
-        "state": "California",
-        "year": 2021,
-        "fire_name": "Walkers",
-        "latitude": 4350011.318300001,
-        "longitude": -13200762.406100001
-    },
-    "California_2021_Lava": {
-        "state": "California",
-        "year": 2021,
-        "fire_name": "Lava",
-        "latitude": 5099534.6215,
-        "longitude": -13619891.2914
-    },
-    "California_2021_Salt": {
-        "state": "California",
-        "year": 2021,
-        "fire_name": "Salt",
-        "latitude": 5006622.435900003,
-        "longitude": -13627909.832899999
-    },
-    "California_2021_Antelope": {
-        "state": "California",
-        "year": 2021,
-        "fire_name": "Antelope",
-        "latitude": 5148796.425800003,
-        "longitude": -13582516.319699999
-    },
-    "California_2021_Alisal": {
-        "state": "California",
-        "year": 2021,
-        "fire_name": "Alisal",
-        "latitude": 4099697.5604000017,
-        "longitude": -13381130.1954
-    },
-    "California_2021_French": {
-        "state": "California",
-        "year": 2021,
-        "fire_name": "French",
-        "latitude": 4266976.486900002,
-        "longitude": -13208125.1174
-    },
     "Colorado_2018_416": {
         "state": "Colorado",
         "year": 2018,
@@ -635,20 +530,6 @@
         "fire_name": "Grizzly_Creek",
         "latitude": 39.66932998800007,
         "longitude": -107.29087714499997
-    },
-    "Colorado_2021_Oil_Springs": {
-        "state": "Colorado",
-        "year": 2021,
-        "fire_name": "Oil_Springs",
-        "latitude": 4840225.690800004,
-        "longitude": -12123216.446899999
-    },
-    "Colorado_2021_Morgan_Creek": {
-        "state": "Colorado",
-        "year": 2021,
-        "fire_name": "Morgan_Creek",
-        "latitude": 4977810.692699999,
-        "longitude": -11892380.501
     },
     "Idaho_2018_Bruneau": {
         "state": "Idaho",
@@ -825,69 +706,6 @@
         "latitude": 45.82644938300007,
         "longitude": -115.18833736599998
     },
-    "Idaho_2021_Rush_Creek": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Rush_Creek",
-        "latitude": 5621625.664499998,
-        "longitude": -12808098.6659
-    },
-    "Idaho_2021_Mud_Lick": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Mud_Lick",
-        "latitude": 5657060.476400003,
-        "longitude": -12748416.6213
-    },
-    "Idaho_2021_Sheep_Creek": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Sheep_Creek",
-        "latitude": 5717041.728399999,
-        "longitude": -12894205.6646
-    },
-    "Idaho_2021_Dixie": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Dixie",
-        "latitude": 5724960.822999999,
-        "longitude": -12857382.0258
-    },
-    "Idaho_2021_Lynx": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Lynx",
-        "latitude": 5764450.008000001,
-        "longitude": -12804021.4669
-    },
-    "Idaho_2021_Storm_Creek": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Storm_Creek",
-        "latitude": 5864943.9406,
-        "longitude": -12753978.7775
-    },
-    "Idaho_2021_Deceitful": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Deceitful",
-        "latitude": 6049825.024099998,
-        "longitude": -12923413.4808
-    },
-    "Idaho_2021_Tumbledown": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Tumbledown",
-        "latitude": 5980713.868299998,
-        "longitude": -12868854.5789
-    },
-    "Idaho_2021_Bedrock": {
-        "state": "Idaho",
-        "year": 2021,
-        "fire_name": "Bedrock",
-        "latitude": 5876182.627300002,
-        "longitude": -12980424.886
-    },
     "Montana_2018_Buffalo_Pasture": {
         "state": "Montana",
         "year": 2018,
@@ -936,104 +754,6 @@
         "fire_name": "Gass_Flats",
         "latitude": 46.02017081000008,
         "longitude": -107.28369148299998
-    },
-    "Montana_2021_Devils_Creek": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Devils_Creek",
-        "latitude": 6046885.453500003,
-        "longitude": -11982845.2107
-    },
-    "Montana_2021_Robertson_Draw": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Robertson_Draw",
-        "latitude": 5643283.795599997,
-        "longitude": -12166713.7309
-    },
-    "Montana_2021_American_Fork": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "American_Fork",
-        "latitude": 5815161.7535,
-        "longitude": -12292980.9004
-    },
-    "Montana_2021_Woods_Creek": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Woods_Creek",
-        "latitude": 5882669.440399997,
-        "longitude": -12408406.9773
-    },
-    "Montana_2021_Balsinger": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Balsinger",
-        "latitude": 5947865.020300001,
-        "longitude": -12350257.310600001
-    },
-    "Montana_2021_South_Yaak": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "South_Yaak",
-        "latitude": 6212211.154600002,
-        "longitude": -12906614.8471
-    },
-    "Montana_2021_Goose": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Goose",
-        "latitude": 5584064.1985,
-        "longitude": -12428984.226599999
-    },
-    "Montana_2021_Haystack": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Haystack",
-        "latitude": 5816785.379799999,
-        "longitude": -12506690.0161
-    },
-    "Montana_2021_Thorne_Creek": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Thorne_Creek",
-        "latitude": 6068161.616400003,
-        "longitude": -12845841.4066
-    },
-    "Montana_2021_Pine_Grove": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Pine_Grove",
-        "latitude": 6113116.140900001,
-        "longitude": -12099478.5132
-    },
-    "Montana_2021_Harris_Mountain": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Harris_Mountain",
-        "latitude": 5969996.067400001,
-        "longitude": -12445383.8555
-    },
-    "Montana_2021_Trout_Creek": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Trout_Creek",
-        "latitude": 5708720.086099997,
-        "longitude": -12217232.6995
-    },
-    "Montana_2021_Greenhouse": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "Greenhouse",
-        "latitude": 6220457.612999998,
-        "longitude": -12580480.6647
-    },
-    "Montana_2021_West_Wind": {
-        "state": "Montana",
-        "year": 2021,
-        "fire_name": "West_Wind",
-        "latitude": 5995449.396200001,
-        "longitude": -12265824.873399999
     },
     "Nevada_2018_County_Line": {
         "state": "Nevada",
@@ -1175,20 +895,6 @@
         "latitude": 40.94329436400005,
         "longitude": -119.67271800299994
     },
-    "Nevada_2021_Cherrywood": {
-        "state": "Nevada",
-        "year": 2021,
-        "fire_name": "Cherrywood",
-        "latitude": 4459406.676899999,
-        "longitude": -12967443.428399999
-    },
-    "Nevada_2021_Southern_Bench": {
-        "state": "Nevada",
-        "year": 2021,
-        "fire_name": "Southern_Bench",
-        "latitude": 4487966.651000001,
-        "longitude": -12940370.7865
-    },
     "New Mexico_2018_Buzzard": {
         "state": "New Mexico",
         "year": 2018,
@@ -1244,13 +950,6 @@
         "fire_name": "Vics_Peak",
         "latitude": 33.67696431400003,
         "longitude": -107.48085050999998
-    },
-    "New Mexico_2021_Doagy": {
-        "state": "New Mexico",
-        "year": 2021,
-        "fire_name": "Doagy",
-        "latitude": 3961814.797600001,
-        "longitude": -12035909.804
     },
     "Oregon_2018_Columbus": {
         "state": "Oregon",
@@ -1441,27 +1140,6 @@
         "latitude": 38.71455450000008,
         "longitude": -113.52610358399994
     },
-    "Utah_2021_Pack_Creek": {
-        "state": "Utah",
-        "year": 2021,
-        "fire_name": "Pack_Creek",
-        "latitude": 4651173.086400002,
-        "longitude": -12176782.1765
-    },
-    "Utah_2021_Bennion_Creek": {
-        "state": "Utah",
-        "year": 2021,
-        "fire_name": "Bennion_Creek",
-        "latitude": 4847986.903399996,
-        "longitude": -12386807.848000001
-    },
-    "Utah_2021_Bear": {
-        "state": "Utah",
-        "year": 2021,
-        "fire_name": "Bear",
-        "latitude": 4836786.5276999995,
-        "longitude": -12352960.5073
-    },
     "Washington_2018_Cougar_Creek": {
         "state": "Washington",
         "year": 2018,
@@ -1560,90 +1238,6 @@
         "latitude": 47.275912971000025,
         "longitude": -117.62644364499994
     },
-    "Washington_2021_Cedar_Creek": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Cedar_Creek",
-        "latitude": 6207439.886399999,
-        "longitude": -13422865.558699999
-    },
-    "Washington_2021_Muckamuck": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Muckamuck",
-        "latitude": 6212893.367600001,
-        "longitude": -13343265.636500001
-    },
-    "Washington_2021_Spur": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Spur",
-        "latitude": 6249066.516800001,
-        "longitude": -13265991.883299999
-    },
-    "Washington_2021_Bulldog_Mountain": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Bulldog_Mountain",
-        "latitude": 6244625.895000003,
-        "longitude": -13170135.8772
-    },
-    "Washington_2021_Burbank": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Burbank",
-        "latitude": 5901886.993199997,
-        "longitude": -13408047.0087
-    },
-    "Washington_2021_Chuweah_Creek_Fire": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Chuweah_Creek_Fire",
-        "latitude": 6149394.680699997,
-        "longitude": -13244878.8981
-    },
-    "Washington_2021_Summit_Trail": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Summit_Trail",
-        "latitude": 6184165.013400003,
-        "longitude": -13201275.4026
-    },
-    "Washington_2021_Whitmore": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Whitmore",
-        "latitude": 6156670.440700002,
-        "longitude": -13289738.639
-    },
-    "Washington_2021_Red_Apple": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Red_Apple",
-        "latitude": 6032688.2346,
-        "longitude": -13406132.530000001
-    },
-    "Washington_2021_Hair_Road": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Hair_Road",
-        "latitude": 5863816.138499998,
-        "longitude": -13198655.2301
-    },
-    "Washington_2021_Silcott": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Silcott",
-        "latitude": 5842373.229800001,
-        "longitude": -13052252.674800001
-    },
-    "Washington_2021_Ford_Corkscrew": {
-        "state": "Washington",
-        "year": 2021,
-        "fire_name": "Ford_Corkscrew",
-        "latitude": 6102937.390699998,
-        "longitude": -13116034.7257
-    },
     "Wyoming_2018_Badger_Creek": {
         "state": "Wyoming",
         "year": 2018,
@@ -1727,12 +1321,5 @@
         "fire_name": "Waddle_Creek",
         "latitude": 44.98753190000008,
         "longitude": -106.56500953399996
-    },
-    "Wyoming_2021_Crater_Ridge": {
-        "state": "Wyoming",
-        "year": 2021,
-        "fire_name": "Crater_Ridge",
-        "latitude": 5619839.203599997,
-        "longitude": -12000927.410500001
     }
 }

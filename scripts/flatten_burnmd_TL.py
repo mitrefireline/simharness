@@ -5,6 +5,7 @@ import hydra
 from omegaconf import DictConfig
 import time
 import logging
+from shapely.geometry import Point, Polygon
 
 if f"{os.environ['HOME']}/simharness" not in sys.path:
     sys.path.append(os.path.join(os.environ["HOME"], "simharness2"))
@@ -12,7 +13,33 @@ if f"{os.environ['HOME']}/simharness" not in sys.path:
 logger = logging.getLogger(__name__)
 
 # List of substrings that indicate a bad location in the BurnMD data.
-BAD_LOCATIONS = ["Oregon_2021"]
+BAD_LOCATIONS = ["Oregon_2021", "Colorado_2021_Morgan_Creek"]
+
+
+def validate_coordinates(lon: float, lat: float) -> bool:
+    """Validate a lat, lon point can be located within WGS84 CRS.
+
+    This function validates a lat, lon point by checking if it is within the bounds of
+    the WGS84 CRS, after wrapping the longitude value within [-180, 180).
+
+    The function returns True if the point is valid, False otherwise.
+    Credit to https://gis.stackexchange.com/a/378885.
+
+    Args:
+        lon: The longitude value.
+        lat: The latitude value.
+
+    Returns:
+        True if the point is valid, False otherwise.
+    """
+    # Put the longitude in the range of [0,360):
+    lon %= 360
+    # Put the longitude in the range of [-180,180):
+    if lon >= 180:
+        lon -= 360
+    lon_lat_point = Point(lon, lat)
+    lon_lat_bounds = Polygon.from_bounds(xmin=-180.0, ymin=-90.0, xmax=180.0, ymax=90.0)
+    return lon_lat_bounds.intersects(lon_lat_point)
 
 
 @hydra.main(
@@ -51,10 +78,17 @@ def main(cfg: DictConfig) -> None:
                 # Create a unique key for each fire.
                 fire_name = fire_name.replace(" ", "_")
                 key = f"{state}_{year}_{fire_name}"
-                # Skip bad locations.
-                if any(bad_loc in key for bad_loc in BAD_LOCATIONS):
-                    logger.warning(f"Skipping bad location: {key}")
+                # Validate the lat_lon point.
+                valid_lat_lon = validate_coordinates(lon=lat_lon[1], lat=lat_lon[0])
+                if not valid_lat_lon:
+                    logger.warning(
+                        f"Skipping {key} for invalid lat, lon point: {lat_lon[0], lat_lon[1]}"
+                    )
                     continue
+                # Skip 'bad' locations.
+                # if any(bad_loc in key for bad_loc in BAD_LOCATIONS):
+                #     logger.warning(f"Skipping bad location: {key}")
+                #     continue
                 logger.debug(f"Processing fire: {key}")
                 flat_burnmd_op_locs[key] = {
                     "state": state,
