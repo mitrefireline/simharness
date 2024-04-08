@@ -38,6 +38,9 @@ from simharness2.logger.aim import AimLoggerCallback
 
 # from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
+from simharness2.callbacks.render_env import RenderEnv
+from simharness2.logger.aim import AimLoggerCallback
+import json
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
@@ -124,6 +127,14 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
 
     logging.debug(result_df)
     return results
+
+
+def evaluate(algo: Algorithm, cfg: DictConfig) -> None:
+    result = algo.evaluate()
+    if "output" in cfg.cli:
+        with open(cfg.cli.output, "w") as f:
+            json.dump(result, f)
+    LOGGER.info(f"{pretty_print(result)}")
 
 
 def train(algo: Algorithm, cfg: DictConfig) -> None:
@@ -311,6 +322,18 @@ def main(cfg: DictConfig) -> None:
 
         LOGGER.info(f"Training model on {cfg.environment.env}.")
         train(algo, cfg)
+    if cfg.cli.mode == "eval":
+        algo = algo_cfg.build()
+        if cfg.algo.checkpoint_path:
+            ckpt_path = cfg.algo.checkpoint_path
+            LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
+
+            if not os.path.isfile(ckpt_path):
+                raise ValueError(f"{ckpt_path} is not a valid file path.")
+
+            algo.restore(checkpoint_path=ckpt_path)
+        LOGGER.info(f"Evaluating model on {cfg.environment.env}.")
+        evaluate(algo, cfg)
 
     if cfg.cli.mode == "tune":
         LOGGER.info(f"Tuning model on {cfg.environment.env}.")
