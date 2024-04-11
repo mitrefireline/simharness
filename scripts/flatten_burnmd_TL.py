@@ -13,7 +13,11 @@ if f"{os.environ['HOME']}/simharness" not in sys.path:
 logger = logging.getLogger(__name__)
 
 # List of substrings that indicate a bad location in the BurnMD data.
-BAD_LOCATIONS = ["Oregon_2021", "Colorado_2021_Morgan_Creek"]
+BAD_LOCATIONS = [
+    "Oregon_2021",
+    "Colorado_2021_Morgan_Creek",
+    "'New Mexico_2019_Rawhide",
+]
 
 
 def validate_coordinates(lon: float, lat: float) -> bool:
@@ -86,9 +90,9 @@ def main(cfg: DictConfig) -> None:
                     )
                     continue
                 # Skip 'bad' locations.
-                # if any(bad_loc in key for bad_loc in BAD_LOCATIONS):
-                #     logger.warning(f"Skipping bad location: {key}")
-                #     continue
+                elif any(bad_loc in key for bad_loc in BAD_LOCATIONS):
+                    logger.warning(f"Skipping bad location: {key}")
+                    continue
                 logger.debug(f"Processing fire: {key}")
                 flat_burnmd_op_locs[key] = {
                     "state": state,
