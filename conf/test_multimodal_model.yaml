@@ -43,7 +43,7 @@ simulation:
     sample_size:
       train: 4
       eval: 2
-    independent_eval_locations: false
+    independent_eval: false
   fire_initial_position:
     # Configure the generation of candidate initial fire positions.
     generator:
@@ -66,6 +66,11 @@ simulation:
       sample_size:
         train: 1
         eval: 1
+      # If false, then eval scenarios are drawn from the same distribution as
+      # training scenarios. This behavior is usually not desired, but can be
+      # useful for debugging purposes, ie. seeing how well the trained policy
+      # performs on a scenario from the training distribution.
+      independent_eval: true
       # Filter generated "dataset" using the following condition.
       # NOTE: This is applied to the generated dataset, not the sampled positions.
       # For more information on the query string to evaluate, see:
