@@ -268,6 +268,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
             #policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
             policy_mapping_fn=(lambda *args, **kwargs: "agent")
         )
+        .reporting(keep_per_episode_custom_metrics=True)
     )
 
     algo_cfg.rl_module(_enable_rl_module_api=False)
