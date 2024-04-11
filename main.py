@@ -34,6 +34,7 @@ from simfire.enums import BurnStatus
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.callbacks.initalize_simfire import InitializeSimfire
 from simharness2.logger.aim import AimLoggerCallback
+from simharness2.callbacks.land_saved_callback import LandSavedMetric
 
 
 # from simharness2.utils.evaluation_fires import get_default_operational_fires
@@ -125,6 +126,9 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     logging.debug(result_df)
     return results
 
+def evaluate(algo: Algorithm, cfg: DictConfig):
+    result = algo.evaluate()
+    print(result)
 
 def train(algo: Algorithm, cfg: DictConfig) -> None:
     """Train the given algorithm within RLlib.
@@ -242,8 +246,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     agent_id_stop = agent_id_start + num_agents
     sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
     # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
-    #agent_ids = {f"agent_{i}" for i in sim_agent_ids}
-    agent_ids = {"agent"}
+    agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+    # agent_ids = {"agent"}
 
     algo_cfg = (
         get_trainable_cls(cfg.algo.name)
@@ -256,12 +260,13 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(make_multi_callbacks([InitializeSimfire, RenderEnv]))
+        .callbacks(make_multi_callbacks([InitializeSimfire, RenderEnv, LandSavedMetric]))
         # FIXME: Enable passing multi_agent settings to the algorithm config.
+        .reporting(keep_per_episode_custom_metrics=True)
         .multi_agent(
             policies=agent_ids,
-            #policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
-            policy_mapping_fn=(lambda *args, **kwargs: "agent")
+            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+            # policy_mapping_fn=(lambda *args, **kwargs: "agent"),
         )
     )
 
@@ -324,6 +329,17 @@ def main(cfg: DictConfig) -> None:
     if cfg.cli.mode == "tune":
         LOGGER.info(f"Tuning model on {cfg.environment.env}.")
         train_with_tune(algo_cfg, cfg)
+    if cfg.cli.mode == "eval":
+        algo = algo_cfg.build()
+        if cfg.algo.checkpoint_path:
+            ckpt_path = cfg.algo.checkpoint_path
+            LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
+
+            if not os.path.isfile(ckpt_path):
+                raise ValueError(f"{ckpt_path} is not a valid file path.")
+
+            algo.restore(checkpoint_path=ckpt_path)
+        evaluate(algo, cfg)
 
     ray.shutdown()
 

@@ -344,7 +344,7 @@ class AreaSavedPropRewardV2(BaseReward):
 
         reward_msg = "Latest reward" if sim_run else "Latest intermediate reward"
         logger.debug(f"{reward_msg}: {self.latest_reward}")
-        return reward
+        return {agent: reward for agent in agents}
 
     def get_timestep_intermediate_reward(
         self,

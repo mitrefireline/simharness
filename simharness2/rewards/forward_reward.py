@@ -64,5 +64,6 @@ class ForwardRewardV2(AreaSavedPropRewardV2):
             agent = agents[k]
             delta_dist = dist(agent.current_position, agent.initial_position) - dist(agent._previous_position, agent.initial_position)
             movement_reward += 0.0001 * delta_dist
-        reward += movement_reward
+        for k in reward:
+            reward[k] += movement_reward
         return reward
