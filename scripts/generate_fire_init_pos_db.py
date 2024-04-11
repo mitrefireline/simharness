@@ -16,9 +16,9 @@ import os
 import sys
 import warnings
 
-
-if f"{os.environ['HOME']}/simharness2" not in sys.path:
-    sys.path.append(os.path.join(os.environ["HOME"], "simharness2"))
+sh_path = os.path.join(os.environ["HOME"], "simharness")
+if sh_path not in sys.path:
+    sys.path.append(sh_path)
 
 import hydra
 import ray
@@ -46,7 +46,7 @@ logger.propagate = False
 
 @hydra.main(
     version_base=None,
-    config_path=f"{os.environ['HOME']}/simharness2/conf",
+    config_path=f"{os.environ['HOME']}/simharness/conf",
     config_name="config",
 )
 def main(cfg: DictConfig) -> None:
@@ -56,7 +56,7 @@ def main(cfg: DictConfig) -> None:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
     # Start the Ray runtime
-    ray.init(address="auto")
+    ray.init(address="local", num_cpus=80)
 
     outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
     logger.info(f"Configuration files for this job can be found at {outdir}.")
@@ -65,15 +65,49 @@ def main(cfg: DictConfig) -> None:
     executed_command = " ".join(["%s" % arg for arg in sys.argv])
     logger.info(f"Executed command: \n{executed_command}")
 
+    # FIXME: If the env_config has an operational location that will not be used, we end
+    # up (possibly) downloading unnecessary data and building the sim object, which will
+    # just be updated later anyways. Okay for now, but fix later if time permits.
     env_cfg = instantiate(cfg.environment.env_config, _convert_="partial")
     sim: FireSimulation = env_cfg.get("sim")
+
+    # Validate the configuration for the `FireSimulation` object.
+    env_utils.check_terrain_is_operational(sim)
     env_utils.check_fire_init_pos_is_static(sim)
+    op_locs_cfg = env_cfg.get("operational_locations")
     fire_pos_cfg = env_cfg.get("fire_initial_position")
     env_utils.validate_fire_init_config(fire_pos_cfg, sim.fire_map.size)
 
+    # TODO: Add check to ensure each location is valid. For more info, see:
+    # https://github.com/mitrefireline/simfire/blob/0d46451db183a58d209ef789c509f00eca0daedf/simfire/utils/config.py#L306
+    # TODO: Do we want to 'track' locations used for training and evaluation?
+    # Seed each respective env with the operational locations.
+    num_train_locs = op_locs_cfg.get("sample_size").get("train")
+    num_eval_locs = op_locs_cfg.get("sample_size").get("eval")
+    train_locs, eval_locs = env_utils.get_operational_locations(
+        cfg=op_locs_cfg,
+        num_train_locs=num_train_locs,
+        num_eval_locs=num_eval_locs,
+        seed=cfg.debugging.seed,
+        fire_year=2020,
+    )
+
     # Retrieve the train/eval data using the provided fire initial position config.
-    # save_dir =
-    train_data, eval_data = env_utils.prepare_fire_map_data(sim, fire_pos_cfg)
+    logger.info(f"Shape of fire map before preparing data: {sim.fire_map.shape}")
+    for loc in train_locs + eval_locs:
+        logger.info(f"Preparing data for location: {loc}")
+        train_data, eval_data = env_utils.prepare_fire_map_data(
+            sim,
+            fire_pos_cfg,
+            location=loc,
+            return_train_data=loc in train_locs,
+            return_eval_data=loc in eval_locs,
+            # TODO: Should we specify a logdir??
+            # logdir=??
+        )
+        logger.info(
+            f"Using location {loc} resulted in fire map shape: {sim.fire_map.shape}"
+        )
 
 
 if __name__ == "__main__":

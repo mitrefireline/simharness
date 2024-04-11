@@ -201,22 +201,32 @@ def set_operational_location(
 def prepare_fire_map_data(
     sim: "FireSimulation",
     fire_pos_cfg: Dict[str, Any],
-    train_locations: Set[BurnMDOperationalLocation],
-    eval_locations: Set[BurnMDOperationalLocation],
-    logdir str = None,
+    location: BurnMDOperationalLocation,
+    return_train_data: bool = True,
+    return_eval_data: bool = True,
+    logdir: str = None,
 ) -> Tuple[np.recarray, np.recarray]:
-    """Prepare the fire map data for the environment."""
+    """Prepare the fire map data for the environment.
+
+    The values of return_train_data and return_eval_data should be determined by
+    the usage of the provided location, ie. is it used for training, evaluation, or
+    both. For example, if the location is only used for training, then
+    return_eval_data should be set to False.
+
+    Arguments:
+        sim: The FireSimulation object to use for generating the fire map data.
+        fire_pos_cfg: The configuration for the fire initial position data.
+        location: The operational location to use for the simulation.
+        return_train_data: Whether to return the training data.
+        return_eval_data: Whether to return the evaluation data.
+        logdir: The directory to save the data to.
+    """
     generator_cfg = fire_pos_cfg.get("generator")
     sampler_cfg = fire_pos_cfg.get("sampler")
 
-    # Prepare fire position data for each location in the list of locations.
-    for location in locations:
-        # Set the location for the simulation.
-        # TODO: Create MR for simfire to add `set_operational_location` method and
-        # optimize/update the logic of `reset_terrain()`.
-        # FIXME: We have access to the "year" of the fire, but are not using it here.
-        sim.config.reset_terrain(location=location.lat_lon)
-
+    # Set the operational location for the simulation.
+    sim = set_operational_location(sim, location)
+    try:
         # Generate the dataset using the provided configuration for `generator`.
         start_time = time.time()
         fire_df = fire_data.generate_fire_initial_position_data(sim, **generator_cfg)
@@ -229,8 +239,17 @@ def prepare_fire_map_data(
         # FIXME: One idea is to always return train_data, eval_data, but if the location
         # is only used for training, then eval_data is None or an empty recarray.
         train_data, eval_data = fire_data.filter_fire_initial_position_data(
-            fire_df=fire_df, logdir=logdir, **sampler_cfg
+            fire_df=fire_df,
+            logdir=logdir,
+            return_train_data=return_train_data,
+            return_eval_data=return_eval_data,
+            **sampler_cfg,
         )
+    except ValueError as e:
+        logger.error(f"Error generating fire map data for {location.uid}: {e}")
+        train_data, eval_data = None, None
+
+    return train_data, eval_data
 
 
 def check_fire_init_pos_is_static(sim: "FireSimulation") -> None:
