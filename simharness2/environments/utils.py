@@ -1,8 +1,12 @@
-from typing import Any, Dict, Set, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 import time
 import logging
+import json
+import random
 import numpy as np
+from pprint import pformat
 
+from simfire.utils.config import Config
 import simharness2.utils.fire_data as fire_data
 from simharness2.environments.harness import RLlibEnvContextMetadata
 from simharness2.environments.fire_harness import BurnMDOperationalLocation
@@ -14,6 +18,7 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+logger.propagate = False
 
 
 def set_harness_env_context(harness: "FireHarness", env_context: "EnvContext"):
@@ -31,6 +36,166 @@ def set_harness_env_context(harness: "FireHarness", env_context: "EnvContext"):
         recreated_worker=recreated_worker,
     )
     harness.rllib_env_context = env_context_data
+
+
+def get_operational_locations(
+    cfg: Dict[str, Any],
+    num_train_locs: int,
+    num_eval_locs: int,
+    seed: int,
+    fire_year: int = None,
+) -> Tuple[List[BurnMDOperationalLocation], List[BurnMDOperationalLocation]]:
+    """Sample operational locations from the BurnMD dataset.
+
+    To sample operational locations by a specific year, set the `fire_year` parameter.
+    Otherwise, samples will be taken from all available years.
+
+    If the `independent_eval_locations` flag is set to `True` in the provided
+    operational locations config, then it is guranteed that the training and
+    evaluation locations will be mutually exclusive. Otherwise, the locations used
+    for evaluation may overlap with those used for training. In the latter case, it
+    is recommended to use mutually exclusive fire initial positions for training and
+    evaluation.
+
+    NOTE: If the `independent_eval_locations` flag is not provided, the default
+    behavior is to use distinct locations for training and evaluation.
+
+    FIXME: I see 2 options for sampling locs when `independent_eval_locations` is
+    False. Option 1 is to ensure eval_locs.issubset(train_locs), ie. we only evaluate
+    on locations that we have trained on. Option 2 is to allow eval_locs to be a
+    superset of train_locs, ie. we evaluate on locations that we may not have trained
+    on. We should decide which option to go with - for now, using option 1. An error
+    will be raised if num_eval_locs > num_train_locs.
+
+    TODO: Is above default behavior what we want? Should we enforce the flag?
+    TODO: Add support for sampling locations from a custom dataset.
+    TODO: Maybe move this method to `simharness2.environments.utils`?
+
+    Returns:
+        train_locs: List of `BurnMDOperationalLocation` objects for training.
+        eval_locs: List of `BurnMDOperationalLocation` objects for evaluation.
+    """
+    # Set the seed for the random number generator
+    random.seed(seed)
+
+    # Load BurnMD data to use for sampling random operational locations.
+    burnmd_fp = cfg.get("burnmd_dataset_path")
+    logger.info(f"Loading BurnMD data from {burnmd_fp}")
+    with open(burnmd_fp, "r", encoding="utf-8") as j:
+        burnmd_op_locs = json.loads(j.read())
+
+    # Downsample BurnMD by year, if specified
+    if fire_year is not None:
+        logger.info(f"Filtering BurnMD data for year {fire_year}...")
+        burnmd_op_locs = {
+            uid: loc_data
+            for uid, loc_data in burnmd_op_locs.items()
+            if loc_data["year"] == fire_year
+        }
+        logger.info(f"Number of locations for year {fire_year}: {len(burnmd_op_locs)}")
+
+    # Get the total number of locations to sample
+    independent_eval_locs = cfg.get("independent_eval_locations", True)
+    if independent_eval_locs:
+        total_locations = num_train_locs + num_eval_locs
+    else:
+        # Address FIXME in docstr; for now, only evaluate on locations we train on
+        # and instead, let different fire initial positions create data diversity.
+        if num_eval_locs > num_train_locs:
+            raise ValueError(
+                "The number of evaluation locations cannot exceed the number of "
+                "training locations when `independent_eval_locations` is False. This "
+                "ensures that the evaluation locations are a subset of the training "
+                "locations."
+            )
+        # Use the maximum of the two values to ensure we have enough locations.
+        total_locations = max(num_train_locs, num_eval_locs)
+
+    # Validate the number of locations to sample
+    if total_locations > len(burnmd_op_locs):
+        raise ValueError(
+            f"Total number of locations to sample ({total_locations}) exceeds the "
+            f"number of available locations in BurnMD ({len(burnmd_op_locs)})."
+        )
+
+    # Randomly sample keys from the dictionary
+    logger.info(f"Sampling {total_locations} operational locations from BurnMD...")
+    sampled_keys = random.sample(list(burnmd_op_locs.keys()), total_locations)
+
+    # Split the sampled keys into train and eval sets
+    if independent_eval_locs:
+        train_keys = sampled_keys[:num_train_locs]
+        eval_keys = sampled_keys[num_train_locs:]
+    else:
+        train_keys = sampled_keys
+        # Set eval keys to be randomly sampled from train keys.
+        eval_keys = random.sample(train_keys, num_eval_locs)
+
+    # Extract the corresponding values from the dictionary
+    train_locations = {key: burnmd_op_locs[key] for key in train_keys}
+    eval_locations = {key: burnmd_op_locs[key] for key in eval_keys}
+
+    # Build the BurnMDOperationalLocation objects
+    train_locs = [
+        BurnMDOperationalLocation(uid=uid, **loc_data)
+        for uid, loc_data in train_locations.items()
+    ]
+    eval_locs = [
+        BurnMDOperationalLocation(uid=uid, **loc_data)
+        for uid, loc_data in eval_locations.items()
+    ]
+    logger.info(f"Sampled training locations: \n{pformat(train_locs)}")
+    logger.info(f"Sampled evaluation locations: \n{pformat(eval_locs)}")
+    return train_locs, eval_locs
+
+
+def set_operational_location(
+    sim: "FireSimulation", location: BurnMDOperationalLocation
+) -> "FireSimulation":
+    """Set the operational location for the provided FireSimulation object, sim."""
+    if location.year != 2020:
+        logger.warning(
+            f"Location {location.uid} is from year {location.year}, but currently we "
+            "only support using BurnMD data from wildfires in the year 2020. This "
+            "requirement ensures that we can load operational data collected in a year "
+            "PRIOR to the BurnMD fire year. The hope is that using data from a previous "
+            "year will provide a more realistic operational environment. This will be "
+            "addressed in a future MR."
+        )
+
+    # TODO: Create MR for simfire to add `set_operational_location` method and
+    # optimize/update the logic of `reset_terrain()`.
+    # For now, we just recreate the SimFire Config object and reset the simulation.
+    # Overwrite the operational settings in the SimFire config.
+    sim_cfg = sim.config.yaml_data
+    sim_cfg["operational"].update(
+        {
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            # NOTE: Forcing year to be the year prior to the BurnMD data year, ie. 2019.
+            "year": str(location.year - 1),
+        }
+    )
+    logger.info(f"Updated SimFire operational settings: {sim_cfg['operational']}")
+
+    # Overwrite the Config object, then reset to ensure the changes take effect.
+    logger.info("Recreating the SimFire Config object with updated operational settings.")
+    updated_config = Config(config_dict=sim_cfg)
+    del sim.config
+    sim.config = updated_config
+
+    sim.reset()
+
+    # Check that the operational location was set correctly.
+    sim_lat_lon = sim.config.operational.latitude, sim.config.operational.longitude
+    if sim_lat_lon != location.lat_lon:
+        msg = (
+            f"Error setting operational location for {location.uid}. Expected "
+            f"latitude, longitude: {location.lat_lon}, but got: {sim_lat_lon}."
+        )
+        raise ValueError(msg)
+
+    return sim
 
 
 def prepare_fire_map_data(
