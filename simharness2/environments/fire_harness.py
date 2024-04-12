@@ -3,6 +3,7 @@ import logging
 import os
 from abc import abstractmethod
 from collections import OrderedDict as ordered_dict
+from collections import namedtuple
 from functools import partial
 from typing import (
     Any,
@@ -14,8 +15,8 @@ from typing import (
     SupportsFloat,
     Tuple,
     TypeVar,
+    TYPE_CHECKING,
 )
-from dataclasses import dataclass, field
 
 import numpy as np
 from gymnasium import spaces
@@ -26,7 +27,10 @@ from simfire.utils.config import Config
 from simharness2.agents.agent import ReactiveAgent
 from simharness2.environments.harness import Harness, get_unsupported_attributes
 from simharness2.models.custom_multimodal_torch_model import FIRE_MAP_KEY
+from simharness2.environments.utils import set_operational_location
 
+if TYPE_CHECKING:
+    from simharness2.environments.utils import BurnMDOperationalLocation
 
 logger = logging.getLogger(__name__)
 
@@ -36,22 +40,15 @@ FIRE_MAP_ATTRIBUTES = [FIRE_MAP_KEY, "fire_map_with_agents"]
 BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
 SIMFIRE_ATTRIBUTES = FireSimulation.supported_attributes()
 
-
-@dataclass(frozen=True)
-class BurnMDOperationalLocation:
-    """Dataclass to store the operational location of a BurnMD fire scenario."""
-
-    uid: str
-    state: str = field(repr=False)
-    year: int = field(repr=False)
-    fire_name: str = field(repr=False)
-    latitude: float
-    longitude: float
-
-    @property
-    def lat_lon(self) -> Tuple[float, float]:
-        """Return the latitude and longitude of the operational location."""
-        return self.latitude, self.longitude
+# Below fields help with reporting each environment's "fire" settings.
+env_fields = [
+    "worker_index",
+    "vector_index",
+    "burnmd_operational_location",
+    "operational_data_year",
+    "fire_initial_position",
+]
+FireEnvContext = namedtuple("FireEnvContext", env_fields)
 
 
 class FireHarness(Harness[AnyFireSimulation]):
@@ -633,7 +630,7 @@ class FireHarness(Harness[AnyFireSimulation]):
     def _set_operational_location(
         self,
         *,
-        locations: List[BurnMDOperationalLocation],
+        locations: List["BurnMDOperationalLocation"],
         num_envs_per_worker: int,
     ) -> str:
         """Sets the operational location for the current environment.
@@ -656,13 +653,20 @@ class FireHarness(Harness[AnyFireSimulation]):
         logger.debug(f"Operational location at index {loc_idx} will be used.")
 
         # Prepare the environment and simulation for the selected operational location.
-        logger.info(f"Setting operational location to:\n\n {locations[loc_idx]}")
+        logger.info(f"Setting self._op_loc to {locations[loc_idx]}...")
         self._op_loc = locations[loc_idx]
 
         # TODO: Create MR for simfire to add `set_operational_location` method and
         # optimize/update the logic of `reset_terrain()`.
-        # FIXME: We have access to the "year" of the fire, but are not using it here.
-        self.sim.config.reset_terrain(location=self._op_loc.lat_lon)
+        logger.info("Updating self.sim with selected operational location...")
+        self.sim = set_operational_location(self.sim, self._op_loc)
+        if self.benchmark_sim:
+            logger.info(
+                "Updating self.benchmark_sim with selected operational location..."
+            )
+            self.benchmark_sim = set_operational_location(
+                self.benchmark_sim, self._op_loc
+            )
 
         return self._op_loc.uid
 
@@ -671,6 +675,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         *,
         data: np.recarray,
         num_envs_per_worker: int,
+        loc_to_idx: Dict[str, int] = None,
     ) -> Tuple[int, int]:
         """Update the `fire_initial_position` for the `FireSimulation` instance.
 
@@ -685,11 +690,16 @@ class FireHarness(Harness[AnyFireSimulation]):
         """
         # Get the index of the fire scenario to use for the current environment.
         fire_idx = self._get_even_distribution_index(
-            data_length=len(data), num_envs_per_worker=num_envs_per_worker
+            data_length=data.shape[-1], num_envs_per_worker=num_envs_per_worker
         )
 
         # TODO: Maybe create custom recarray to use for type hints on attributes?
         fire_pos_arr: np.recarray = data[fire_idx]
+        # If 2D array, assume first axis is used to get arr for respective op location
+        if len(data.shape) == 2:
+            op_loc_uid = self._op_loc.uid
+            # fire_pos_arr:
+            # FIXME: Continue from here.
 
         # Use the fire scenario to initialize the `FireSimulation`.
         init_pos = (fire_pos_arr.x, fire_pos_arr.y)
@@ -733,6 +743,40 @@ class FireHarness(Harness[AnyFireSimulation]):
             idx = ((num_envs_per_worker * w_i) + v_i) % data_length
 
         return idx
+
+    def _get_fire_env_context(self) -> FireEnvContext:
+        """Return fire-specific environment context. See FireEnvContext for details."""
+        # If context has not been set, return values of (-1, -1) and log error.
+        try:
+            env_context = self.rllib_env_context
+            w_i, v_i = env_context.worker_index, env_context.vector_index
+        except AttributeError as err:
+            logger.error(f"Error: {err}. Setting `w_i` and `v_i` to -1.")
+            w_i, v_i = -1, -1
+
+        # Ensure operational location data is present if data layers are used.
+        fuel_type = self.sim.config.terrain.fuel_type
+        topo_type = self.sim.config.terrain.topography_type
+        if fuel_type == "operational" or topo_type == "operational":
+            if not hasattr(self, "_op_loc") or self._op_loc is None:
+                raise AttributeError(
+                    f"The fuel type ({fuel_type}) or topography type ({topo_type}) is "
+                    "set to 'operational', but the SimHarness environment does not have "
+                    f"self._op_loc set. The FireHarness._set_operational_location() "
+                    "method can be used to set this attribute."
+                )
+            burnmd_op_loc = self._op_loc
+            op_data_year = self.sim.config.operational.year
+        # TODO: "Fallback" behavior in case functional is used - decide default values.
+        else:
+            burnmd_op_loc = None
+            op_data_year = None
+
+        # Get the initial position of the fire for the current environment.
+        fire_initial_position = self.sim.config.fire.fire_initial_position
+        return FireEnvContext(
+            w_i, v_i, burnmd_op_loc, op_data_year, fire_initial_position
+        )
 
     def _setup_harness_analytics(self, analytics_partial: partial) -> None:
         """Instantiates `harness_analytics` used to monitor this `ReactiveHarness` obj.

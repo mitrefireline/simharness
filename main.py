@@ -34,16 +34,11 @@ from simfire.enums import BurnStatus
 from simharness2.callbacks.render_env import RenderEnv
 from simharness2.callbacks.initalize_simfire import InitializeSimfire
 from simharness2.logger.aim import AimLoggerCallback
-
-
-# from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
-
-# from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
-OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 39))
+OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 30))
 OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
 OmegaConf.register_new_resolver("square", lambda x: x**2)
 
@@ -242,7 +237,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     agent_id_stop = agent_id_start + num_agents
     sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
     # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
-    #agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+    # agent_ids = {f"agent_{i}" for i in sim_agent_ids}
     agent_ids = {"agent"}
 
     algo_cfg = (
@@ -260,8 +255,8 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         # FIXME: Enable passing multi_agent settings to the algorithm config.
         .multi_agent(
             policies=agent_ids,
-            #policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
-            policy_mapping_fn=(lambda *args, **kwargs: "agent")
+            # policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+            policy_mapping_fn=(lambda *args, **kwargs: "agent"),
         )
     )
 
@@ -298,8 +293,8 @@ def main(cfg: DictConfig) -> None:
     # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
-    ray.init(address="auto", log_to_driver=False)
-    # ray.init()
+    # ray.init(address="auto", log_to_driver=False)
+    ray.init(address="local")
 
     outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")

@@ -2,26 +2,18 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, OrderedDict, Tuple, TypeVar
+from typing import Any, Dict, Generic, List, OrderedDict, Tuple, TypeVar, TYPE_CHECKING
 
 import gymnasium as gym
 import numpy as np
 from ray.rllib.utils.typing import ResultDict
 from simfire.sim.simulation import Simulation
 
+if TYPE_CHECKING:
+    from simharness2.environments.utils import RLlibEnvContextMetadata
 
 logger = logging.getLogger(__name__)
 AnySimulation = TypeVar("AnySimulation", bound=Simulation)
-
-
-# FIXME: Where should this be defined (ie. what file)?
-@dataclass
-class RLlibEnvContextMetadata:
-    worker_index: int
-    vector_index: int
-    remote: bool
-    num_workers: int
-    recreated_worker: bool
 
 
 class Harness(gym.Env, ABC, Generic[AnySimulation]):
@@ -95,7 +87,7 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         self._trial_logdir = path
 
     @property
-    def rllib_env_context(self) -> RLlibEnvContextMetadata:
+    def rllib_env_context(self) -> "RLlibEnvContextMetadata":
         """The extra metadata that RLlib passes to the environment.
 
         The attributes of the returned object can be used to parameterize environments
@@ -116,7 +108,7 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         return self._rllib_env_context
 
     @rllib_env_context.setter
-    def rllib_env_context(self, context: RLlibEnvContextMetadata):
+    def rllib_env_context(self, context: "RLlibEnvContextMetadata"):
         self._rllib_env_context = context
 
     def _separate_sim_nonsim(self) -> Tuple[List[str], List[str]]:

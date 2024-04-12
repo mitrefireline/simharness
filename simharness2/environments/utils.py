@@ -5,11 +5,10 @@ import json
 import random
 import numpy as np
 from pprint import pformat
+from dataclasses import dataclass, field
 
 from simfire.utils.config import Config
-import simharness2.utils.fire_data as fire_data
-from simharness2.environments.harness import RLlibEnvContextMetadata
-from simharness2.environments.fire_harness import BurnMDOperationalLocation
+from simharness2.utils import fire_data
 
 if TYPE_CHECKING:
     from ray.rllib.env.env_context import EnvContext
@@ -19,6 +18,42 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
+
+
+# TODO: Add this constant to a more relevant place; fine to keep here for now.
+SCREEN_SIZE_TO_OPERATIONAL_HW = {
+    64: 1920,
+    128: 3840,
+    256: 7680,
+    512: 15360,
+    1024: 30720,
+}
+
+
+@dataclass(frozen=True)
+class BurnMDOperationalLocation:
+    """Dataclass to store the operational location of a BurnMD fire scenario."""
+
+    uid: str
+    state: str = field(repr=False)
+    year: int = field(repr=False)
+    fire_name: str = field(repr=False)
+    latitude: float
+    longitude: float
+
+    @property
+    def lat_lon(self) -> Tuple[float, float]:
+        """Return the latitude and longitude of the operational location."""
+        return self.latitude, self.longitude
+
+
+@dataclass
+class RLlibEnvContextMetadata:
+    worker_index: int
+    vector_index: int
+    remote: bool
+    num_workers: int
+    recreated_worker: bool
 
 
 def set_harness_env_context(harness: "FireHarness", env_context: "EnvContext"):
@@ -50,17 +85,17 @@ def get_operational_locations(
     To sample operational locations by a specific year, set the `fire_year` parameter.
     Otherwise, samples will be taken from all available years.
 
-    If the `independent_eval_locations` flag is set to `True` in the provided
+    If the `independent_eval` flag is set to `True` in the provided
     operational locations config, then it is guranteed that the training and
     evaluation locations will be mutually exclusive. Otherwise, the locations used
     for evaluation may overlap with those used for training. In the latter case, it
     is recommended to use mutually exclusive fire initial positions for training and
     evaluation.
 
-    NOTE: If the `independent_eval_locations` flag is not provided, the default
+    NOTE: If the `independent_eval` flag is not provided, the default
     behavior is to use distinct locations for training and evaluation.
 
-    FIXME: I see 2 options for sampling locs when `independent_eval_locations` is
+    FIXME: I see 2 options for sampling locs when `independent_eval` is
     False. Option 1 is to ensure eval_locs.issubset(train_locs), ie. we only evaluate
     on locations that we have trained on. Option 2 is to allow eval_locs to be a
     superset of train_locs, ie. we evaluate on locations that we may not have trained
@@ -95,7 +130,7 @@ def get_operational_locations(
         logger.info(f"Number of locations for year {fire_year}: {len(burnmd_op_locs)}")
 
     # Get the total number of locations to sample
-    independent_eval_locs = cfg.get("independent_eval_locations", True)
+    independent_eval_locs = cfg.get("independent_eval", True)
     if independent_eval_locs:
         total_locations = num_train_locs + num_eval_locs
     else:
@@ -104,7 +139,7 @@ def get_operational_locations(
         if num_eval_locs > num_train_locs:
             raise ValueError(
                 "The number of evaluation locations cannot exceed the number of "
-                "training locations when `independent_eval_locations` is False. This "
+                "training locations when `independent_eval` is False. This "
                 "ensures that the evaluation locations are a subset of the training "
                 "locations."
             )
@@ -168,12 +203,21 @@ def set_operational_location(
     # For now, we just recreate the SimFire Config object and reset the simulation.
     # Overwrite the operational settings in the SimFire config.
     sim_cfg = sim.config.yaml_data
+
+    # FIXME: Logic for setting "height" and "width" is convoluted, need better approach.
+    # Use yaml_data bc simfire _load_area() overwrites this value w/ op data.
+    screen_height, screen_width = sim.config.yaml_data["area"]["screen_size"]
+    op_height = SCREEN_SIZE_TO_OPERATIONAL_HW[screen_height]
+    op_width = SCREEN_SIZE_TO_OPERATIONAL_HW[screen_width]
     sim_cfg["operational"].update(
         {
             "latitude": location.latitude,
             "longitude": location.longitude,
             # NOTE: Forcing year to be the year prior to the BurnMD data year, ie. 2019.
             "year": str(location.year - 1),
+            # Setting H and W to "correct" operational values to prevent user error.
+            "height": op_height,
+            "width": op_width,
         }
     )
     logger.info(f"Updated SimFire operational settings: {sim_cfg['operational']}")

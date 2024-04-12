@@ -24,7 +24,6 @@ import numpy as np
 from simfire.sim.simulation import FireSimulation
 from simfire.enums import BurnStatus
 from simharness2.utils.simfire import get_simulator_hash
-from simharness2.environments.fire_harness import BurnMDOperationalLocation
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,6 @@ def filter_fire_initial_position_data(
     return_train_data: bool = True,
     return_eval_data: bool = True,
     independent_eval: bool = True,
-    # operational_location: BurnMDOperationalLocation = None,
     **kwargs,
 ) -> Tuple[np.recarray, np.recarray]:
     """TODO"""
@@ -117,12 +115,12 @@ def filter_fire_initial_position_data(
         logger.info(f"Train dataset contains {len(train_df)} samples after processing.")
         train_arr = train_df.to_records(index=False)
     else:
-        train_arr = np.array([])
+        train_arr = None
     if return_eval_data:
         logger.info(f"Eval dataset contains {len(eval_df)} samples after processing.")
         eval_arr = eval_df.to_records(index=False)
     else:
-        eval_arr = np.array([])
+        eval_arr = None
 
     return train_arr, eval_arr
 
