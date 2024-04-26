@@ -10,6 +10,7 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+
 import logging
 import os
 from importlib import import_module
@@ -220,7 +221,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         Tuple(Algorithm, AlgorithmConfig): Training algorithm and associated config.
     """
     # Instantiate everything necessary for creating the algorithm config.
-    env_settings, eval_settings, debug_settings, explor_cfg = _instantiate_config(cfg)
+    env_settings, eval_settings, debug_settings, explore_cfg = _instantiate_config(cfg)
 
     # Manually prepare agent_ids using same logic as within environments/rl_harness.py
     num_agents = env_settings["env_config"].get("num_agents", 1)
@@ -239,15 +240,20 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
     agent_ids = {f"agent_{i}" for i in sim_agent_ids}
 
+    algo_cfg = get_trainable_cls(cfg.algo.name).get_default_config()
+    # TODO: Support usage of RLlib’s “new API stack”.
+    # Prevent ValueError raised by RLlib RLModule API when explore_cfg is provided.
+    if explore_cfg:
+        algo_cfg.rl_module(_enable_rl_module_api=False)
+        algo_cfg.training(_enable_learner_api=False)
+
     algo_cfg = (
-        get_trainable_cls(cfg.algo.name)
-        .get_default_config()
-        .training(**cfg.training)
+        algo_cfg.training(**cfg.training)
         .environment(**env_settings)
         .framework(**cfg.framework)
         .rollouts(**cfg.rollouts)
         .evaluation(**eval_settings)
-        .exploration(explore=cfg.exploration.explore, exploration_config=explor_cfg)
+        .exploration(explore=cfg.exploration.explore, exploration_config=explore_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
@@ -275,7 +281,10 @@ def main(cfg: DictConfig) -> None:
     # ray.init(address="auto", log_to_driver=False)
     ray.init()
 
-    outdir = os.path.join(cfg.run.storage_path, HydraConfig.get().output_subdir)
+    hydra_cfg = HydraConfig.get()
+    storage_path = hydra_cfg.run.dir
+    output_subdir = hydra_cfg.output_subdir
+    outdir = os.path.join(storage_path, output_subdir)
     LOGGER.info(f"Configuration files for this job can be found at {outdir}.")
 
     # Build the algorithm config.

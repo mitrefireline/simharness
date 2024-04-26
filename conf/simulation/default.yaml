@@ -1,22 +1,5 @@
 defaults:
-  - train: default
-  - eval: default
-
-# NOTE: The below can be used to set values within train/eval configs. This would
-# allow for "easier" (?) overrides on the CLI; for now, just install Tab completion.
-# screen_size: 128
-# operational:
-#     year: 2019
-# topography:
-#   type: operational
-# fuel:
-#   type: operational
-# fire_initial_position:
-#   type: random
-#   position: [10, 10]
-#   seed: 1234
-# wind:
-#   function: simple
+  - simfire: default
 
 # Simfire v1.5.0 supports rectangular screens. The harness is NOT prepared to use a
 # rectangle, so for now we will set height and width using deprecated "screen_size".
