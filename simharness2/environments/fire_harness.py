@@ -174,11 +174,11 @@ class FireHarness(Harness[AnyFireSimulation]):
         truncated = self._should_truncate()
         terminated = self._should_terminate()
 
-        # Calculate the reward for the current timestep
-        # FIXME: pass `terminated` into `get_reward` method
+        # Calculate the timestep reward for each agent.
         reward = self.reward_cls.get_reward(
             timestep=self.timesteps,
             sim_run=sim_run,
+            done_episode=terminated or truncated,
             agents=self.agents,
             agent_speed=self.agent_speed,
         )

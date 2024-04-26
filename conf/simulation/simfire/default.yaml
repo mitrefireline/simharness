@@ -1,7 +1,6 @@
 area:
   screen_size:
     _target_: builtins.tuple
-    # NOTE: This will initialize the fire at the center of the screen
     _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
   pixel_scale: 50
 
@@ -9,7 +8,7 @@ display:
   fire_size: 1
   control_line_size: 3
   agent_size: 4
-  rescale_factor: 2
+  rescale_factor: 4
 
 simulation:
   update_rate: 1
@@ -26,60 +25,33 @@ mitigation:
   ros_attenuation: False
 
 operational:
-  seed: null
+  seed:
   latitude: 36.09493 # top left corner
   longitude: -120.52193 # top left corner
-  # height: ${operational_screen_size:${simulation.screen_height}}
-  # width: ${operational_screen_size:${simulation.screen_width}}
-  height: 5000
-  width: 5000
+  height: 3840
+  width: 3840
   resolution: 30
-  year: 2019  # ${simulation.operational.year}
+  year: 2019
 
 terrain:
   topography:
-    type: operational  # ${simulation.topography.type}
-    functional:
-      function: perlin
-      perlin:
-        octaves: 3
-        persistence: 0.7
-        lacunarity: 2.0
-        seed: 827
-        range_min: 100.0
-        range_max: 300.0
-      gaussian:
-        amplitude: 500
-        mu_x: 50
-        mu_y: 50
-        sigma_x: 50
-        sigma_y: 50
+    type: operational
   fuel:
-    type: operational  # ${simulation.fuel.type}
-    functional:
-      function: chaparral
-      chaparral:
-        seed: 1113
+    type: operational
 
 fire:
   fire_initial_position:
-    type: static  # ${simulation.fire_initial_position.type}
+    type: static
     static:
       position:
         _target_: builtins.tuple
-        # NOTE: This will initialize the fire at the center of the screen
+        # NOTE: This will initialize the fire at the top left corner of screen
         _args_: [[
-          0, # x position
-          0 # y position
+          122, # x position
+          122 # y position
         ]]
-        # _args_: [[
-        #   "${calculate_half:${simulation.screen_width}}", # x position
-        #   "${calculate_half:${simulation.screen_height}}" # y position
-        # ]]
-    random:
-      seed: ${simulation.fire_start_seed}
   max_fire_duration: 4
-  diagonal_spread: false
+  diagonal_spread: true
 
 environment:
   moisture: 0.03

@@ -1,6 +1,6 @@
 defaults:
-  - simulation: simfire
-  - training: simfire
+  - simulation: default
+  - training: default
   - environment: default
   - framework: default
   - rollouts: default
