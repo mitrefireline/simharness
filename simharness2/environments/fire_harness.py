@@ -24,7 +24,7 @@ from simfire.utils.config import Config
 
 from simharness2.agents.agent import ReactiveAgent
 from simharness2.environments.harness import Harness, get_unsupported_attributes
-
+from simharness2.environments import utils as env_utils
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +125,9 @@ class FireHarness(Harness[AnyFireSimulation]):
         self._setup_harness_analytics(harness_analytics_partial)
         # If provided, construct the class used to perform reward calculation.
         self._setup_reward_cls(reward_cls_partial)
+
+        # Indicator flag to determine if fire in the sim can spread diagonally.
+        self._fire_diagonal_spread = self.sim.config.fire.diagonal_spread
 
     def get_observation_space(self) -> spaces.Space:
         """TODO."""
@@ -260,6 +263,11 @@ class FireHarness(Harness[AnyFireSimulation]):
         mitigation_update = (agent.col, agent.row, sim_interaction)
         self.sim.update_mitigation([mitigation_update])
         agent.mitigation_placed = True
+
+        row, col, shape = agent.row, agent.col, self.sim.fire_map.shape
+        diag_spread = self._fire_diagonal_spread
+        adj_rows, adj_cols = env_utils.get_adjacent_points(row, col, shape, diag_spread)
+        agent.adj_to_mitigation[adj_rows, adj_cols] = 1
 
     def _update_agent_position(self, agent: ReactiveAgent) -> None:
         """Update the agent's position on the map by performing the provided movement."""
@@ -421,6 +429,7 @@ class FireHarness(Harness[AnyFireSimulation]):
     ) -> Dict[str, ReactiveAgent]:
         """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
         agents_dict = {}
+        fire_map_shape = self.sim.fire_map.shape
         # Use the user-provided agent positions to initialize the agents on the map.
         if method == "manual":
             # NOTE: The provided pos_list must be the same length as the number of agents
@@ -438,7 +447,12 @@ class FireHarness(Harness[AnyFireSimulation]):
                 agent_ids, pos_list, self._sim_agent_ids
             ):
                 x, y = agent_info
-                agent = ReactiveAgent(agent_str, sim_id, (x, y))
+                agent = ReactiveAgent(
+                    agent_str,
+                    sim_id,
+                    (x, y),
+                    fire_map_shape,
+                )
                 agents_dict[agent_str] = agent
             return agents_dict
 
@@ -458,7 +472,7 @@ class FireHarness(Harness[AnyFireSimulation]):
             # Populate the `self.agents` dict with `ReactiveAgent` object (s).
             agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
             for agent_str, sim_id, loc in zip(agent_ids, self._sim_agent_ids, agent_locs):
-                agent = ReactiveAgent(agent_str, sim_id, tuple(loc))
+                agent = ReactiveAgent(agent_str, sim_id, tuple(loc), fire_map_shape)
                 agents_dict[agent_str] = agent
             return agents_dict
 
