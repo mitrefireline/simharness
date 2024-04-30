@@ -1,0 +1,7 @@
+defaults:
+  - marl_complex_obs
+  - _self_
+
+env: simharness2.environments.MultiAgentComplexObsDamageAwareReactiveHarness
+env_config:
+  benchmark_sim: ${.sim}
