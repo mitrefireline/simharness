@@ -69,7 +69,7 @@ simulation:
       # "dataset" after filtering with `query`.
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.ß
       population_size: 256 # FIXME!
-  train:
+  simfire:
     fire:
       diagonal_spread: true
 # Specify configuration pass to the `AimLoggerCallback`

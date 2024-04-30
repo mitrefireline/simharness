@@ -8,7 +8,7 @@ env_config:
     _target_: simfire.sim.simulation.FireSimulation
     config:
       _target_: simfire.utils.config.Config
-      config_dict: ${simulation.train}
+      config_dict: ${simulation.simfire}
   movements: [none, up, down, left, right]
   interactions: [none, fireline]
   # TODO: Need better way of aligning yaml spec with constant keys in code.
