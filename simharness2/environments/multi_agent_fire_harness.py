@@ -97,42 +97,34 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         truncated = self._should_truncate()
         terminated = self._should_terminate()
 
-        # Calculate the reward for the current timestep
-        # TODO pass `terminated` into `get_reward` method
-        # FIXME: Update reward for MARL case!!
-        # TODO: Give each agent the "same" simple reward for now.
-        reward = self.reward_cls.get_reward(self.timesteps, sim_run)
+        # Calculate the timestep reward for each agent.
+        rewards = self.reward_cls.get_reward(
+            timestep=self.timesteps,
+            sim_run=sim_run,
+            done_episode=terminated or truncated,
+            agents=self.agents,
+            agent_speed=self.agent_speed,
+        )
 
-        # Terminate episode early if burn damage in Agent Sim is larger than final bench fire map
-        self._terminate_if_greater_damage = False #FIXME get rid of this line when the fixme in the if statement below is implemented
-        if self.benchmark_sim:
-            if self._terminate_if_greater_damage:
-                total_area = self.sim.fire_map.size
+        # FIXME: Refactor logic to ensure all rewards return expected types
+        if np.isscalar(rewards):
+            if self.timesteps < 1:
+                logger.warning("Calculated reward value is scalar. Converting to Dict.")
+            rewards = {agent_id: rewards for agent_id in self.agents}
 
-                sim_damaged_total = self.harness_analytics.sim_analytics.data.burned + self.harness_analytics.sim_analytics.data.burning
-                # FIXME Fix this damage calculation if needed to account for damage across all the agent sims
-                benchsim_damaged_total = total_area - self.harness_analytics.benchmark_sim_analytics.data.unburned
-
-                if sim_damaged_total > benchsim_damaged_total:
-                    terminated = True
-                    # TODO potentially add a static negative penalty for making the fire worse
-
-        # TODO account for below updates in the reward_cls.calculate_reward() method
-        # "End of episode" reward
-        if terminated:
-            reward += 10
-
+        # FIXME: We are passing the TIMESTEP reward, not CUMULATIVE reward!!
         if self.harness_analytics:
+            # FIXME: Decide if we should pass all agent rewards. For now, use the sum.
+            cumulative_reward = sum(rewards.values())
             self.harness_analytics.update_after_one_harness_step(
-                sim_run, terminated, reward, timestep=self.timesteps
+                sim_run, terminated, cumulative_reward, timestep=self.timesteps
             )
 
-        rewards, truncateds, terminateds, infos = {}, {}, {}, {}
+        # TODO: Override _should_truncate() etc. to return Dict instead of single value.
+        truncateds, terminateds, infos = {}, {}, {}
         truncs = set()
         terms = set()
         for agent_id, agent in self.agents.items():
-            # FIXME: All agents receive the SAME reward !!!
-            rewards[agent_id] = reward
             # FIXME: Trunc/Term logic is the SAME for all agents.
             # We may not always want this, but it's a good starting point.
             truncateds[agent_id] = truncated

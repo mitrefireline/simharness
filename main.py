@@ -28,12 +28,16 @@ from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
+from ray.rllib.env import MultiAgentEnv
+
 from simfire.enums import BurnStatus
+
+from simharness2.callbacks.render_env import RenderEnv
+from simharness2.logger.aim import AimLoggerCallback
+
 
 # from simharness2.utils.evaluation_fires import get_default_operational_fires
 import simharness2.models  # noqa
-from simharness2.callbacks.render_env import RenderEnv
-from simharness2.logger.aim import AimLoggerCallback
 
 # from simharness2.callbacks.set_env_seeds_callback import SetEnvSeedsCallback
 
@@ -257,12 +261,16 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .resources(**cfg.resources)
         .debugging(**debug_settings)
         .callbacks(RenderEnv)
-        # FIXME: Enable passing multi_agent settings to the algorithm config.
-        # .multi_agent(
-        #     policies=agent_ids,
-        #     policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
-        # )
     )
+
+    # Add multi agent settings if needed for the specified environment.
+    env_module, env_cls = cfg.environment.env.rsplit(".", 1)
+    env_cls = getattr(import_module(env_module), env_cls)
+    if issubclass(env_cls, MultiAgentEnv):
+        algo_cfg = algo_cfg.multi_agent(
+            policies=agent_ids,
+            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+        )
 
     return algo_cfg
 
