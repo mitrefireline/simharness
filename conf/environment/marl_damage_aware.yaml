@@ -5,3 +5,7 @@ defaults:
 env: simharness2.environments.MultiAgentComplexObsDamageAwareReactiveHarness
 env_config:
   benchmark_sim: ${.sim}
+  reward_cls_partial:
+    _target_: simharness2.rewards.MixedLocalAreaSavedReward
+    # _target_: simharness2.rewards.AreaSavedReward
+    # _target_: simharness2.rewards.MixedForwardAreaSavedReward
