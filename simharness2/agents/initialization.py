@@ -19,7 +19,7 @@ class AgentInitializer(ABC):
 
 
 class FixedPositionAgentInitializer(AgentInitializer):
-    def __init__(self, agent_pos: List[List[int]]):
+    def __init__(self, agent_pos: List[List[int]], **kwargs):
         self._agent_pos = agent_pos
 
     def initialize_agents(
@@ -39,7 +39,7 @@ class FixedPositionAgentInitializer(AgentInitializer):
 
 
 class RandomPositionAgentInitializer(AgentInitializer):
-    def __init__(self, x_range: List[int], y_range: List[int]):
+    def __init__(self, x_range: List[int], y_range: List[int], **kwargs):
         self._x_range = x_range
         self._y_range = y_range
 
@@ -61,7 +61,7 @@ class RandomPositionAgentInitializer(AgentInitializer):
 
 
 class RandomEdgeAgentInitializer(AgentInitializer):
-    def __init__(self, edges: List[str], x_range: List[int], y_range: List[int]):
+    def __init__(self, edges: List[str], x_range: List[int], y_range: List[int], **kwargs):
         self._edges = edges
         self._x_range = x_range
         self._y_range = y_range
