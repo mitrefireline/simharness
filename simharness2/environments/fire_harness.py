@@ -13,6 +13,7 @@ from typing import (
     OrderedDict,
     SupportsFloat,
     Tuple,
+    Type,
     TypeVar,
 )
 
@@ -23,12 +24,14 @@ from simfire.sim.simulation import FireSimulation
 from simfire.utils.config import Config
 
 from simharness2.agents.agent import ReactiveAgent
+from simharness2.agents.initialization import AgentInitializer
 from simharness2.environments.harness import Harness, get_unsupported_attributes
 from simharness2.environments import utils as env_utils
 
 logger = logging.getLogger(__name__)
 
 AnyFireSimulation = TypeVar("AnyFireSimulation", bound=FireSimulation)
+AnyAgentInitializer = TypeVar("AnyAgentInitializer", bound=AgentInitializer)
 
 FIRE_MAP_ATTRIBUTES = ["fire_map", "fire_map_with_agents"]
 BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
@@ -51,8 +54,8 @@ class FireHarness(Harness[AnyFireSimulation]):
         reward_cls_partial: Optional[partial] = None,
         num_agents: int = 1,
         agent_speed: int = 1,
-        agent_initialization_method: str = "automatic",
-        initial_agent_positions: Optional[List[Tuple[int, int]]] = None,
+        agent_initialization_cls: Callable = None,
+        agent_initialization_kwargs: Dict[str, Any] = {},
         **kwargs,
     ):
         super().__init__(
@@ -99,21 +102,9 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Spawn the agent (s) that will interact with the simulation
         logger.debug(f"Creating {self.num_agents} agent (s)...")
         input_kwargs = {}
-        if agent_initialization_method == "manual":
-            if initial_agent_positions is None:
-                raise ValueError(
-                    "Must provide 'initial_agent_positions' when using 'manual' agent "
-                    "initialization method."
-                )
-            input_kwargs.update({"method": "manual", "pos_list": initial_agent_positions})
-        elif agent_initialization_method == "automatic":
-            input_kwargs.update({"method": "random"})
-        else:
-            raise ValueError(
-                "Invalid agent initialization method. Must be either 'automatic' or "
-                "'manual'."
-            )
-        self.agents = self.create_agents(**input_kwargs)
+        self.agents = self.create_agents(
+            agent_initialization_cls, agent_initialization_kwargs
+        )
 
         self.min_maxes = self._get_min_maxes()
         self.observation_space = self.get_observation_space()
@@ -425,60 +416,18 @@ class FireHarness(Harness[AnyFireSimulation]):
         return action_map
 
     def create_agents(
-        self, method: str = "random", pos_list: List = None
+        self,
+        initializer_cls: Type[AnyAgentInitializer],
+        initializer_kwargs: Dict[str, Any],
     ) -> Dict[str, ReactiveAgent]:
         """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
-        agents_dict = {}
-        fire_map_shape = self.sim.fire_map.shape
-        # Use the user-provided agent positions to initialize the agents on the map.
-        if method == "manual":
-            # NOTE: The provided pos_list must be the same length as the number of agents
-            # TODO: Allow option to randomly generate any "missing" agent positions.
-            if len(pos_list) != self.num_agents:
-                raise ValueError(
-                    f"Expected {self.num_agents} agent positions; got {len(pos_list)}."
-                )
-
-            # FIXME: We assume provided pos are valid wrt map dims and agent collisions.
-            # FIXME: Finish logic HERE to create `self.agents` dict
-            # raise NotImplementedError  # adding so I don't forget!
-            agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
-            for agent_str, agent_info, sim_id in zip(
-                agent_ids, pos_list, self._sim_agent_ids
-            ):
-                x, y = agent_info
-                agent = ReactiveAgent(
-                    agent_str,
-                    sim_id,
-                    (x, y),
-                    fire_map_shape,
-                )
-                agents_dict[agent_str] = agent
-            return agents_dict
-
-        # Generate random agent locations for the start of the episode.
-        elif method == "random":
-            # Create a boolean mask of valid positions (i.e., inside the boundaries).
-            mask = np.ones(self.sim.fire_map.shape, dtype=bool)
-            # Agent (s) can only be spawned on an unburning square
-            # NOTE: Any other "prohibited" agent start locations can be specified here.
-            mask[np.where(self.sim.fire_map != BurnStatus.UNBURNED)] = False
-
-            # Randomly select unique positions from the valid ones.
-            idx = np.random.choice(range(mask.sum()), size=self.num_agents, replace=False)
-            flat_idx = np.argwhere(mask.flatten())[idx].flatten()
-            agent_locs = np.vstack(np.unravel_index(flat_idx, mask.shape)).T
-
-            # Populate the `self.agents` dict with `ReactiveAgent` object (s).
-            agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
-            for agent_str, sim_id, loc in zip(agent_ids, self._sim_agent_ids, agent_locs):
-                agent = ReactiveAgent(agent_str, sim_id, tuple(loc), fire_map_shape)
-                agents_dict[agent_str] = agent
-            return agents_dict
-
-        # This should be caught within the init. To be safe, also raise error here.
-        else:
-            raise NotImplementedError(f"Agent spawn method {method} not implemented.")
+        agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
+        agent_initializer = initializer_cls(**initializer_kwargs)
+        return agent_initializer.initialize_agents(
+            agent_ids=agent_ids,
+            sim_ids=self._sim_agent_ids,
+            fire_map_shape=self.sim.fire_map.shape,
+        )
 
     @property
     def default_agent_id(self) -> str:

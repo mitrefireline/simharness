@@ -29,8 +29,11 @@ reward_cls_partial:
   # static_penalty: 50
   # invalid_movement_penalty: 5
 
-agent_initialization_method: manual
-initial_agent_positions: [[50, 50]]
+agent_initialization_cls:
+  _target_: hydra.utils.get_class
+  path: simharness2.agents.FixedPositionAgentInitializer
+agent_initialization_kwargs:
+  agent_pos: [[0, 64]]
 # benchmark_sim: ${.sim}
 # TODO: Provide higher level option to specify use_benchmark_sim, etc. (??)
 # NOTE: To disable usage of `benchmark_sim`, set value to `null` (below).

@@ -16,9 +16,11 @@ env_config:
   normalized_attributes: []
   agent_speed: 4
   num_agents: 3
-  # agent_initialization_method: automatic
-  agent_initialization_method: manual
-  initial_agent_positions: [[0, 64], [127, 64], [64, 127]]
+  agent_initialization_cls:
+    _target_: hydra.utils.get_class
+    path: simharness2.agents.FixedPositionAgentInitializer
+  agent_initialization_kwargs:
+    agent_pos: [[0, 64], [127, 64], [64, 127]]
   # Defines the class that will be used to perform reward calculation at each timestep.
   # reward_cls_partial:
   #   _target_: simharness2.rewards.base_reward.AreaSavedPropReward
