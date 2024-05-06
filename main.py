@@ -29,6 +29,8 @@ from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
 from ray.rllib.env import MultiAgentEnv
+from ray.rllib.algorithms.callbacks import make_multi_callbacks
+
 
 from simfire.enums import BurnStatus
 
@@ -271,8 +273,11 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .exploration(explore=cfg.exploration.explore, exploration_config=explore_cfg)
         .resources(**cfg.resources)
         .debugging(**debug_settings)
-        .callbacks(RenderEnv)
     )
+    callbacks = [RenderEnv]
+    if "additional_callbacks" in cfg.algo:
+        callbacks += [instantiate(c) for c in cfg.algo.additional_callbacks]
+    algo_cfg = algo_cfg.callbacks(make_multi_callbacks(callbacks))
 
     # Add multi agent settings if needed for the specified environment.
     env_module, env_cls = cfg.environment.env.rsplit(".", 1)
