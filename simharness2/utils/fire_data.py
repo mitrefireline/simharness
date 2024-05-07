@@ -10,19 +10,19 @@ Typical usage example:
   foo = ClassFoo()
   bar = foo.FunctionBar()
 """
+
 import os
 import logging
 from typing import List, Tuple, Dict
 import yaml
 
-import modin.pandas as pd
+import pandas as pd
 import ray
 import numpy as np
 
 from simfire.sim.simulation import FireSimulation
 from simfire.enums import BurnStatus
 from simharness2.utils.simfire import get_simulator_hash
-
 
 logger = logging.getLogger(__name__)
 
@@ -43,20 +43,38 @@ def filter_fire_initial_position_data(
     sample_size: Dict[str, int],
     query: str,
     population_size: int = None,
+    return_train_data: bool = True,
+    return_eval_data: bool = True,
+    independent_eval: bool = True,
     **kwargs,
 ) -> Tuple[np.recarray, np.recarray]:
     """TODO"""
     eval_size = sample_size.get("eval")
+    if not return_eval_data:
+        eval_size = 0
+
     train_df, eval_df = pd.DataFrame({}), pd.DataFrame({})
     logger.info(f"Applying the following condition to `fire_df`: {query}")
     subset_fire_df: pd.DataFrame = fire_df.query(query)
 
     # Compute absolute minimum positions needed for valid sampling. Recall that when
     # `population_size` is None, the population is set to all remaining rows.
-    if population_size is None:
-        min_pos_needed = sum([v for v in sample_size.values()])
-    else:
-        min_pos_needed = sum([eval_size, population_size])
+    # FIXME: The conditional logic here is convoluted and should be simplified.
+    if return_train_data and return_eval_data:
+        if population_size is None:
+            min_pos_needed = sum([v for v in sample_size.values()])
+        else:
+            min_pos_needed = sum([eval_size, population_size])
+    elif return_train_data:
+        if population_size is None:
+            min_pos_needed = sample_size["train"]
+        else:
+            min_pos_needed = population_size
+    elif return_eval_data:
+        if population_size is None:
+            min_pos_needed = sample_size["eval"]
+        else:
+            min_pos_needed = population_size
 
     num_pos = len(subset_fire_df)
     logger.info(f"There are {num_pos} positions after applying the condition.")
@@ -72,23 +90,36 @@ def filter_fire_initial_position_data(
 
     # Extract data to be used for evaluation.
     # TODO: Allow for user-provided evaluation dataset?
-    if eval_size:
+    # FIXME: The conditional logic here is convoluted and should be simplified.
+    if return_eval_data and return_train_data:
         eval_df: pd.DataFrame = subset_fire_df.sample(n=eval_size, replace=False)
         # Ensure the evaluation data cannot be sampled again (ie for training data).
-        train_df: pd.DataFrame = subset_fire_df.drop(eval_df.index)
+        if independent_eval:
+            train_df: pd.DataFrame = subset_fire_df.drop(eval_df.index)
+        else:
+            train_df = subset_fire_df
+
         # Downsample the training data to have exactly `population_size` total samples.
         if population_size:
             train_df: pd.DataFrame = train_df.sample(n=population_size, replace=False)
-    else:
-        # TODO: hydra should ENFORCE the existence of the `sample_size.eval` key.
-        raise ValueError("`sample_size.eval` is required!")
-
-    logger.info(f"The eval dataset contains {len(eval_df)} samples after processing.")
-    logger.info(f"The train dataset contains {len(train_df)} samples after processing.")
+    elif return_eval_data:
+        eval_df: pd.DataFrame = subset_fire_df.sample(n=eval_size, replace=False)
+    elif return_train_data:
+        train_df = subset_fire_df
+        if population_size:
+            train_df: pd.DataFrame = train_df.sample(n=population_size, replace=False)
 
     # Convert filtered train/eval "dataset" to a structured NumPy array (for zero-copy).
-    train_arr = train_df.to_records(index=False)
-    eval_arr = eval_df.to_records(index=False)
+    if return_train_data:
+        logger.info(f"Train dataset contains {len(train_df)} samples after processing.")
+        train_arr = train_df.to_records(index=False)
+    else:
+        train_arr = None
+    if return_eval_data:
+        logger.info(f"Eval dataset contains {len(eval_df)} samples after processing.")
+        eval_arr = eval_df.to_records(index=False)
+    else:
+        eval_arr = None
 
     return train_arr, eval_arr
 
