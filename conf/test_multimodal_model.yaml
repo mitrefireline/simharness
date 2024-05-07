@@ -8,6 +8,14 @@ defaults:
 
 algo:
   name: PPO
+  # Specify list of RLlib callbacks to use during training.
+  callbacks:
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.InitializeSimfire
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.RenderEnv
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.LandSavedMetric
 
 rollouts:
   # NOTE: MultiAgentComplexObsHarness DOES NOT normalize returned observations!
