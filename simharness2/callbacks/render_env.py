@@ -122,6 +122,12 @@ class RenderEnv(DefaultCallbacks):
             )
             env._configure_env_rendering(True)
 
+            # TODO: Look into save_history behavior in analytics module.
+            env.harness_analytics.reset(
+                env_is_rendering=True,
+                reset_benchmark=env._new_fire_scenario,
+            )
+
     def should_render_env(
         self, env: "FireHarness[FireSimulation]", env_type: str
     ) -> bool:
