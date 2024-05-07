@@ -1,0 +1,1325 @@
+{
+    "Arizona_2018_Bears": {
+        "state": "Arizona",
+        "year": 2018,
+        "fire_name": "Bears",
+        "latitude": 34.003354143000024,
+        "longitude": -111.15692026399995
+    },
+    "Arizona_2018_Rattlesnake": {
+        "state": "Arizona",
+        "year": 2018,
+        "fire_name": "Rattlesnake",
+        "latitude": 33.68863045000006,
+        "longitude": -109.52785322399995
+    },
+    "Arizona_2018_Stubbs": {
+        "state": "Arizona",
+        "year": 2018,
+        "fire_name": "Stubbs",
+        "latitude": 34.80271432100005,
+        "longitude": -112.99404953299995
+    },
+    "Arizona_2018_Tinder": {
+        "state": "Arizona",
+        "year": 2018,
+        "fire_name": "Tinder",
+        "latitude": 34.768818671000076,
+        "longitude": -111.25887734099996
+    },
+    "Arizona_2019_Huck": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Huck",
+        "latitude": 33.42385600000006,
+        "longitude": -110.36763199999996
+    },
+    "Arizona_2019_Bronco_Gulch": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Bronco_Gulch",
+        "latitude": 33.45152100000007,
+        "longitude": -110.21431299999995
+    },
+    "Arizona_2019_Gap": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Gap",
+        "latitude": 33.27443100000005,
+        "longitude": -110.01612699999998
+    },
+    "Arizona_2019_Ikes": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Ikes",
+        "latitude": 36.37311802000005,
+        "longitude": -112.37351699999999
+    },
+    "Arizona_2019_River": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "River",
+        "latitude": 34.00950900000004,
+        "longitude": -112.01927999999998
+    },
+    "Arizona_2019_Mountain": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Mountain",
+        "latitude": 33.93141955600004,
+        "longitude": -111.76225952299995
+    },
+    "Arizona_2019_Maroon": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Maroon",
+        "latitude": 35.36135572000006,
+        "longitude": -111.44360343499994
+    },
+    "Arizona_2019_Coldwater": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Coldwater",
+        "latitude": 34.53709100000003,
+        "longitude": -111.39660399999997
+    },
+    "Arizona_2019_Castle": {
+        "state": "Arizona",
+        "year": 2019,
+        "fire_name": "Castle",
+        "latitude": 36.58762400000006,
+        "longitude": -112.34559999999999
+    },
+    "Arizona_2020_Sawtooth": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Sawtooth",
+        "latitude": 33.45668970600008,
+        "longitude": -111.38328979099998
+    },
+    "Arizona_2020_Sears": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Sears",
+        "latitude": 33.96005420700004,
+        "longitude": -111.82628117699994
+    },
+    "Arizona_2020_Superstition": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Superstition",
+        "latitude": 33.49702515900003,
+        "longitude": -111.47005313499994
+    },
+    "Arizona_2020_Salt": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Salt",
+        "latitude": 33.617299667000054,
+        "longitude": -111.00086635599996
+    },
+    "Arizona_2020_Griffin": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Griffin",
+        "latitude": 33.62937726000007,
+        "longitude": -110.79078170199995
+    },
+    "Arizona_2020_Cow_Canyon": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Cow_Canyon",
+        "latitude": 33.62128000000007,
+        "longitude": -109.19000000099999
+    },
+    "Arizona_2020_Wood_Springs_2": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Wood_Springs_2",
+        "latitude": 35.96090495000004,
+        "longitude": -109.37964698899998
+    },
+    "Arizona_2020_Blue_River": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Blue_River",
+        "latitude": 33.57862880500005,
+        "longitude": -110.42558248199998
+    },
+    "Arizona_2020_Cassadore_Springs": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Cassadore_Springs",
+        "latitude": 33.61772996900004,
+        "longitude": -110.45378099999999
+    },
+    "Arizona_2020_Blue_River_2": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Blue_River_2",
+        "latitude": 33.53233295500007,
+        "longitude": -110.34053483799994
+    },
+    "Arizona_2020_Valley": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Valley",
+        "latitude": 33.44414302100006,
+        "longitude": -110.40374392199999
+    },
+    "Arizona_2020_Rockhouse": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Rockhouse",
+        "latitude": 33.16420090100007,
+        "longitude": -110.62271678399998
+    },
+    "Arizona_2020_Medicine": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Medicine",
+        "latitude": 33.85655567600003,
+        "longitude": -110.73270639499998
+    },
+    "Arizona_2020_Black_Canyon": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Black_Canyon",
+        "latitude": 35.804085100000066,
+        "longitude": -113.82085595599995
+    },
+    "Arizona_2020_Basin": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Basin",
+        "latitude": 36.64917725500004,
+        "longitude": -113.93097602599994
+    },
+    "Arizona_2020_Pine_Hollow": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Pine_Hollow",
+        "latitude": 37.04196996300004,
+        "longitude": -112.12006551199994
+    },
+    "Arizona_2020_Constellation": {
+        "state": "Arizona",
+        "year": 2020,
+        "fire_name": "Constellation",
+        "latitude": 34.08472233400005,
+        "longitude": -112.59986308399999
+    },
+    "California_2018_Boot": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Boot",
+        "latitude": 38.41883118900006,
+        "longitude": -119.49079247999998
+    },
+    "California_2018_Cranston": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Cranston",
+        "latitude": 33.76053995500007,
+        "longitude": -116.77109272999996
+    },
+    "California_2018_Delta": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Delta",
+        "latitude": 64.15733763100008,
+        "longitude": -146.24091255699997
+    },
+    "California_2018_Hirz": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Hirz",
+        "latitude": 40.89130506300006,
+        "longitude": -122.22845090299995
+    },
+    "California_2018_Klamathon": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Klamathon",
+        "latitude": 41.99148901500007,
+        "longitude": -122.59794802999994
+    },
+    "California_2018_Natchez": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Natchez",
+        "latitude": 42.00663631100008,
+        "longitude": -123.63478545499999
+    },
+    "California_2018_River": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "River",
+        "latitude": 39.146622181000055,
+        "longitude": -123.14266991599999
+    },
+    "California_2018_Stone": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Stone",
+        "latitude": 41.45781688200003,
+        "longitude": -121.05465079799995
+    },
+    "California_2018_Whaleback": {
+        "state": "California",
+        "year": 2018,
+        "fire_name": "Whaleback",
+        "latitude": 40.680053213000065,
+        "longitude": -120.88912350399994
+    },
+    "California_2019_Saddle_Ridge": {
+        "state": "California",
+        "year": 2019,
+        "fire_name": "Saddle_Ridge",
+        "latitude": 34.36038400000007,
+        "longitude": -118.57554484199994
+    },
+    "California_2019_Red_Bank": {
+        "state": "California",
+        "year": 2019,
+        "fire_name": "Red_Bank",
+        "latitude": 40.203160000000025,
+        "longitude": -122.72499999999997
+    },
+    "California_2019_Maria": {
+        "state": "California",
+        "year": 2019,
+        "fire_name": "Maria",
+        "latitude": 34.353226679000045,
+        "longitude": -119.12268999099996
+    },
+    "California_2019_Tucker": {
+        "state": "California",
+        "year": 2019,
+        "fire_name": "Tucker",
+        "latitude": 41.86667229600005,
+        "longitude": -121.30379795199997
+    },
+    "California_2019_Taboose": {
+        "state": "California",
+        "year": 2019,
+        "fire_name": "Taboose",
+        "latitude": 37.06135500000005,
+        "longitude": -118.39241799999996
+    },
+    "California_2019_Walker": {
+        "state": "California",
+        "year": 2019,
+        "fire_name": "Walker",
+        "latitude": 40.17660294600006,
+        "longitude": -120.70854841199997
+    },
+    "California_2019_Springs": {
+        "state": "California",
+        "year": 2019,
+        "fire_name": "Springs",
+        "latitude": 37.86622085600004,
+        "longitude": -118.93858191999999
+    },
+    "California_2020_Silverado": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Silverado",
+        "latitude": 33.76593466200006,
+        "longitude": -117.75851031999997
+    },
+    "California_2020_Blue_Ridge": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Blue_Ridge",
+        "latitude": 33.95656724300005,
+        "longitude": -117.76408619999995
+    },
+    "California_2020_Bond": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Bond",
+        "latitude": 33.77431239800006,
+        "longitude": -117.73605151299995
+    },
+    "California_2020_Zogg": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Zogg",
+        "latitude": 40.55095072000006,
+        "longitude": -122.70798018299996
+    },
+    "California_2020_Mineral": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Mineral",
+        "latitude": 36.247191016000045,
+        "longitude": -120.67104600799996
+    },
+    "California_2020_River": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "River",
+        "latitude": 36.60432721900003,
+        "longitude": -121.69523710299995
+    },
+    "California_2020_Apple": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Apple",
+        "latitude": 34.07834278400003,
+        "longitude": -116.82665337299994
+    },
+    "California_2020_Hog": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Hog",
+        "latitude": 40.469447487000025,
+        "longitude": -120.86402075799998
+    },
+    "California_2020_Gold": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Gold",
+        "latitude": 41.12240693200005,
+        "longitude": -120.92087292199994
+    },
+    "California_2020_Devil": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Devil",
+        "latitude": 41.97255680200004,
+        "longitude": -123.29624217299994
+    },
+    "California_2020_Lake": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Lake",
+        "latitude": 34.75187753300003,
+        "longitude": -118.660709038
+    },
+    "California_2020_Valley": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Valley",
+        "latitude": 32.785691092000036,
+        "longitude": -116.77679174699995
+    },
+    "California_2020_Rattlesnake": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Rattlesnake",
+        "latitude": 36.524293863000025,
+        "longitude": -118.45810667199999
+    },
+    "California_2020_Slink": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Slink",
+        "latitude": 38.58746623900004,
+        "longitude": -119.65451799799996
+    },
+    "California_2020_Mountain_View": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Mountain_View",
+        "latitude": 38.61706327200005,
+        "longitude": -119.48168049399999
+    },
+    "California_2020_Loyalton": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Loyalton",
+        "latitude": 39.79114224400007,
+        "longitude": -120.222512
+    },
+    "California_2020_Sheep": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "Sheep",
+        "latitude": 40.38602907600006,
+        "longitude": -120.80835908099999
+    },
+    "California_2020_North": {
+        "state": "California",
+        "year": 2020,
+        "fire_name": "North",
+        "latitude": 39.884045324000056,
+        "longitude": -120.03962498799996
+    },
+    "Colorado_2018_416": {
+        "state": "Colorado",
+        "year": 2018,
+        "fire_name": "416",
+        "latitude": 37.59927186800007,
+        "longitude": -107.99797380799998
+    },
+    "Colorado_2018_Bull_Draw": {
+        "state": "Colorado",
+        "year": 2018,
+        "fire_name": "Bull_Draw",
+        "latitude": 38.60732100000007,
+        "longitude": -108.75028618999994
+    },
+    "Colorado_2018_Divide": {
+        "state": "Colorado",
+        "year": 2018,
+        "fire_name": "Divide",
+        "latitude": 40.863434073000064,
+        "longitude": -107.83826799299999
+    },
+    "Colorado_2018_Lake_Christine": {
+        "state": "Colorado",
+        "year": 2018,
+        "fire_name": "Lake_Christine",
+        "latitude": 39.46800105700004,
+        "longitude": -107.09362399899999
+    },
+    "Colorado_2018_Plateau": {
+        "state": "Colorado",
+        "year": 2018,
+        "fire_name": "Plateau",
+        "latitude": 37.673294000000055,
+        "longitude": -108.55172509199997
+    },
+    "Colorado_2018_Silver_Creek": {
+        "state": "Colorado",
+        "year": 2018,
+        "fire_name": "Silver_Creek",
+        "latitude": 40.32344609300003,
+        "longitude": -106.66047215799995
+    },
+    "Colorado_2018_Weston_Pass": {
+        "state": "Colorado",
+        "year": 2018,
+        "fire_name": "Weston_Pass",
+        "latitude": 39.07672854000003,
+        "longitude": -106.07391592099998
+    },
+    "Colorado_2019_Decker": {
+        "state": "Colorado",
+        "year": 2019,
+        "fire_name": "Decker",
+        "latitude": 38.48544700000008,
+        "longitude": -106.03775567699995
+    },
+    "Colorado_2020_Middle_Fork": {
+        "state": "Colorado",
+        "year": 2020,
+        "fire_name": "Middle_Fork",
+        "latitude": 40.69293914600007,
+        "longitude": -106.82737089599999
+    },
+    "Colorado_2020_Calwood": {
+        "state": "Colorado",
+        "year": 2020,
+        "fire_name": "Calwood",
+        "latitude": 40.19965073900005,
+        "longitude": -105.39879869699996
+    },
+    "Colorado_2020_Williams_Fork": {
+        "state": "Colorado",
+        "year": 2020,
+        "fire_name": "Williams_Fork",
+        "latitude": 39.90400100100004,
+        "longitude": -106.07958393999996
+    },
+    "Colorado_2020_Grizzly_Creek": {
+        "state": "Colorado",
+        "year": 2020,
+        "fire_name": "Grizzly_Creek",
+        "latitude": 39.66932998800007,
+        "longitude": -107.29087714499997
+    },
+    "Idaho_2018_Bruneau": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Bruneau",
+        "latitude": 42.26380453000007,
+        "longitude": -115.77352738899998
+    },
+    "Idaho_2018_Cat": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Cat",
+        "latitude": 42.104783491000035,
+        "longitude": -115.73384998599994
+    },
+    "Idaho_2018_Conner": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Conner",
+        "latitude": 42.268182000000024,
+        "longitude": -113.55107808499997
+    },
+    "Idaho_2018_Cougar": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Cougar",
+        "latitude": 48.32970092700003,
+        "longitude": -116.29052760699994
+    },
+    "Idaho_2018_Dog_Creek": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Dog_Creek",
+        "latitude": 43.09682000000004,
+        "longitude": -114.79481907599995
+    },
+    "Idaho_2018_East_Fork": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "East_Fork",
+        "latitude": 42.43123484800003,
+        "longitude": -115.46042801999994
+    },
+    "Idaho_2018_Garat": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Garat",
+        "latitude": 42.19513326800006,
+        "longitude": -116.50289561999995
+    },
+    "Idaho_2018_Indian_Butte": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Indian_Butte",
+        "latitude": 44.364183953000065,
+        "longitude": -112.39919177299998
+    },
+    "Idaho_2018_Keithly": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Keithly",
+        "latitude": 44.52069875800004,
+        "longitude": -116.89898833299998
+    },
+    "Idaho_2018_Kiwah": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Kiwah",
+        "latitude": 44.87185033800006,
+        "longitude": -115.32178758999999
+    },
+    "Idaho_2018_Mesa": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Mesa",
+        "latitude": 44.75280352000004,
+        "longitude": -116.44967433
+    },
+    "Idaho_2018_North_Eden": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "North_Eden",
+        "latitude": 42.01337474200005,
+        "longitude": -111.13917399799999
+    },
+    "Idaho_2018_Rabbit_Foot": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Rabbit_Foot",
+        "latitude": 44.928557340000054,
+        "longitude": -114.34049870399997
+    },
+    "Idaho_2018_West_Duck": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "West_Duck",
+        "latitude": 42.03843623800003,
+        "longitude": -116.41682438299995
+    },
+    "Idaho_2018_Winter_Camp": {
+        "state": "Idaho",
+        "year": 2018,
+        "fire_name": "Winter_Camp",
+        "latitude": 42.42922113800006,
+        "longitude": -115.51055791799996
+    },
+    "Idaho_2019_Hot_Spring": {
+        "state": "Idaho",
+        "year": 2019,
+        "fire_name": "Hot_Spring",
+        "latitude": 42.421391183000026,
+        "longitude": -115.67895487899995
+    },
+    "Idaho_2019_Lookout_Point": {
+        "state": "Idaho",
+        "year": 2019,
+        "fire_name": "Lookout_Point",
+        "latitude": 42.324194257000045,
+        "longitude": -115.68254951699998
+    },
+    "Idaho_2019_Flat_Top": {
+        "state": "Idaho",
+        "year": 2019,
+        "fire_name": "Flat_Top",
+        "latitude": 43.002106827000034,
+        "longitude": -113.13923796699999
+    },
+    "Idaho_2019_Shady": {
+        "state": "Idaho",
+        "year": 2019,
+        "fire_name": "Shady",
+        "latitude": 44.56647000000004,
+        "longitude": -115.05982799999998
+    },
+    "Idaho_2019_Horse_Butte": {
+        "state": "Idaho",
+        "year": 2019,
+        "fire_name": "Horse_Butte",
+        "latitude": 43.10060100000004,
+        "longitude": -113.26345599999996
+    },
+    "Idaho_2019_Lake_Channel": {
+        "state": "Idaho",
+        "year": 2019,
+        "fire_name": "Lake_Channel",
+        "latitude": 42.72021568300005,
+        "longitude": -113.23304999999999
+    },
+    "Idaho_2020_Porphyry": {
+        "state": "Idaho",
+        "year": 2020,
+        "fire_name": "Porphyry",
+        "latitude": 45.32371339000008,
+        "longitude": -115.48017718499995
+    },
+    "Idaho_2020_Buck": {
+        "state": "Idaho",
+        "year": 2020,
+        "fire_name": "Buck",
+        "latitude": 44.86396315600007,
+        "longitude": -115.52920516199998
+    },
+    "Idaho_2020_Howe_Peak": {
+        "state": "Idaho",
+        "year": 2020,
+        "fire_name": "Howe_Peak",
+        "latitude": 43.77863265600007,
+        "longitude": -113.06592388999997
+    },
+    "Idaho_2020_Shissler": {
+        "state": "Idaho",
+        "year": 2020,
+        "fire_name": "Shissler",
+        "latitude": 45.82644938300007,
+        "longitude": -115.18833736599998
+    },
+    "Montana_2018_Buffalo_Pasture": {
+        "state": "Montana",
+        "year": 2018,
+        "fire_name": "Buffalo_Pasture",
+        "latitude": 48.35117062900008,
+        "longitude": -105.34377578799996
+    },
+    "Montana_2018_Goldstone": {
+        "state": "Montana",
+        "year": 2018,
+        "fire_name": "Goldstone",
+        "latitude": 45.28394000000003,
+        "longitude": -113.63139999999999
+    },
+    "Montana_2018_Howe_Ridge": {
+        "state": "Montana",
+        "year": 2018,
+        "fire_name": "Howe_Ridge",
+        "latitude": 48.85632626700004,
+        "longitude": -114.19944271899999
+    },
+    "Montana_2019_Ridgetop": {
+        "state": "Montana",
+        "year": 2019,
+        "fire_name": "Ridgetop",
+        "latitude": 47.521780000000035,
+        "longitude": -108.34099999999995
+    },
+    "Montana_2020_Sarpy": {
+        "state": "Montana",
+        "year": 2020,
+        "fire_name": "Sarpy",
+        "latitude": 45.75258334000006,
+        "longitude": -107.15846411699994
+    },
+    "Montana_2020_Bear_Creek": {
+        "state": "Montana",
+        "year": 2020,
+        "fire_name": "Bear_Creek",
+        "latitude": 44.93356714000004,
+        "longitude": -113.47614419299998
+    },
+    "Montana_2020_Gass_Flats": {
+        "state": "Montana",
+        "year": 2020,
+        "fire_name": "Gass_Flats",
+        "latitude": 46.02017081000008,
+        "longitude": -107.28369148299998
+    },
+    "Nevada_2018_County_Line": {
+        "state": "Nevada",
+        "year": 2018,
+        "fire_name": "County_Line",
+        "latitude": 40.65294177700008,
+        "longitude": -116.15936166199998
+    },
+    "Nevada_2018_Goshute_Cave": {
+        "state": "Nevada",
+        "year": 2018,
+        "fire_name": "Goshute_Cave",
+        "latitude": 40.206613194000056,
+        "longitude": -114.90229207999994
+    },
+    "Nevada_2018_Gregg": {
+        "state": "Nevada",
+        "year": 2018,
+        "fire_name": "Gregg",
+        "latitude": 40.827712501000065,
+        "longitude": -117.55671854899998
+    },
+    "Nevada_2018_Hogan": {
+        "state": "Nevada",
+        "year": 2018,
+        "fire_name": "Hogan",
+        "latitude": 40.736166430000026,
+        "longitude": -114.61473512199996
+    },
+    "Nevada_2018_Perry": {
+        "state": "Nevada",
+        "year": 2018,
+        "fire_name": "Perry",
+        "latitude": 39.88659190200008,
+        "longitude": -119.64520531199997
+    },
+    "Nevada_2018_Sheep_Creek": {
+        "state": "Nevada",
+        "year": 2018,
+        "fire_name": "Sheep_Creek",
+        "latitude": 40.94412554100006,
+        "longitude": -116.89177531899998
+    },
+    "Nevada_2019_Shafter": {
+        "state": "Nevada",
+        "year": 2019,
+        "fire_name": "Shafter",
+        "latitude": 40.84929800000003,
+        "longitude": -114.57909999999998
+    },
+    "Nevada_2019_Goose": {
+        "state": "Nevada",
+        "year": 2019,
+        "fire_name": "Goose",
+        "latitude": 41.99031000000008,
+        "longitude": -114.21085
+    },
+    "Nevada_2019_Corta": {
+        "state": "Nevada",
+        "year": 2019,
+        "fire_name": "Corta",
+        "latitude": 40.36717700000003,
+        "longitude": -115.62276899999995
+    },
+    "Nevada_2020_Numbers": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Numbers",
+        "latitude": 38.91132004800005,
+        "longitude": -119.65875039799994
+    },
+    "Nevada_2020_Brown": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Brown",
+        "latitude": 38.87915104600006,
+        "longitude": -115.02829220899997
+    },
+    "Nevada_2020_Twin": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Twin",
+        "latitude": 37.59245317400007,
+        "longitude": -115.07623845699999
+    },
+    "Nevada_2020_Ibapah": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Ibapah",
+        "latitude": 40.42438864400003,
+        "longitude": -114.23036307799998
+    },
+    "Nevada_2020_Bishop": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Bishop",
+        "latitude": 37.47407199000003,
+        "longitude": -114.65708511499997
+    },
+    "Nevada_2020_North": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "North",
+        "latitude": 39.884045324000056,
+        "longitude": -120.03962498799996
+    },
+    "Nevada_2020_Big_Summit": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Big_Summit",
+        "latitude": 38.030987399000026,
+        "longitude": -114.11200770999994
+    },
+    "Nevada_2020_Stewart_Canyon": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Stewart_Canyon",
+        "latitude": 37.39032650000007,
+        "longitude": -114.85149180899998
+    },
+    "Nevada_2020_Lost": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Lost",
+        "latitude": 41.054456877000064,
+        "longitude": -114.41794557499998
+    },
+    "Nevada_2020_Meadow_Valley": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Meadow_Valley",
+        "latitude": 37.336446168000066,
+        "longitude": -114.70698166099999
+    },
+    "Nevada_2020_Poodle": {
+        "state": "Nevada",
+        "year": 2020,
+        "fire_name": "Poodle",
+        "latitude": 40.94329436400005,
+        "longitude": -119.67271800299994
+    },
+    "New Mexico_2018_Buzzard": {
+        "state": "New Mexico",
+        "year": 2018,
+        "fire_name": "Buzzard",
+        "latitude": 33.781058838000035,
+        "longitude": -108.65073670699996
+    },
+    "New Mexico_2018_Crooked_Creek": {
+        "state": "New Mexico",
+        "year": 2018,
+        "fire_name": "Crooked_Creek",
+        "latitude": 32.559693981000066,
+        "longitude": -105.04056238399994
+    },
+    "New Mexico_2019_Rawhide": {
+        "state": "New Mexico",
+        "year": 2019,
+        "fire_name": "Rawhide",
+        "latitude": 32.33044600000005,
+        "longitude": -104.79180899999994
+    },
+    "New Mexico_2019_Pine_Lodge": {
+        "state": "New Mexico",
+        "year": 2019,
+        "fire_name": "Pine_Lodge",
+        "latitude": 33.68641124000004,
+        "longitude": -105.30268610999997
+    },
+    "New Mexico_2020_Tadpole": {
+        "state": "New Mexico",
+        "year": 2020,
+        "fire_name": "Tadpole",
+        "latitude": 32.980758492000064,
+        "longitude": -108.30155216399999
+    },
+    "New Mexico_2020_Good": {
+        "state": "New Mexico",
+        "year": 2020,
+        "fire_name": "Good",
+        "latitude": 33.22294004200006,
+        "longitude": -108.37144780599999
+    },
+    "New Mexico_2020_Cub": {
+        "state": "New Mexico",
+        "year": 2020,
+        "fire_name": "Cub",
+        "latitude": 33.38207049300007,
+        "longitude": -108.56756382599997
+    },
+    "New Mexico_2020_Vics_Peak": {
+        "state": "New Mexico",
+        "year": 2020,
+        "fire_name": "Vics_Peak",
+        "latitude": 33.67696431400003,
+        "longitude": -107.48085050999998
+    },
+    "Oregon_2018_Columbus": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Columbus",
+        "latitude": 42.98809377200007,
+        "longitude": -122.71918335799995
+    },
+    "Oregon_2018_Grave_Creek_#3": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Grave_Creek_#3",
+        "latitude": 42.707192072000055,
+        "longitude": -123.20418118299995
+    },
+    "Oregon_2018_Jack_Knife": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Jack_Knife",
+        "latitude": 45.326823166000054,
+        "longitude": -120.63904119499995
+    },
+    "Oregon_2018_Jennies_Peak": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Jennies_Peak",
+        "latitude": 44.89857461500003,
+        "longitude": -120.39853597299998
+    },
+    "Oregon_2018_Long_Hollow": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Long_Hollow",
+        "latitude": 45.43405051800005,
+        "longitude": -121.06899986399998
+    },
+    "Oregon_2018_Miles": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Miles",
+        "latitude": 42.93275631500006,
+        "longitude": -122.81830934899995
+    },
+    "Oregon_2018_Seal_Stubblefield": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Seal_Stubblefield",
+        "latitude": 45.34890612800007,
+        "longitude": -120.55044589699997
+    },
+    "Oregon_2018_Sugar_Pine": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Sugar_Pine",
+        "latitude": 42.86980751100003,
+        "longitude": -122.73022567299995
+    },
+    "Oregon_2018_Terwilliger": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Terwilliger",
+        "latitude": 44.12381627900004,
+        "longitude": -122.26289317999999
+    },
+    "Oregon_2018_Watson_Creek": {
+        "state": "Oregon",
+        "year": 2018,
+        "fire_name": "Watson_Creek",
+        "latitude": 42.70498739200008,
+        "longitude": -120.88331109599994
+    },
+    "Oregon_2019_Poker": {
+        "state": "Oregon",
+        "year": 2019,
+        "fire_name": "Poker",
+        "latitude": 42.76872000000003,
+        "longitude": -119.65293999999994
+    },
+    "Oregon_2019_204_Cow": {
+        "state": "Oregon",
+        "year": 2019,
+        "fire_name": "204_Cow",
+        "latitude": 44.31753947100003,
+        "longitude": -118.48604784399998
+    },
+    "Oregon_2020_White_River": {
+        "state": "Oregon",
+        "year": 2020,
+        "fire_name": "White_River",
+        "latitude": 45.20296419300007,
+        "longitude": -121.59721088399999
+    },
+    "Oregon_2020_Thielsen": {
+        "state": "Oregon",
+        "year": 2020,
+        "fire_name": "Thielsen",
+        "latitude": 43.243920486000036,
+        "longitude": -122.18740946699995
+    },
+    "Oregon_2020_242": {
+        "state": "Oregon",
+        "year": 2020,
+        "fire_name": "242",
+        "latitude": 42.68383321400006,
+        "longitude": -121.96376057099997
+    },
+    "Oregon_2020_Indian_Creek": {
+        "state": "Oregon",
+        "year": 2020,
+        "fire_name": "Indian_Creek",
+        "latitude": 44.01850834900006,
+        "longitude": -118.01807102299995
+    },
+    "Utah_2018_Bear_Trap": {
+        "state": "Utah",
+        "year": 2018,
+        "fire_name": "Bear_Trap",
+        "latitude": 39.327278972000045,
+        "longitude": -109.91183306999994
+    },
+    "Utah_2018_Lakeside": {
+        "state": "Utah",
+        "year": 2018,
+        "fire_name": "Lakeside",
+        "latitude": 40.89809100000008,
+        "longitude": -112.82328499999994
+    },
+    "Utah_2018_Trail_Mountain": {
+        "state": "Utah",
+        "year": 2018,
+        "fire_name": "Trail_Mountain",
+        "latitude": 39.47265167200004,
+        "longitude": -111.24220146799996
+    },
+    "Utah_2018_West_Valley": {
+        "state": "Utah",
+        "year": 2018,
+        "fire_name": "West_Valley",
+        "latitude": 37.484517553000046,
+        "longitude": -113.44488786799997
+    },
+    "Utah_2019_Shelter_Pass": {
+        "state": "Utah",
+        "year": 2019,
+        "fire_name": "Shelter_Pass",
+        "latitude": 41.49786000000006,
+        "longitude": -113.18531999999999
+    },
+    "Utah_2019_Neck": {
+        "state": "Utah",
+        "year": 2019,
+        "fire_name": "Neck",
+        "latitude": 38.12086301800008,
+        "longitude": -113.24314416199996
+    },
+    "Utah_2019_Goose_Point": {
+        "state": "Utah",
+        "year": 2019,
+        "fire_name": "Goose_Point",
+        "latitude": 40.125080000000025,
+        "longitude": -111.86026999999996
+    },
+    "Utah_2020_Rock_Path": {
+        "state": "Utah",
+        "year": 2020,
+        "fire_name": "Rock_Path",
+        "latitude": 38.67997770900007,
+        "longitude": -113.22821272999994
+    },
+    "Utah_2020_Tabby_Canyon": {
+        "state": "Utah",
+        "year": 2020,
+        "fire_name": "Tabby_Canyon",
+        "latitude": 40.87519645400005,
+        "longitude": -112.53066387599995
+    },
+    "Utah_2020_Knolls": {
+        "state": "Utah",
+        "year": 2020,
+        "fire_name": "Knolls",
+        "latitude": 40.301285095000026,
+        "longitude": -111.92887462799996
+    },
+    "Utah_2020_Gray_Hill": {
+        "state": "Utah",
+        "year": 2020,
+        "fire_name": "Gray_Hill",
+        "latitude": 38.71455450000008,
+        "longitude": -113.52610358399994
+    },
+    "Washington_2018_Cougar_Creek": {
+        "state": "Washington",
+        "year": 2018,
+        "fire_name": "Cougar_Creek",
+        "latitude": 47.88723365800007,
+        "longitude": -120.61570648899999
+    },
+    "Washington_2018_Crescent_Mountain": {
+        "state": "Washington",
+        "year": 2018,
+        "fire_name": "Crescent_Mountain",
+        "latitude": 48.49679291000007,
+        "longitude": -120.60953619799994
+    },
+    "Washington_2018_Milepost_90": {
+        "state": "Washington",
+        "year": 2018,
+        "fire_name": "Milepost_90",
+        "latitude": 45.70089862100008,
+        "longitude": -121.04223632399999
+    },
+    "Washington_2018_Wahluke_Slope": {
+        "state": "Washington",
+        "year": 2018,
+        "fire_name": "Wahluke_Slope",
+        "latitude": 46.73804038800006,
+        "longitude": -119.74824725499997
+    },
+    "Washington_2019_243_Command": {
+        "state": "Washington",
+        "year": 2019,
+        "fire_name": "243_Command",
+        "latitude": 46.88033200000007,
+        "longitude": -119.95674399999996
+    },
+    "Washington_2019_Williams_Flats": {
+        "state": "Washington",
+        "year": 2019,
+        "fire_name": "Williams_Flats",
+        "latitude": 48.049004241000034,
+        "longitude": -118.63796667799994
+    },
+    "Washington_2020_Saddle_Mountain": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Saddle_Mountain",
+        "latitude": 46.82470028400007,
+        "longitude": -119.57976866299998
+    },
+    "Washington_2020_Big_Hollow": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Big_Hollow",
+        "latitude": 46.00091517700008,
+        "longitude": -122.20440722599994
+    },
+    "Washington_2020_Inchelium_Highway": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Inchelium_Highway",
+        "latitude": 48.37704862800007,
+        "longitude": -118.26605694099999
+    },
+    "Washington_2020_Kewa_Field": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Kewa_Field",
+        "latitude": 48.22282595200005,
+        "longitude": -118.39765093399996
+    },
+    "Washington_2020_Kahlotus": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Kahlotus",
+        "latitude": 46.63355483400005,
+        "longitude": -118.72265542699995
+    },
+    "Washington_2020_Palmer": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Palmer",
+        "latitude": 48.95552663900003,
+        "longitude": -119.65649327299997
+    },
+    "Washington_2020_Taylor_Pond": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Taylor_Pond",
+        "latitude": 46.750581467000075,
+        "longitude": -120.24627478099995
+    },
+    "Washington_2020_Babb-Malden": {
+        "state": "Washington",
+        "year": 2020,
+        "fire_name": "Babb-Malden",
+        "latitude": 47.275912971000025,
+        "longitude": -117.62644364499994
+    },
+    "Wyoming_2018_Badger_Creek": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Badger_Creek",
+        "latitude": 41.138611111000046,
+        "longitude": -106.23999999999995
+    },
+    "Wyoming_2018_Britania_Mountain": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Britania_Mountain",
+        "latitude": 42.14736400000004,
+        "longitude": -105.37726599999996
+    },
+    "Wyoming_2018_Denver_Jake": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Denver_Jake",
+        "latitude": 43.825780053000074,
+        "longitude": -107.82701302699996
+    },
+    "Wyoming_2018_Laney_Rim": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Laney_Rim",
+        "latitude": 41.24706400000008,
+        "longitude": -109.04416135499997
+    },
+    "Wyoming_2018_Marten_Creek": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Marten_Creek",
+        "latitude": 42.76844601600004,
+        "longitude": -110.68461063699999
+    },
+    "Wyoming_2018_Roosevelt": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Roosevelt",
+        "latitude": 43.14385469700005,
+        "longitude": -110.60305726699994
+    },
+    "Wyoming_2018_Ryan": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Ryan",
+        "latitude": 41.10324171900004,
+        "longitude": -106.75113729599997
+    },
+    "Wyoming_2018_Terek": {
+        "state": "Wyoming",
+        "year": 2018,
+        "fire_name": "Terek",
+        "latitude": 44.255003223000074,
+        "longitude": -107.91467859599999
+    },
+    "Wyoming_2019_Pedro_Mountain": {
+        "state": "Wyoming",
+        "year": 2019,
+        "fire_name": "Pedro_Mountain",
+        "latitude": 42.39313950800005,
+        "longitude": -106.91183174899999
+    },
+    "Wyoming_2019_Fishhawk": {
+        "state": "Wyoming",
+        "year": 2019,
+        "fire_name": "Fishhawk",
+        "latitude": 44.44007334400004,
+        "longitude": -109.89815622099997
+    },
+    "Wyoming_2020_Neiber": {
+        "state": "Wyoming",
+        "year": 2020,
+        "fire_name": "Neiber",
+        "latitude": 43.85869438100008,
+        "longitude": -107.95582681299999
+    },
+    "Wyoming_2020_Waddle_Creek": {
+        "state": "Wyoming",
+        "year": 2020,
+        "fire_name": "Waddle_Creek",
+        "latitude": 44.98753190000008,
+        "longitude": -106.56500953399996
+    }
+}
