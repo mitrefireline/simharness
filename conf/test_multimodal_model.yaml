@@ -20,7 +20,7 @@ rollouts:
   batch_mode: complete_episodes # truncate_episodes
   # Scale experiment as desired
   num_rollout_workers: 32 # FIXME!
-  # num_envs_per_worker: ??
+  num_envs_per_worker: 4
 
 cli:
   mode: train
@@ -30,7 +30,20 @@ hydra:
   run:
     dir: ${cli.data_dir}/debug_experiments/${now:%Y-%m-%d_%H-%M-%S} # FIXME!
 
+# Total number of fire scenarios is:
+# - For train, op_loc.sample_size.train * fire_initial_position.sampler.sample_size.train
+# - For eval, op_loc.sample_size.eval * fire_initial_position.sampler.sample_size.eval
+# - Op locations will be fixed for the duration of the experiment.
 simulation:
+  # TODO: Consolidate below controls into a "fire_generation" section, or similar.
+  # NOTE: Assume samples are selected randomly from the BurnMD dataset
+  operational_locations:
+    # Configure the sampling of lon, lat coords used for operational location (s).
+    burnmd_dataset_path: ${oc.env:SH_ROOT}/data/burnmd_TL_flat.json
+    sample_size:
+      train: 4
+      eval: 2
+    independent_eval: false
   fire_initial_position:
     # Configure the generation of candidate initial fire positions.
     generator:
@@ -51,8 +64,13 @@ simulation:
       # Number of samples to draw from the distribution, ie. take `sample_size` initial
       # fire positions and distribute them across the respective RolloutWorker's.
       sample_size:
-        train: ${rollouts.num_rollout_workers}
-        eval: ${evaluation.evaluation_num_workers}
+        train: 1
+        eval: 1
+      # If false, then eval scenarios are drawn from the same distribution as
+      # training scenarios. This behavior is usually not desired, but can be
+      # useful for debugging purposes, ie. seeing how well the trained policy
+      # performs on a scenario from the training distribution.
+      independent_eval: true
       # Filter generated "dataset" using the following condition.
       # NOTE: This is applied to the generated dataset, not the sampled positions.
       # For more information on the query string to evaluate, see:
@@ -72,6 +90,11 @@ simulation:
   simfire:
     fire:
       diagonal_spread: true
+
+environment:
+  env_config:
+    operational_locations: ${simulation.operational_locations}
+
 # Specify configuration pass to the `AimLoggerCallback`
 aim:
   repo: ${cli.data_dir}/aim
