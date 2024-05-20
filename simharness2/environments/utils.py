@@ -167,65 +167,112 @@ def get_operational_locations(
         train_locs: List of `BurnMDOperationalLocation` objects for training.
         eval_locs: List of `BurnMDOperationalLocation` objects for evaluation.
     """
-    # Set the seed for the random number generator
-    random.seed(seed)
-
-    # Load BurnMD data to use for sampling random operational locations.
-    burnmd_fp = cfg.get("burnmd_dataset_path")
-    logger.info(f"Loading BurnMD data from {burnmd_fp}")
-    with open(burnmd_fp, "r", encoding="utf-8") as j:
-        burnmd_op_locs = json.loads(j.read())
-
-    # Downsample BurnMD by year, if specified
-    if fire_year is not None:
-        logger.info(f"Filtering BurnMD data for year {fire_year}...")
-        burnmd_op_locs = {
-            uid: loc_data
-            for uid, loc_data in burnmd_op_locs.items()
-            if loc_data["year"] == fire_year
+    if cfg.get("use_fixed_locations"):
+        # FIXME: Manually build the training and evaluation locations for now.
+        # TODO: Allow usage of user-provided tr/eval locations.
+        train_locations = {
+            "Arizona_2020_Sawtooth": {
+                "state": "Arizona",
+                "year": 2020,
+                "fire_name": "Sawtooth",
+                "latitude": 33.45668970600008,
+                "longitude": -111.38328979099998,
+            },
+            "Colorado_2020_Middle_Fork": {
+                "state": "Colorado",
+                "year": 2020,
+                "fire_name": "Middle_Fork",
+                "latitude": 40.69293914600007,
+                "longitude": -106.82737089599999,
+            },
+            "Oregon_2020_242": {
+                "state": "Oregon",
+                "year": 2020,
+                "fire_name": "242",
+                "latitude": 42.68383321400006,
+                "longitude": -121.96376057099997,
+            },
+            "California_2020_Zogg": {
+                "state": "California",
+                "year": 2020,
+                "fire_name": "Zogg",
+                "latitude": 40.55095072000006,
+                "longitude": -122.70798018299996,
+            },
         }
-        logger.info(f"Number of locations for year {fire_year}: {len(burnmd_op_locs)}")
 
-    # Get the total number of locations to sample
-    independent_eval_locs = cfg.get("independent_eval", True)
-    if independent_eval_locs:
-        total_locations = num_train_locs + num_eval_locs
+        eval_locations = {
+            "California_2020_Mineral": {
+                "state": "California",
+                "year": 2020,
+                "fire_name": "Mineral",
+                "latitude": 36.247191016000045,
+                "longitude": -120.67104600799996,
+            },
+        }
+
     else:
-        # Address FIXME in docstr; for now, only evaluate on locations we train on
-        # and instead, let different fire initial positions create data diversity.
-        if num_eval_locs > num_train_locs:
-            raise ValueError(
-                "The number of evaluation locations cannot exceed the number of "
-                "training locations when `independent_eval` is False. This "
-                "ensures that the evaluation locations are a subset of the training "
-                "locations."
+        # Set the seed for the random number generator
+        random.seed(seed)
+
+        # Load BurnMD data to use for sampling random operational locations.
+        burnmd_fp = cfg.get("burnmd_dataset_path")
+        logger.info(f"Loading BurnMD data from {burnmd_fp}")
+        with open(burnmd_fp, "r", encoding="utf-8") as j:
+            burnmd_op_locs = json.loads(j.read())
+
+        # Downsample BurnMD by year, if specified
+        if fire_year is not None:
+            logger.info(f"Filtering BurnMD data for year {fire_year}...")
+            burnmd_op_locs = {
+                uid: loc_data
+                for uid, loc_data in burnmd_op_locs.items()
+                if loc_data["year"] == fire_year
+            }
+            logger.info(
+                f"Number of locations for year {fire_year}: {len(burnmd_op_locs)}"
             )
-        # Use the maximum of the two values to ensure we have enough locations.
-        total_locations = max(num_train_locs, num_eval_locs)
 
-    # Validate the number of locations to sample
-    if total_locations > len(burnmd_op_locs):
-        raise ValueError(
-            f"Total number of locations to sample ({total_locations}) exceeds the "
-            f"number of available locations in BurnMD ({len(burnmd_op_locs)})."
-        )
+        # Get the total number of locations to sample
+        independent_eval_locs = cfg.get("independent_eval", True)
+        if independent_eval_locs:
+            total_locations = num_train_locs + num_eval_locs
+        else:
+            # Address FIXME in docstr; for now, only evaluate on locations we train on
+            # and instead, let different fire initial positions create data diversity.
+            if num_eval_locs > num_train_locs:
+                raise ValueError(
+                    "The number of evaluation locations cannot exceed the number of "
+                    "training locations when `independent_eval` is False. This "
+                    "ensures that the evaluation locations are a subset of the training "
+                    "locations."
+                )
+            # Use the maximum of the two values to ensure we have enough locations.
+            total_locations = max(num_train_locs, num_eval_locs)
 
-    # Randomly sample keys from the dictionary
-    logger.info(f"Sampling {total_locations} operational locations from BurnMD...")
-    sampled_keys = random.sample(list(burnmd_op_locs.keys()), total_locations)
+        # Validate the number of locations to sample
+        if total_locations > len(burnmd_op_locs):
+            raise ValueError(
+                f"Total number of locations to sample ({total_locations}) exceeds the "
+                f"number of available locations in BurnMD ({len(burnmd_op_locs)})."
+            )
 
-    # Split the sampled keys into train and eval sets
-    if independent_eval_locs:
-        train_keys = sampled_keys[:num_train_locs]
-        eval_keys = sampled_keys[num_train_locs:]
-    else:
-        train_keys = sampled_keys
-        # Set eval keys to be randomly sampled from train keys.
-        eval_keys = random.sample(train_keys, num_eval_locs)
+        # Randomly sample keys from the dictionary
+        logger.info(f"Sampling {total_locations} operational locations from BurnMD...")
+        sampled_keys = random.sample(list(burnmd_op_locs.keys()), total_locations)
 
-    # Extract the corresponding values from the dictionary
-    train_locations = {key: burnmd_op_locs[key] for key in train_keys}
-    eval_locations = {key: burnmd_op_locs[key] for key in eval_keys}
+        # Split the sampled keys into train and eval sets
+        if independent_eval_locs:
+            train_keys = sampled_keys[:num_train_locs]
+            eval_keys = sampled_keys[num_train_locs:]
+        else:
+            train_keys = sampled_keys
+            # Set eval keys to be randomly sampled from train keys.
+            eval_keys = random.sample(train_keys, num_eval_locs)
+
+        # Extract the corresponding values from the dictionary
+        train_locations = {key: burnmd_op_locs[key] for key in train_keys}
+        eval_locations = {key: burnmd_op_locs[key] for key in eval_keys}
 
     # Build the BurnMDOperationalLocation objects
     train_locs = [
