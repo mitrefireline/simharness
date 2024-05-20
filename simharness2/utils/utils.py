@@ -134,3 +134,27 @@ def get_total_evaluation_envs(algorithm: "Algorithm") -> int:
     """
     eval_envs = algorithm.evaluation_workers.foreach_env(lambda env: env)
     return len(list(chain(*eval_envs)))
+
+
+def has_local_worker(algo_cfg: "AlgorithmConfig") -> bool:
+    """Return whether the respective WorkerSet uses a local worker.
+
+    Arguments:
+        algo_cfg: The rllib `AlgorithmConfig` instance, either for the training or
+            evaluation WorkerSet.
+
+    Returns:
+        A boolean that indicates if the respective WorkerSet uses a local worker.
+    """
+    num_workers = algo_cfg.num_rollout_workers
+    use_local_worker = algo_cfg.create_env_on_local_worker
+    if num_workers == 0 or use_local_worker:
+        return True
+    elif num_workers > 0 and not use_local_worker:
+        return False
+    else:
+        msg = (
+            "The number of rollout workers must be greater than or equal to 0, and the "
+            "`create_env_on_local_worker` must be a boolean value."
+        )
+        raise ValueError(msg)

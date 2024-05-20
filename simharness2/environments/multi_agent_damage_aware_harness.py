@@ -95,13 +95,16 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
 
         # TODO: Only call _run_benchmark if fire scenario differs from previous episode.
         # This is somewhat tricky - must ensure that analytics.data is NOT reset!
-        # Run new benchsim to completion to obtain data for reward and policy.
-        self.benchmark_sim.reset()
-        # NOTE: The call below will do a few things:
-        #   - Run bench sim to completion (self.benchmark_sim.run(1))
-        #   - Update bench sim analytics (update_bench_after_one_simulation_step)
-        #   - Store each bench fire map at the sim step in self._bench_firemaps
-        self._run_benchmark()
+        if self._new_fire_scenario:
+            # Run new benchsim to completion to obtain data for reward and policy.
+            self.benchmark_sim.reset()
+            # NOTE: The call below will do a few things:
+            #   - Run bench sim to completion (self.benchmark_sim.run(1))
+            #   - Update bench sim analytics (update_bench_after_one_simulation_step)
+            #   - Store each bench fire map at the sim step in self._bench_firemaps
+            self._run_benchmark()
+            # Don't rerun benchsim until _initialize_simfire() is called again.
+            self._new_fire_scenario = False
 
         return initial_state, infos
 

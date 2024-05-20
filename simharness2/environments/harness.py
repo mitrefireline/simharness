@@ -2,26 +2,18 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, OrderedDict, Tuple, TypeVar
+from typing import Any, Dict, Generic, List, OrderedDict, Tuple, TypeVar, TYPE_CHECKING
 
 import gymnasium as gym
 import numpy as np
 from ray.rllib.utils.typing import ResultDict
 from simfire.sim.simulation import Simulation
 
+if TYPE_CHECKING:
+    from simharness2.environments.utils import RLlibEnvContextMetadata
 
 logger = logging.getLogger(__name__)
 AnySimulation = TypeVar("AnySimulation", bound=Simulation)
-
-
-# FIXME: Where should this be defined (ie. what file)?
-@dataclass
-class RLlibEnvContextMetadata:
-    worker_index: int
-    vector_index: int
-    remote: bool
-    num_workers: int
-    recreated_worker: bool
 
 
 class Harness(gym.Env, ABC, Generic[AnySimulation]):
@@ -50,9 +42,10 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
 
         # Count total timesteps that have occurred within an episode.
         self.timesteps = 0
+
         # Evaluation specific attributes.
+        logger.info(f"Harness in evaluation mode: {in_evaluation}")
         self.in_evaluation = in_evaluation
-        self._num_eval_iters = 0
 
         # Used to store recent episode results collected by Tune.
         self.current_result: ResultDict = {}
@@ -95,18 +88,55 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         self._trial_logdir = path
 
     @property
-    def rllib_env_context(self) -> RLlibEnvContextMetadata:
+    def rllib_env_context(self) -> "RLlibEnvContextMetadata":
         """The extra metadata that RLlib passes to the environment.
 
         The attributes of the returned object can be used to parameterize environments
         per process. For example, `worker_index` can be used to control which data file
         an environment reads in on initialization.
         """
+        # Error handling for when the context is not set.
+        if not hasattr(self, "_rllib_env_context"):
+            raise AttributeError(
+                "The RLlib environment context has not been set. This context is "
+                "required for parameterizing each environment. Please ensure that the "
+                "context is set before accessing it. This can be done by calling the "
+                "`set_harness_env_context()` method defined in "
+                "`simharness2/environments/utils.py`. For example usage, please refer to "
+                "the `InitializeSimfire.on_algorithm_init()` method in "
+                "`simharness2/callbacks/initialize_simfire.py`."
+            )
         return self._rllib_env_context
 
     @rllib_env_context.setter
-    def rllib_env_context(self, context: RLlibEnvContextMetadata):
+    def rllib_env_context(self, context: "RLlibEnvContextMetadata"):
         self._rllib_env_context = context
+
+    @property
+    def num_eval_iters(self) -> int:
+        """The number of times the environment has been evaluated."""
+        if not self.in_evaluation:
+            raise AssertionError(
+                "The number of evaluation iterations can only be accessed when the "
+                "environment is in evaluation mode."
+            )
+
+        # Initialize the number of evaluation iterations if it has not been set.
+        if not hasattr(self, "_num_eval_iters"):
+            logger.info("Setting initial value of `self.num_eval_iters` to -1.")
+            self._num_eval_iters = -1
+
+        return self._num_eval_iters
+
+    @num_eval_iters.setter
+    def num_eval_iters(self, value: int):
+        if not self.in_evaluation:
+            raise AssertionError(
+                "The number of evaluation iterations can only be set when the "
+                "environment is in evaluation mode."
+            )
+
+        self._num_eval_iters = value
 
     def _separate_sim_nonsim(self) -> Tuple[List[str], List[str]]:
         """Separate attributes based on if they are supported by the Simulation or not."""
@@ -157,9 +187,10 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
         return return_dict
 
     # FIXME: Update name and make property?
-    def _increment_evaluation_iterations(self) -> None:
+    def _increment_evaluation_iterations(self) -> int:
         """Increment the number of calls to `Algorithm.evaluate()` (rllib)."""
-        self._num_eval_iters += 1
+        self.num_eval_iters += 1
+        return self.num_eval_iters
 
     def _log_env_reset(self):
         """Log information about the environment that is being reset."""

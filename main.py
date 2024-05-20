@@ -30,7 +30,7 @@ from ray.tune.registry import get_trainable_cls, register_env
 from ray.tune.result_grid import ResultGrid
 from ray.rllib.env import MultiAgentEnv
 from ray.rllib.algorithms.callbacks import make_multi_callbacks
-
+from ray.train._internal.checkpoint_manager import _TrainingResult
 
 from simfire.enums import BurnStatus
 
@@ -48,7 +48,7 @@ import json
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 # Register custom resolvers that are used within the config files
-OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 39))
+OmegaConf.register_new_resolver("operational_screen_size", lambda x: int(x * 30))
 OmegaConf.register_new_resolver("calculate_half", lambda x: int(x / 2))
 OmegaConf.register_new_resolver("square", lambda x: x**2)
 
@@ -151,12 +151,15 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
     for i in range(stop_cond.training_iteration):
         LOGGER.info(f"Training iteration {i}.")
         result = algo.train()
-        LOGGER.info(f"{pretty_print(result)}\n")
+        LOGGER.debug(f"{pretty_print(result)}\n")
 
         if i % cfg.checkpoint.checkpoint_frequency == 0:
-            ckpt_path = algo.save()
-            log_str = f"A checkpoint has been created inside directory: {ckpt_path}.\n"
-            LOGGER.info(log_str)
+            save_result: _TrainingResult = algo.save()
+            path_to_checkpoint = save_result.checkpoint.path
+            LOGGER.info(
+                "An Algorithm checkpoint has been created inside directory: "
+                f"'{path_to_checkpoint}'."
+            )
 
         if (
             result["timesteps_total"] >= stop_cond.timesteps_total
@@ -168,7 +171,8 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
             LOGGER.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
             break
 
-    model_path = algo.save()
+    final_result: _TrainingResult = algo.save()
+    model_path = final_result.checkpoint.path
     LOGGER.info(f"The final model has been saved inside directory: {model_path}.")
     algo.stop()
 
@@ -274,10 +278,12 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         .resources(**cfg.resources)
         .debugging(**debug_settings)
     )
-    callbacks = [RenderEnv]
-    if "additional_callbacks" in cfg.algo:
-        callbacks += [instantiate(c) for c in cfg.algo.additional_callbacks]
-    algo_cfg = algo_cfg.callbacks(make_multi_callbacks(callbacks))
+
+    # Add callbacks to the algorithm config if they are specified in the config.
+    # NOTE: Callbacks are run in the order they are specified in the config.
+    if "callbacks" in cfg.algo:
+        callbacks = [instantiate(c) for c in cfg.algo.callbacks]
+        algo_cfg = algo_cfg.callbacks(make_multi_callbacks(callbacks))
 
     # Add multi agent settings if needed for the specified environment.
     env_module, env_cls = cfg.environment.env.rsplit(".", 1)

@@ -4,6 +4,8 @@ import logging
 import os
 from math import log
 from typing import TYPE_CHECKING, Dict, Optional, Union
+import time
+from itertools import chain
 
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
@@ -28,7 +30,7 @@ TRAIN_KEY = "train"
 EVAL_KEY = "evaluation"
 # TODO: Add a config option to control rendering settings.
 # Switch to enable rendering of training environments.
-RENDER_TRAIN_ENVS = True
+RENDER_TRAIN_ENVS = False
 # NOTE: Probably better to use a dictionary so that "eval" and "train" are not forced to
 # use the same interval setup, but good enough for the time being. When this update is
 # added, the logic in RenderEnv.should_render_env will need to be updated accordingly.
@@ -65,16 +67,19 @@ class RenderEnv(DefaultCallbacks):
             kwargs: Forward compatibility placeholder.
         """
         utils.validate_evaluation_config(algorithm.config)
-        logdir = algorithm.logdir
-        workers = [algorithm.workers, algorithm.evaluation_workers]
-        # TODO: Handle edge case where num_evaluation_workers == 0.
+        self.has_local_eval_worker = utils.has_local_worker(algorithm.evaluation_config)
+        self.has_local_train_worker = utils.has_local_worker(algorithm.config)
+
         # Make the trial result path accessible to each env (for gif saving).
-        for worker in workers:
-            worker.foreach_worker(
-                lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
-                local_worker=True,
-            )
-        # self.render_envs = algorithm.config.env_config.get("render_envs", "all")
+        logdir = algorithm.logdir
+        algorithm.workers.foreach_worker(
+            lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
+            local_worker=self.has_local_train_worker,
+        )
+        algorithm.evaluation_workers.foreach_worker(
+            lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
+            local_worker=self.has_local_eval_worker,
+        )
 
     def on_episode_created(
         self,
@@ -115,26 +120,40 @@ class RenderEnv(DefaultCallbacks):
         env_type = EVAL_KEY if worker.config.in_evaluation else TRAIN_KEY
         self.render_current_episode = self.should_render_env(env, env_type)
         if self.render_current_episode:
-            env_ctx = worker.env_context
-            w_idx, v_idx = env_ctx.worker_index, env_ctx.vector_index
+            # NOTE: Weird rllib behavior - v_idx always 0 when num_rollout_workers == 0.
+            w_idx = worker.env_context.worker_index
+            v_idx = env_index
             logger.info(
                 f"Preparing to render {env_type} environment (w: {w_idx}, v: {v_idx})..."
             )
             env._configure_env_rendering(True)
+
+            # TODO: Look into save_history behavior in analytics module.
+            env.harness_analytics.reset(
+                env_is_rendering=True,
+                reset_benchmark=env._new_fire_scenario,
+            )
 
     def should_render_env(
         self, env: "FireHarness[FireSimulation]", env_type: str
     ) -> bool:
         """Check if the environment should be rendered."""
         if env_type == TRAIN_KEY:
-            self.curr_iter = env.current_result.get("training_iteration", 0)
+            if not env.current_result:
+                logger.info("No current_result, setting current iteration to 0...")
+                self.curr_iter = 0
+            else:
+                self.curr_iter = env.current_result["training_iteration"]
         else:
-            self.curr_iter = env._num_eval_iters
+            logger.info(f"Current evaluation iteration: {env.num_eval_iters}")
+            self.curr_iter = env.num_eval_iters
 
+        logger.debug(f"Current iteration for {env_type}: {self.curr_iter}")
         if env_type == TRAIN_KEY and RENDER_TRAIN_ENVS or env_type == EVAL_KEY:
             # Use specified interval type to determine if the env should be rendered.
             if RENDER_INTERVAL_TYPE == "log":
-                value = log(self.curr_iter, LOGARITHMIC_BASE)
+                # NOTE: +1 to avoid log(0) and to ensure the first iteration is rendered.
+                value = log(self.curr_iter + 1, LOGARITHMIC_BASE)
                 return value.is_integer() and value > 0
             elif RENDER_INTERVAL_TYPE == "linear":
                 return self.curr_iter % LINEAR_INTERVAL_STEP == 0
@@ -177,21 +196,30 @@ class RenderEnv(DefaultCallbacks):
         # "on the same page".
         if self.render_current_episode and env._should_render and env.sim.rendering:
             logdir = env.trial_logdir
-            env_ctx = worker.env_context
-            w_idx, v_idx = env_ctx.worker_index, env_ctx.vector_index
+            # NOTE: Weird rllib behavior - v_idx always 0 when num_rollout_workers == 0.
+            w_idx = worker.env_context.worker_index
+            v_idx = env_index
 
             # Save a GIF from the last episode
             # Check if there is a gif "ready" to be saved
             # FIXME Update logic to handle saving same gif when writing to Aim UI
             context_dict = {}
             # FIXME: Should we round lat, lon to a certain precision??
-            lat, lon = env.sim.config.landfire_lat_long_box.points[0]
-            op_data_lat_lon = f"operational_lat_{lat}_lon_{lon}"
+            if env.sim.config.landfire_lat_long_box:
+                lat, lon = env.sim.config.landfire_lat_long_box.points[0]
+                op_data_lat_lon = f"operational_lat_{lat}_lon_{lon}"
+            else:
+                op_data_lat_lon = "functional"
             fire_init_pos = env.sim.config.fire.fire_initial_position
             context_dict.update({"fire_initial_position": str(fire_init_pos)})
             # FIXME: Finalize path for saving gifs (and add note to docs) - for example,
             # save each gif in a folder that relates it to episode iter?
-            env_episode_id = f"iter_{self.curr_iter}_w_{w_idx}_v_{v_idx}"
+            current_time = time.strftime("%H%M%S")
+            if env_type == EVAL_KEY:
+                curr_iter = env.num_eval_iters
+            else:
+                curr_iter = self.curr_iter
+            env_episode_id = f"iter_{curr_iter}_time_{current_time}_w_{w_idx}_v_{v_idx}"
             gif_save_path = os.path.join(
                 logdir,
                 env_type,
@@ -200,15 +228,16 @@ class RenderEnv(DefaultCallbacks):
                 f"fire_init_pos_x_{fire_init_pos[0]}_y_{fire_init_pos[1]}",
                 f"{env_episode_id}.gif",
             )
+            logger.info(f"Total environment steps: {env.timesteps}")
             logger.info(f"Saving GIF to {gif_save_path}...")
-            base_env.get_sub_environments()[env_index].sim.save_gif(gif_save_path)
+            env.sim.save_gif(gif_save_path)
             # Save the gif_path so that we can write image to aim server, if desired
             # NOTE: `save_path` is a list after the above; do element access for now
             logger.debug(f"Type of gif_save_path: {type(gif_save_path)}")
             gif_data = {
                 "path": gif_save_path,
                 "name": op_data_lat_lon,
-                "step": self.curr_iter,
+                "step": curr_iter,
                 # "epoch":
                 "context": context_dict,
             }
@@ -240,12 +269,17 @@ class RenderEnv(DefaultCallbacks):
         # TODO: Add note in docs that the local worker IS NOT rendered. With this
         # assumption, we should always set `evaluation.evaluation_num_workers >= 1`.
         # TODO: Handle edge case where num_evaluation_workers == 0.
-        logger.info("Starting evaluation...")
         # Increment the number of evaluation iterations
-        algorithm.evaluation_workers.foreach_worker(
+        logger.info("Incrementing evaluation iterations...")
+        eval_iters = algorithm.evaluation_workers.foreach_worker(
             lambda w: w.foreach_env(lambda env: env._increment_evaluation_iterations()),
-            local_worker=False,
+            local_worker=self.has_local_eval_worker,
         )
+        curr_eval_iter = {iter for iter in chain(*eval_iters)}
+        if len(curr_eval_iter) > 1:
+            logger.warning(f"Multiple evaluation iterations detected: {curr_eval_iter}.")
+        else:
+            logger.info(f"Current evaluation iteration set to: {curr_eval_iter.pop()}")
 
     def on_train_result(
         self,
@@ -263,7 +297,12 @@ class RenderEnv(DefaultCallbacks):
             kwargs: Forward compatibility placeholder.
         """
         # Update the current result for each environment.
+        if result:
+            logger.info("Updating current result for each environment...")
+        else:
+            logger.warning("No result to update for each environment...")
+
         algorithm.workers.foreach_worker(
             lambda w: w.foreach_env(lambda env: setattr(env, "current_result", result)),
-            local_worker=False,
+            local_worker=self.has_local_train_worker,
         )
