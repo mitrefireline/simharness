@@ -22,12 +22,12 @@ from simharness2.analytics.agent_analytics import ReactiveAgentAnalytics
 
 
 logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
-)
-logger.addHandler(handler)
-logger.propagate = False
+# handler = logging.StreamHandler()
+# handler.setFormatter(
+#     logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+# )
+# logger.addHandler(handler)
+# logger.propagate = False
 
 
 @dataclass

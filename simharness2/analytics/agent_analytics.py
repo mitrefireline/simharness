@@ -19,12 +19,12 @@ from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 
 logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
-)
-logger.addHandler(handler)
-logger.propagate = False
+# handler = logging.StreamHandler()
+# handler.setFormatter(
+#     logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+# )
+# logger.addHandler(handler)
+# logger.propagate = False
 
 
 @dataclass

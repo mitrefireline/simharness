@@ -195,7 +195,9 @@ def _instantiate_config(
     # Instantiate the env and eval settings objects from the config.
     # NOTE: We are instantiating to a NEW object on purpose; otherwise a
     # `TypeError` will be raised when attempting to log the cfg to Aim.
+    LOGGER.info("Instantiating environment settings (with partial conversion)...")
     env_settings = instantiate(cfg.environment, _convert_="partial")
+    LOGGER.info("Instantiating evaluation settings (with partial conversion)...")
     eval_settings = instantiate(cfg.evaluation, _convert_="partial")
 
     # FIXME: Fire scenario configuration disabled for now. Fix this in new MR.
@@ -297,6 +299,38 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     return algo_cfg
 
 
+def logging_setup_func():
+    from datetime import datetime
+    from ray.runtime_context import RuntimeContext
+
+    runtime_ctx: RuntimeContext = ray.get_runtime_context()
+    # runtime_ctx.worker
+    task_id = runtime_ctx.get_task_id()
+    job_id = runtime_ctx.get_job_id()
+    pid = os.getpid()
+
+    curr_date = datetime.now().strftime("%Y-%m-%d")
+    temp_outdir = os.path.join("/", "simharness", "job_logs", curr_date, f"job-{job_id}")
+    os.makedirs(temp_outdir, exist_ok=True)
+    out_file = f"sh-pid-{pid}.log"
+    out_file_path = os.path.join(temp_outdir, out_file)
+
+    logger = logging.getLogger("simharness2")
+    formatter = logging.Formatter(
+        "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s"
+    )
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(formatter)
+
+    file_handler = logging.FileHandler(out_file_path)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(stream_handler)
+    logger.addHandler(file_handler)
+
+
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
     """Main entry-point for training a SimHarness model with RLlib.
@@ -309,8 +343,12 @@ def main(cfg: DictConfig) -> None:
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
     # ray.init(address="auto", log_to_driver=False)
-    ray.init()
-
+    # Start the Ray runtime
+    ray.init(
+        address="auto",
+        log_to_driver=True,
+        runtime_env={"worker_process_setup_hook": logging_setup_func},
+    )
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir
     output_subdir = hydra_cfg.output_subdir

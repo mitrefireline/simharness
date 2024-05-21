@@ -13,14 +13,14 @@ from simharness2.analytics.simulation_analytics import FireSimulationAnalytics
 
 
 logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
-)
-logger.addHandler(handler)
-logger.propagate = False
+# handler = logging.StreamHandler()
+# handler.setFormatter(
+#     logging.Formatter("%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
+# )
+# logger.addHandler(handler)
+# logger.propagate = False
 
-logger = logging.getLogger("ray.rllib")
+# logger = logging.getLogger("ray.rllib")
 
 
 class RLHarnessAnalytics(ABC):

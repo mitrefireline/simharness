@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+# logger.propagate = False
 
 
 # TODO: Add this constant to a more relevant place; fine to keep here for now.
