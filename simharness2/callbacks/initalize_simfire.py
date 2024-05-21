@@ -13,7 +13,6 @@ from simharness2.environments import utils as env_utils
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
-    from simfire.sim.simulation import FireSimulation
 
 
 logger = logging.getLogger(__name__)
@@ -81,17 +80,20 @@ class InitializeSimfire(DefaultCallbacks):
         )
 
         # TODO: Do we want to generate data using a deepcopy of `sim`?
-        sim: "FireSimulation" = algorithm.config.env_config.get("sim")
+        sim_init_cfg = algorithm.config.env_config.get("sim")
+        sim_config_dict = sim_init_cfg.get("config_dict")
         # Validate the configuration for the `FireSimulation` object.
-        env_utils.check_terrain_is_operational(sim)
-        env_utils.check_fire_init_pos_is_static(sim)
+        env_utils.check_terrain_is_operational(sim_config=sim_config_dict)
+        env_utils.check_fire_init_pos_is_static(sim_config=sim_config_dict)
 
         # NOTE: We are not doing any validation of the provided op_locs config.
         op_locs_cfg = algorithm.config.env_config.get("operational_locations")
         self.op_locs_cfg = op_locs_cfg
         fire_pos_cfg = algorithm.config.env_config.get("fire_initial_position")
+        sim_map_shape = sim_config_dict.get("area").get("screen_size")
+        sim_map_size = sim_map_shape[0] * sim_map_shape[1]
         self.fire_pos_cfg = env_utils.validate_fire_init_config(
-            fire_pos_cfg, sim.fire_map.size
+            fire_pos_cfg, sim_map_size
         )
         # Ensure number of scenarios to sample is valid wrt number of workers/envs.
         self._check_sample_size_vs_workers(algorithm)
@@ -160,7 +162,7 @@ class InitializeSimfire(DefaultCallbacks):
         for loc in train_locs + eval_locs:
             logger.info(f"Preparing data for location: {loc}")
             train_data, eval_data = env_utils.prepare_fire_map_data(
-                sim,
+                sim_init_cfg,
                 fire_pos_cfg,
                 location=loc,
                 return_train_data=loc in train_locs,

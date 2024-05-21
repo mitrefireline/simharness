@@ -25,7 +25,9 @@ import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
-from simfire.sim.simulation import FireSimulation
+
+from simfire.sim.simulation import Simulation, FireSimulation
+from simfire.utils.config import Config
 
 import simharness2.environments.utils as env_utils
 
@@ -69,7 +71,19 @@ def main(cfg: DictConfig) -> None:
     # up (possibly) downloading unnecessary data and building the sim object, which will
     # just be updated later anyways. Okay for now, but fix later if time permits.
     env_cfg = instantiate(cfg.environment.env_config, _convert_="partial")
-    sim: FireSimulation = env_cfg.get("sim")
+    # Use provided simulation info to create a simulation object.
+    sim_init_cfg = env_cfg.get("sim")
+    sim_cls = sim_init_cfg.get("simfire_cls")
+    if sim_cls is None:
+        raise ValueError(
+            "The simulation class must be present in the `sim` "
+            "dictionary. This is usually specified via the "
+            "`simfire_cls` key in `environment.env_config.sim`."
+        )
+    elif not issubclass(sim_cls, Simulation):
+        raise ValueError("The simulation class must be a subclass of `Simulation`.")
+    sim_cfg = sim_init_cfg.get("config_dict")
+    sim: FireSimulation = sim_cls(Config(config_dict=sim_cfg))
 
     # Validate the configuration for the `FireSimulation` object.
     env_utils.check_terrain_is_operational(sim)

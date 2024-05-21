@@ -24,6 +24,7 @@ from gymnasium import spaces
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 from simfire.utils.config import Config
+from simfire.sim.simulation import Simulation
 
 from simharness2.agents.agent import ReactiveAgent
 from simharness2.agents.initialization import AgentInitializer
@@ -57,14 +58,16 @@ class FireHarness(Harness[AnyFireSimulation]):
     def __init__(
         self,
         *,
-        sim: AnyFireSimulation,
+        sim: Dict[str, Any],
+        # sim: AnyFireSimulation,
         attributes: List[str],
         normalized_attributes: List[str],
         movements: List[str],
         interactions: List[str],
         action_space_cls: Callable,
         in_evaluation: bool = False,
-        benchmark_sim: Optional[AnyFireSimulation] = None,
+        benchmark_sim: Dict[str, Any] = None,
+        # benchmark_sim: Optional[AnyFireSimulation] = None,
         harness_analytics_partial: Optional[partial] = None,
         reward_cls_partial: Optional[partial] = None,
         num_agents: int = 1,
@@ -81,7 +84,20 @@ class FireHarness(Harness[AnyFireSimulation]):
         )
         # TODO: Define `benchmark_sim` in `DamageAwareReactiveHarness`.
         # Define attributes that are specific to the FireHarness.
-        self.benchmark_sim = benchmark_sim
+
+        # Use provided benchmark simulation info to create a simulation object.
+        benchmark_sim_cls = benchmark_sim.get("simfire_cls")
+        if benchmark_sim_cls is None:
+            raise ValueError(
+                "The simulation class must be present in the `benchmark_sim` "
+                "dictionary. This is usually specified via the "
+                "`simfire_cls` key in `environment.env_config.sim`."
+            )
+        elif not issubclass(benchmark_sim_cls, Simulation):
+            raise ValueError("The simulation class must be a subclass of `Simulation`.")
+        benchmark_sim_cfg = sim.get("config_dict")
+        self.benchmark_sim = benchmark_sim_cls(Config(config_dict=benchmark_sim_cfg))
+
         # TODO: use more apt name, ex: `available_movements`, `possible_movements`.
         self.movements = copy.deepcopy(movements)  # FIXME: is deepcopy necessary?
         # TODO: use more apt name, ex: `available_interactions`, `possible_interactions`.

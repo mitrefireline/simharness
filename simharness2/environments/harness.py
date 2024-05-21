@@ -8,6 +8,7 @@ import gymnasium as gym
 import numpy as np
 from ray.rllib.utils.typing import ResultDict
 from simfire.sim.simulation import Simulation
+from simfire.utils.config import Config
 
 if TYPE_CHECKING:
     from simharness2.environments.utils import RLlibEnvContextMetadata
@@ -20,13 +21,25 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
     def __init__(
         self,
         *,
-        sim: AnySimulation,
+        sim: Dict[str, Any],
+        # sim: AnySimulation,
         attributes: List[str],
         normalized_attributes: List[str],
         in_evaluation: bool = False,
         **kwargs,
     ):
-        self.sim = sim
+        # Use provided simulation info to create a simulation object.
+        sim_cls = sim.get("simfire_cls")
+        if sim_cls is None:
+            raise ValueError(
+                "The simulation class must be present in the `sim` "
+                "dictionary. This is usually specified via the "
+                "`simfire_cls` key in `environment.env_config.sim`."
+            )
+        elif not issubclass(sim_cls, Simulation):
+            raise ValueError("The simulation class must be a subclass of `Simulation`.")
+        sim_cfg = sim.get("config_dict")
+        self.sim = sim_cls(Config(config_dict=sim_cfg))
 
         self.attributes = attributes
         # TODO: Maybe use `attributes_to_normalize` over `normalized_attributes`?
