@@ -321,7 +321,7 @@ def main(cfg: DictConfig) -> None:
     algo_cfg = _build_algo_cfg(cfg)
 
     if cfg.cli.mode == "train":
-        algo = algo_cfg.build()
+        algo = algo_cfg.build(use_copy=False)
         if cfg.algo.checkpoint_path:
             ckpt_path = cfg.algo.checkpoint_path
             LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
@@ -334,7 +334,7 @@ def main(cfg: DictConfig) -> None:
         LOGGER.info(f"Training model on {cfg.environment.env}.")
         train(algo, cfg)
     if cfg.cli.mode == "eval":
-        algo = algo_cfg.build()
+        algo = algo_cfg.build(use_copy=False)
         if cfg.algo.checkpoint_path:
             ckpt_path = cfg.algo.checkpoint_path
             LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
