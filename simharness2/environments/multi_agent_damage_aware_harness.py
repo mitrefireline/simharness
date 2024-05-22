@@ -96,13 +96,16 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
         # TODO: Only call _run_benchmark if fire scenario differs from previous episode.
         # This is somewhat tricky - must ensure that analytics.data is NOT reset!
         if self._new_fire_scenario:
+            logger.info("New fire scenario detected. Resetting benchmark simulation...")
             # Run new benchsim to completion to obtain data for reward and policy.
             self.benchmark_sim.reset()
             # NOTE: The call below will do a few things:
             #   - Run bench sim to completion (self.benchmark_sim.run(1))
             #   - Update bench sim analytics (update_bench_after_one_simulation_step)
             #   - Store each bench fire map at the sim step in self._bench_firemaps
+            logger.info("Calling _run_benchmark() to completion...")
             self._run_benchmark()
+            logger.info("_run_benchmark() completed.")
             # Don't rerun benchsim until _initialize_simfire() is called again.
             self._new_fire_scenario = False
 
@@ -119,20 +122,25 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
             )
 
         timesteps = 0
+        logger.debug("Running benchmark simulation to completion...")
         while self.benchmark_sim.active:
             run_sim = timesteps % self.agent_speed == 0
 
             if run_sim:
+                # logger.debug(f"Running benchmark simulation at timestep {timesteps}...")
                 # TODO: Refactor logic into a method, and call it here.
                 # Run for one timestep, then update respective metrics.
                 self.benchmark_sim.run(1)
                 # FIXME: This method call is VERY redundant (see method logic)
+                # logger.debug("Updating benchmark sim analytics...")
                 self.harness_analytics.update_bench_after_one_simulation_step(
                     timestep=timesteps
                 )
+                # logger.debug("Benchmark sim analytics updated.")
 
                 curr_step = self.harness_analytics.benchmark_sim_analytics.num_sim_steps
                 # Store the bench fire map at the sim step
+                # logger.debug(f"Storing benchmark fire map at timestep {curr_step}...")
                 if curr_step < self._max_bench_length - 1:
                     self._bench_firemaps[curr_step - 1] = np.copy(
                         self.benchmark_sim.fire_map

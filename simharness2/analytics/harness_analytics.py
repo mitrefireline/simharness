@@ -209,6 +209,7 @@ class ReactiveHarnessAnalytics(RLHarnessAnalytics):
 
         # Once episode has terminated, check if episode performance is the best so far.
         if terminated:
+            logger.info(f"Episode {self.episodes_total} has terminated.")
             self.episodes_total += 1
 
             current_unburned = self.sim_analytics.data.unburned

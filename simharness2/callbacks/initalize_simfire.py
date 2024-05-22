@@ -70,6 +70,7 @@ class InitializeSimfire(DefaultCallbacks):
         self.has_local_train_worker = utils.has_local_worker(algorithm.config)
 
         # Set `rllib_env_context` for each env (needed w/in `env._initialize_simfire`).
+        logger.info(f"Setting `rllib_env_context` for each env.")
         algorithm.workers.foreach_worker(
             lambda w: w.foreach_env_with_context(env_utils.set_harness_env_context),
             local_worker=self.has_local_train_worker,
@@ -83,6 +84,7 @@ class InitializeSimfire(DefaultCallbacks):
         sim_init_cfg = algorithm.config.env_config.get("sim")
         sim_config_dict = sim_init_cfg.get("config_dict")
         # Validate the configuration for the `FireSimulation` object.
+        logger.info("Validating `FireSimulation` config options...")
         env_utils.check_terrain_is_operational(sim_config=sim_config_dict)
         env_utils.check_fire_init_pos_is_static(sim_config=sim_config_dict)
 
@@ -108,6 +110,7 @@ class InitializeSimfire(DefaultCallbacks):
         # TODO: Add check to ensure each location is valid. For more info, see:
         # https://github.com/mitrefireline/simfire/blob/0d46451db183a58d209ef789c509f00eca0daedf/simfire/utils/config.py#L306
         # Seed each respective env with the operational locations.
+        logger.info("Sampling operational locations for training and evaluation.")
         train_locs, eval_locs = env_utils.get_operational_locations(
             cfg=self.op_locs_cfg,
             num_train_locs=self.num_train_locations,
@@ -124,6 +127,7 @@ class InitializeSimfire(DefaultCallbacks):
         for loc in eval_locs:
             eval_locs_duplicated.extend([loc] * self.num_eval_fire_init_pos)
 
+        logger.info("Setting operational location for training envs...")
         train_locs_used = algorithm.workers.foreach_worker(
             lambda w: w.foreach_env(
                 lambda env: env._set_operational_location(
@@ -133,6 +137,7 @@ class InitializeSimfire(DefaultCallbacks):
             ),
             local_worker=self.has_local_train_worker,
         )
+        logger.info("Setting operational location for evaluation envs...")
         eval_locs_used = algorithm.evaluation_workers.foreach_worker(
             lambda w: w.foreach_env(
                 lambda env: env._set_operational_location(
@@ -155,10 +160,13 @@ class InitializeSimfire(DefaultCallbacks):
             else:
                 self.op_locs_counter[eval_loc] = {"train": 0, "eval": 1}
 
+        logger.debug(f"self.op_locs_counter:\n{pformat(self.op_locs_counter)}")
+
         # Retrieve the train/eval data using the provided fire initial position config.
         logdir = algorithm.logdir
         train_data_arrs = {}
         eval_data_arrs = {}
+        logger.info("Preparing fire map data for all operational locations...")
         for loc in train_locs + eval_locs:
             logger.info(f"Preparing data for location: {loc}")
             train_data, eval_data = env_utils.prepare_fire_map_data(
@@ -193,6 +201,7 @@ class InitializeSimfire(DefaultCallbacks):
             train_data.shape[-1], size=self.num_train_fire_init_pos, replace=False
         )
         train_subset = train_data[:, train_indices]
+        logger.info("Calling `_initialize_simfire` for each training env...")
         op_loc_and_pos_used = algorithm.workers.foreach_worker(
             lambda w: w.foreach_env(
                 lambda env: env._initialize_simfire(
@@ -224,6 +233,7 @@ class InitializeSimfire(DefaultCallbacks):
             eval_data.shape[-1], size=self.num_eval_fire_init_pos, replace=False
         )
         eval_subset = eval_data[:, eval_indices]
+        logger.info("Calling `_initialize_simfire` for each evaluation env...")
         algorithm.evaluation_workers.foreach_worker(
             lambda w: w.foreach_env(
                 lambda env: env._initialize_simfire(
@@ -236,8 +246,11 @@ class InitializeSimfire(DefaultCallbacks):
         )
 
         # Put data into the distributed object store, and store the respective refs.
+        logger.info("Storing data in the distributed object store...")
         self.data_object_refs["train"] = ray.put(train_data)
         self.data_object_refs["eval"] = ray.put(eval_data)
+
+        logger.debug("Finished `InitializeSimfire.on_algorithm_init()` callback.")
 
     def on_train_result(
         self,

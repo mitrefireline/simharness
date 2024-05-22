@@ -75,6 +75,8 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict
     ]:
         """Returns observations from ready agents."""
+        if self.timesteps == 0:
+            logger.info("First step in the environment for the current episode.")
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
         for agent_id, agent in self.agents.items():

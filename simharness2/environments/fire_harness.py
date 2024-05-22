@@ -687,6 +687,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         logger.info(f"Setting simulation fire initial position to {init_pos}...")
         self.sim.set_fire_initial_position(init_pos)
         if self.benchmark_sim:
+            logger.info(f"Setting benchmark_sim fire initial position to {init_pos}...")
             self.benchmark_sim.set_fire_initial_position(init_pos)
 
         # TODO: Decide on how to indicate that fire scenario is "new"; works for now.
