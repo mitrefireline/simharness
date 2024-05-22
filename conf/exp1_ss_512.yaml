@@ -75,7 +75,7 @@ simulation:
       make_all_positions: false # FIXME!
       # Number of candidate initial fire positions to generate. Ignored when
       # `make_all_postions == true`.
-      output_size: 128 # FIXME!
+      output_size: 256 # FIXME!
       # The root location to save the generated dataset.
       save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
     # To disable usage of generator, simply set to null.
@@ -134,8 +134,8 @@ stop_conditions:
   episode_reward_mean: 10000000
 
 resources:
-  num_gpus: 0.2
-  num_gpus_per_worker: 0.3
+  num_gpus: 0.5
+  num_gpus_per_worker: 0.4
 
 debugging:
   log_level: INFO

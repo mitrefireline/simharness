@@ -147,6 +147,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
     stop_cond = cfg.stop_conditions
+    checkpoint_dir = os.path.join(algo.logdir, "checkpoints")
     # Run training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
         LOGGER.info(f"Training iteration {i}.")
@@ -154,7 +155,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         LOGGER.debug(f"{pretty_print(result)}\n")
 
         if i % cfg.checkpoint.checkpoint_frequency == 0:
-            save_result: _TrainingResult = algo.save()
+            save_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
             path_to_checkpoint = save_result.checkpoint.path
             LOGGER.info(
                 "An Algorithm checkpoint has been created inside directory: "
@@ -171,7 +172,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
             LOGGER.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
             break
 
-    final_result: _TrainingResult = algo.save()
+    final_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
     model_path = final_result.checkpoint.path
     LOGGER.info(f"The final model has been saved inside directory: {model_path}.")
     algo.stop()
@@ -345,9 +346,18 @@ def main(cfg: DictConfig) -> None:
     # ray.init(address="auto", log_to_driver=False)
     # Start the Ray runtime
     ray.init(
-        address="auto",
+        address="local",
         log_to_driver=True,
         runtime_env={"worker_process_setup_hook": logging_setup_func},
+        _temp_dir="/dev/shm/ray",
+        _system_config={
+            "object_spilling_config": json.dumps(
+                {
+                    "type": "filesystem",
+                    "params": {"directory_path": "/dev/shm/ray_spilled_objects"},
+                }
+            )
+        },
     )
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir
