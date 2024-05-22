@@ -9,7 +9,13 @@ logger = logging.getLogger(__name__)
 
 
 class AreaSavedReward(BaseReward):
-    """Basic counterfactual reward"""
+    """Reward as described in paper based on the incremental proportion of
+    Area saved, or area that was not burned, burning, or mitigated, at each timestep (t), when comparing
+    the mitigated simulation (Sim) to the unmitigated benchmark simulation (Bench)
+
+    Additional Conditions are given to add lower bounds of reward = 0 when the maximum possible damage that occurs at each timestep
+     in the agent(s) simulation is bounded to the maximum possible damage that occurs at the benchmark simulation timestep.
+    """
 
     def __init__(self, harness_analytics: ReactiveHarnessAnalytics):
         """TODO Add constructor docstring."""
@@ -75,12 +81,103 @@ class AreaSavedReward(BaseReward):
             ## REWARD CALCULATION
 
             # calculate the reward as the difference in newly damaged squares between the agent(s) simulation and the benchmark simulation at the given timestep
-            reward = (bench_new_damaged - sim_new_damaged) / bench_total_damaged
 
+            if sim_steps <= bench_sim_steps_total:
+                # ensure that the maximum possible damage that occurs at timestep in the agent(s) simulation is equivalent to the maximum possible damage that occurs at the benchmark simulation timestep
+                if sim_new_damaged > bench_new_damaged:
+                    sim_new_damaged = bench_new_damaged
+
+                reward = (
+                    (bench_new_damaged * 1.0 - sim_new_damaged)
+                    / bench_total_damaged
+                    * 1.0
+                )
+
+            else:
+                # account for when the agent(s) simulation has lasted longer than the benchmark simulation
+
+                # if the total area damaged in the agent(s) simulation is less than the total area damaged in the benchmark simulation
+                if sim_total_damaged < bench_total_damaged:
+                    bench_new_damaged = 0.0
+                    reward = (
+                        (bench_new_damaged * 1.0 - sim_new_damaged)
+                        / bench_total_damaged
+                        * 1.0
+                    )
+
+                else:
+                    # if the total area damaged in the agent(s) simulation now exceeds the area damaged in the benchmark simulation, treat the total reward as 0
+                    reward = 0.0
+
+            # account for if the agent(s) simulation has ended in fewer steps than the benchmark simulation
+            if (self.harness_analytics.sim_analytics.active == False) and (
+                sim_steps < bench_sim_steps_total
+            ):
+                # augment the reward with the number of potential squares saved compared to the benchsim
+                if sim_total_damaged < bench_total_damaged:
+                    bench_rest_damaged = (
+                        self.harness_analytics.benchmark_sim_analytics.data.damaged[-1]
+                        - self.harness_analytics.benchmark_sim_analytics.data.damaged[
+                            (sim_steps - 1)
+                        ]
+                    )
+
+                    sim_rest_damaged = 0.0
+
+                    # reward = reward + (
+                    #     bench_rest_damaged / bench_total_damaged
+                    # )
+
+            # update self.latest_reward and then return the reward
+            self.latest_reward = reward
+
+        # FIXME: Finalize reward value for "finishing"
         if done_episode:
+            self.latest_reward += 1.0
             reward += 1.0
-        reward = {k: reward for k in agents}
-        return reward
 
-    def get_timestep_intermediate_reward(self, timestep: int, **kwargs) -> float:
-        return 0
+        reward_msg = "Latest reward" if sim_run else "Latest intermediate reward"
+        logger.debug(f"{reward_msg}: {self.latest_reward}")
+        return {agent: reward for agent in agents}
+
+    def get_timestep_intermediate_reward(
+        self,
+        *,
+        timestep: int,
+        agents: Dict[Any, ReactiveAgent],
+        agent_speed: int,
+    ) -> float:
+        """Basic Intermediate reward is the last sim step reward
+        + a small amount if the agent successfully places a mitigation and the total squares damaged does not exceed the benchmark sim
+        OR
+        - a small amount if the agent successfully places a mitigation and the total squares damaged exceeds the benchmark sim
+        """
+
+        # extract the total number of damaged squares in the benchmark simulation
+        bench_total_damaged = self.harness_analytics.benchmark_sim_analytics.data.damaged[
+            -1
+        ]
+        # extract the total number of damaged squares in the agent(s) simulation
+        sim_total_damaged = self.harness_analytics.sim_analytics.data.total_damaged
+        # calculate the fractional reward partial given for each agent's successful mitigation placement
+        mitigation_bonus = 1.0 / (len(agents) * agent_speed)
+
+        # FIXME: I'm not sure if this is correct; Need to verify if the intermediate
+        # reward values "look correct"...
+        reward = self.latest_reward
+
+        # if the total area damaged in the agent(s) simulation is less than the total area damaged in the benchmark simulation
+        if sim_total_damaged < bench_total_damaged:
+            for agent in agents.values():
+                if agent.mitigation_placed == True:
+                    # FIXME for multidiscrete action space
+                    reward = reward + (mitigation_bonus / bench_total_damaged)
+
+        # else if the total area damaged in the agent(s) simulation is more than the total area damaged in the benchmark simulation
+        if sim_total_damaged > bench_total_damaged:
+            for agent in agents.values():
+                if agent.mitigation_placed == True:
+                    # FIXME for multidiscrete action space
+                    reward = reward - (mitigation_bonus / bench_total_damaged)
+
+        return reward
