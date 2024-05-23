@@ -1,6 +1,6 @@
 defaults:
   - config
-  - override environment: marl_damage_aware
+  - override environment: marl_damage_aware_always_dig
   - override training: ppo_with_custom_model
   - override exploration: stochastic_sampling
   # UNCOMMENT BELOW TO "DISABLE" TUNING, ie. use tune for standalone trial.
@@ -37,15 +37,7 @@ cli:
 
 hydra:
   run:
-    dir: ${cli.data_dir}/experiments/${now:%Y-%m-%d_%H-%M-%S}
-
-evaluation:
-  evaluation_interval: 30
-  evaluation_duration: ${evaluation.evaluation_num_workers}
-  evaluation_duration_unit: episodes
-  evaluation_num_workers: 4
-  evaluation_config:
-    num_envs_per_worker: 1
+    dir: ${cli.data_dir}/experiments/${now:%Y-%m-%d}-exp1_ss_128_always_dig_resample_1_no_DL
 
 # Total number of fire scenarios is:
 # - For train, op_loc.sample_size.train * fire_initial_position.sampler.sample_size.train
@@ -64,7 +56,7 @@ simulation:
     # a check to verify that the fixed locations used adhere to the sample_size specs.
     sample_size:
       train: 4
-      eval: 1
+      eval: 2
     independent_eval: true
   fire_initial_position:
     # Configure the generation of candidate initial fire positions.
@@ -82,7 +74,7 @@ simulation:
     sampler:
       # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
       # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
-      resample_interval: 10 # FIXME!
+      resample_interval: 1
       # Number of samples to draw from the distribution, ie. take `sample_size` initial
       # fire positions and distribute them across the respective RolloutWorker's.
       sample_size:
@@ -113,11 +105,6 @@ simulation:
     fire:
       diagonal_spread: true
 
-environment:
-  disable_env_checking: true
-  env_config:
-    operational_locations: ${simulation.operational_locations}
-
 # Specify configuration used to create the ray.air.CheckpointConfig object
 checkpoint:
   # Frequency at which to save checkpoints (in terms of training iterations)
@@ -132,7 +119,7 @@ stop_conditions:
 
 resources:
   num_gpus: 0.01
-  num_gpus_per_worker: 0.4
+  num_gpus_per_worker: 0.1
 
 debugging:
   log_level: INFO
@@ -145,3 +132,11 @@ debugging:
 # training:
 #   train_batch_size: 5000
 #   sgd_minibatch_size: 500
+
+evaluation:
+  evaluation_interval: 30
+  evaluation_duration: ${evaluation.evaluation_num_workers}
+  evaluation_duration_unit: episodes
+  evaluation_num_workers: 8
+  evaluation_config:
+    num_envs_per_worker: 1

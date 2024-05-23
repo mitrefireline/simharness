@@ -53,3 +53,4 @@ env_config:
 
 
   fire_initial_position: ${simulation.fire_initial_position}
+  operational_locations: ${simulation.operational_locations}

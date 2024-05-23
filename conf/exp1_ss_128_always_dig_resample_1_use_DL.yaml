@@ -1,0 +1,8 @@
+defaults:
+  - exp1_ss_128_always_dig_resample_1_no_DL
+  - override environment: marl_damage_aware_always_dig_use_DL
+  - _self_
+
+hydra:
+  run:
+    dir: ${cli.data_dir}/experiments/${now:%Y-%m-%d}-exp1_ss_128_always_dig_resample_1_use_DL

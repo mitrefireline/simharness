@@ -1,0 +1,12 @@
+defaults:
+  - exp1_ss_128_always_dig_resample_1_no_DL
+  - _self_
+
+hydra:
+  run:
+    dir: ${cli.data_dir}/experiments/${now:%Y-%m-%d}-exp1_ss_128_always_dig_resample_5_no_DL
+
+simulation:
+  fire_initial_position:
+    sampler:
+      resample_interval: 5

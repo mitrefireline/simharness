@@ -1,0 +1,8 @@
+defaults:
+  - marl_damage_aware
+  - _self_
+
+disable_env_checking: true
+env_config:
+  movements: [up, down, left, right]
+  interactions: [fireline]

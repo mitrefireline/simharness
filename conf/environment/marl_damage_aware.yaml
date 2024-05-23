@@ -10,6 +10,4 @@ env_config:
     # _target_: simharness2.rewards.AreaSavedReward
     # _target_: simharness2.rewards.MixedForwardAreaSavedReward
     mixing_coefficient: 0.95
-  # Override default attributes to include simfire data layers.
-  attributes: [fire_map, agent_pos, elevation, w_0, sigma, delta, M_x]
-  # data layers available in simfire: elevation, w_0, sigma, delta, M_x, wind_speed, wind_direction
+

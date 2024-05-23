@@ -1,0 +1,8 @@
+defaults:
+  - marl_damage_aware_always_dig
+  - _self_
+
+env_config:
+  # Override default attributes to include simfire data layers.
+  # NOTE: We are excluding wind_speed and wind_direction!
+  attributes: [fire_map, agent_pos, elevation, w_0, sigma, delta, M_x]
