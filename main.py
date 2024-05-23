@@ -147,7 +147,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
     stop_cond = cfg.stop_conditions
-    checkpoint_dir = os.path.join(algo.logdir, "checkpoints")
+    root_checkpoint_dir = os.path.join(algo.logdir, "checkpoints")
     # Run training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
         LOGGER.info(f"Training iteration {i}.")
@@ -161,6 +161,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         LOGGER.info(f"{pretty_print(result)}\n")
         LOGGER.info(f"Training iteration {i} took {elapsed_time}.")
         if i % cfg.checkpoint.checkpoint_frequency == 0:
+            checkpoint_dir = os.path.join(root_checkpoint_dir, f"checkpoint_{i}")
             save_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
             path_to_checkpoint = save_result.checkpoint.path
             LOGGER.info(
