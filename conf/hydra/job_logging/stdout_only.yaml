@@ -11,7 +11,7 @@ handlers:
 
 root:
   # Use the log level specified for the Ray job
-  level: ${debugging.log_level}
+  level: INFO
   handlers: [console]
 
 disable_existing_loggers: false

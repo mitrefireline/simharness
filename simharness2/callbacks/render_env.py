@@ -39,7 +39,7 @@ RENDER_INTERVAL_TYPE = "linear"
 # Set the base for the logarithmic interval
 LOGARITHMIC_BASE = 10
 # Set the step size for the linear interval
-LINEAR_INTERVAL_STEP = 1  # 0
+LINEAR_INTERVAL_STEP = 2  # 0
 
 
 class RenderEnv(DefaultCallbacks):

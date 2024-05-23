@@ -15,6 +15,7 @@ import logging
 import os
 from importlib import import_module
 from typing import Any, Dict, Tuple
+from datetime import datetime
 
 import hydra
 import numpy as np
@@ -141,7 +142,6 @@ def evaluate(algo: Algorithm, cfg: DictConfig) -> None:
 
 def train(algo: Algorithm, cfg: DictConfig) -> None:
     """Train the given algorithm within RLlib.
-
     Args:
         algo (Algorithm): Algorithm to train with.
         cfg (DictConfig): Hydra config with all required parameters for training.
@@ -151,9 +151,15 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
     # Run training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
         LOGGER.info(f"Training iteration {i}.")
-        result = algo.train()
-        LOGGER.debug(f"{pretty_print(result)}\n")
 
+        start_time = datetime.now().strftime("%H:%M:%S")
+        t1 = datetime.strptime(start_time, "%H:%M:%S")
+        result = algo.train()
+        end_time = datetime.now().strftime("%H:%M:%S")
+        t2 = datetime.strptime(end_time, "%H:%M:%S")
+        elapsed_time = t2 - t1
+        LOGGER.info(f"{pretty_print(result)}\n")
+        LOGGER.info(f"Training iteration {i} took {elapsed_time}.")
         if i % cfg.checkpoint.checkpoint_frequency == 0:
             save_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
             path_to_checkpoint = save_result.checkpoint.path
@@ -161,7 +167,6 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
                 "An Algorithm checkpoint has been created inside directory: "
                 f"'{path_to_checkpoint}'."
             )
-
         if (
             result["timesteps_total"] >= stop_cond.timesteps_total
             or result["episode_reward_mean"] >= stop_cond.episode_reward_mean
@@ -171,7 +176,6 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
             mean_rew = result["episode_reward_mean"]
             LOGGER.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
             break
-
     final_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
     model_path = final_result.checkpoint.path
     LOGGER.info(f"The final model has been saved inside directory: {model_path}.")
@@ -301,7 +305,6 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
 
 
 def logging_setup_func():
-    from datetime import datetime
     from ray.runtime_context import RuntimeContext
 
     runtime_ctx: RuntimeContext = ray.get_runtime_context()
@@ -332,6 +335,34 @@ def logging_setup_func():
     logger.addHandler(file_handler)
 
 
+def driver_logging_func():
+    from datetime import datetime
+    from ray.runtime_context import RuntimeContext
+
+    runtime_ctx: RuntimeContext = ray.get_runtime_context()
+    job_id = runtime_ctx.get_job_id()
+
+    curr_date = datetime.now().strftime("%Y-%m-%d")
+    temp_outdir = os.path.join("/", "simharness", "job_logs", curr_date, f"job-{job_id}")
+    os.makedirs(temp_outdir, exist_ok=True)
+    out_file = f"driver.log"
+    out_file_path = os.path.join(temp_outdir, out_file)
+
+    logger = logging.getLogger(__name__)
+    formatter = logging.Formatter(
+        "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s"
+    )
+
+    file_handler = logging.FileHandler(out_file_path)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+
+    logger = logging.getLogger("ray.rllib")
+    logger.addHandler(file_handler)
+
+
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
     """Main entry-point for training a SimHarness model with RLlib.
@@ -346,19 +377,11 @@ def main(cfg: DictConfig) -> None:
     # ray.init(address="auto", log_to_driver=False)
     # Start the Ray runtime
     ray.init(
-        address="local",
-        log_to_driver=True,
+        address="auto",
+        log_to_driver=False,
         runtime_env={"worker_process_setup_hook": logging_setup_func},
-        _temp_dir="/dev/shm/ray",
-        _system_config={
-            "object_spilling_config": json.dumps(
-                {
-                    "type": "filesystem",
-                    "params": {"directory_path": "/dev/shm/ray_spilled_objects"},
-                }
-            )
-        },
     )
+    driver_logging_func()
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir
     output_subdir = hydra_cfg.output_subdir

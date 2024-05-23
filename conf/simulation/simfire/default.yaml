@@ -19,7 +19,7 @@ simulation:
   draw_spread_graph: false
   data_type: "npy"
   # NOTE: Below path isn't used to save gifs; we specify `save_path` via `save_gif(path)`
-  sf_home: "${oc.env:HOME}/.simfire"
+  sf_home: /simharness/simfire
 
 mitigation:
   ros_attenuation: False
