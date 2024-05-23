@@ -630,7 +630,11 @@ class FireHarness(Harness[AnyFireSimulation]):
         logger.debug(f"Operational location at index {loc_idx} will be used.")
 
         # Prepare the environment and simulation for the selected operational location.
-        logger.info(f"Setting self._op_loc to {locations[loc_idx]}...")
+        w_idx, v_idx = (
+            self.rllib_env_context.worker_index,
+            self.rllib_env_context.vector_index,
+        )
+        logger.info(f"({w_idx}, {v_idx}) Setting self._op_loc to {locations[loc_idx]}...")
         self._op_loc = locations[loc_idx]
 
         # TODO: Create MR for simfire to add `set_operational_location` method and

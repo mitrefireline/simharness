@@ -118,6 +118,15 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         if self.harness_analytics:
             # FIXME: Decide if we should pass all agent rewards. For now, use the sum.
             cumulative_reward = sum(rewards.values())
+            if terminated:
+                w_idx, v_idx = (
+                    self.rllib_env_context.worker_index,
+                    self.rllib_env_context.vector_index,
+                )
+                logger.info(
+                    f"({w_idx}, {v_idx}) Episode terminated on timestep {self.timesteps}. "
+                    f"Cumulative reward: {cumulative_reward}."
+                )
             self.harness_analytics.update_after_one_harness_step(
                 sim_run, terminated, cumulative_reward, timestep=self.timesteps
             )
