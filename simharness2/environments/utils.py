@@ -210,6 +210,13 @@ def get_operational_locations(
                 "latitude": 36.247191016000045,
                 "longitude": -120.67104600799996,
             },
+            "Colorado_2020_Middle_Fork": {
+                "state": "Colorado",
+                "year": 2020,
+                "fire_name": "Middle_Fork",
+                "latitude": 40.69293914600007,
+                "longitude": -106.82737089599999,
+            },
         }
 
     else:
