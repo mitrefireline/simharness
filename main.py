@@ -305,11 +305,15 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     return algo_cfg
 
 
+default_formatter = logging.Formatter(
+    "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s"
+)
+
+
 def logging_setup_func():
     from ray.runtime_context import RuntimeContext
 
     runtime_ctx: RuntimeContext = ray.get_runtime_context()
-    # runtime_ctx.worker
     task_id = runtime_ctx.get_task_id()
     job_id = runtime_ctx.get_job_id()
     pid = os.getpid()
@@ -320,24 +324,23 @@ def logging_setup_func():
     out_file = f"sh-pid-{pid}.log"
     out_file_path = os.path.join(temp_outdir, out_file)
 
-    logger = logging.getLogger("simharness2")
-    formatter = logging.Formatter(
-        "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s"
-    )
+    # Configure stream handler for all worker logs
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.DEBUG)
-    stream_handler.setFormatter(formatter)
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(default_formatter)
+    logger = logging.getLogger()
+    logger.addHandler(stream_handler)
 
+    # Configure file handler for only simharness2 logs from worker process.
     file_handler = logging.FileHandler(out_file_path)
     file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-
+    file_handler.setFormatter(default_formatter)
+    logger = logging.getLogger("simharness2")
     logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
 
 
 def driver_logging_func():
-    from datetime import datetime
     from ray.runtime_context import RuntimeContext
 
     runtime_ctx: RuntimeContext = ray.get_runtime_context()
@@ -349,17 +352,24 @@ def driver_logging_func():
     out_file = f"driver.log"
     out_file_path = os.path.join(temp_outdir, out_file)
 
-    logger = logging.getLogger(__name__)
-    formatter = logging.Formatter(
-        "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s"
-    )
-
+    # Prepare file handler for the driver logs
     file_handler = logging.FileHandler(out_file_path)
     file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
+    file_handler.setFormatter(default_formatter)
 
+    # Configure the logger for the current file, main.py
+    logger = logging.getLogger(__name__)
     logger.addHandler(file_handler)
 
+    # Configure simharness2 logs that are written from the driver process.
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(default_formatter)
+    logger = logging.getLogger("simharness2")
+    logger.addHandler(stream_handler)
+    logger.addHandler(file_handler)
+
+    # Update the ray.rllib logger to write to the same "driver.log" file.
     logger = logging.getLogger("ray.rllib")
     logger.addHandler(file_handler)
 
