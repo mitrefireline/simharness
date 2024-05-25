@@ -32,6 +32,7 @@ from ray.tune.result_grid import ResultGrid
 from ray.rllib.env import MultiAgentEnv
 from ray.rllib.algorithms.callbacks import make_multi_callbacks
 from ray.train._internal.checkpoint_manager import _TrainingResult
+from ray.rllib.utils import merge_dicts
 
 from simfire.enums import BurnStatus
 
@@ -198,6 +199,12 @@ def _instantiate_config(
         debug_settings: Settings needed for debugging.
         exploration_cfg: RLlib exploration configurations.
     """
+    # Assume eval env cfg takes train env cfg, then overrides with eval k,v pairs.
+    train_env_cfg = OmegaConf.to_container(cfg.environment.env_config)
+    eval_env_cfg = OmegaConf.to_container(cfg.evaluation.evaluation_config.env_config)
+    eval_env_cfg = merge_dicts(train_env_cfg, eval_env_cfg)
+    cfg.evaluation.evaluation_config.env_config = eval_env_cfg
+
     # Instantiate the env and eval settings objects from the config.
     # NOTE: We are instantiating to a NEW object on purpose; otherwise a
     # `TypeError` will be raised when attempting to log the cfg to Aim.
@@ -205,15 +212,6 @@ def _instantiate_config(
     env_settings = instantiate(cfg.environment, _convert_="partial")
     LOGGER.info("Instantiating evaluation settings (with partial conversion)...")
     eval_settings = instantiate(cfg.evaluation, _convert_="partial")
-
-    # FIXME: Fire scenario configuration disabled for now. Fix this in new MR.
-    # Get the operational fires we want to run evaluation with
-    # operational_fires = get_default_operational_fires(cfg)
-
-    # Inject operational fires into the evaluation settings
-    # eval_settings["evaluation_config"]["env_config"].update(
-    #     {"scenarios": operational_fires}
-    # )
 
     # Prepare exploration options for the algorithm
     exploration_cfg = OmegaConf.to_container(
