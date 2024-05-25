@@ -360,11 +360,7 @@ def driver_logging_func():
     logger.addHandler(file_handler)
 
     # Configure simharness2 logs that are written from the driver process.
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.DEBUG)
-    stream_handler.setFormatter(default_formatter)
     logger = logging.getLogger("simharness2")
-    logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
 
     # Update the ray.rllib logger to write to the same "driver.log" file.
