@@ -1,0 +1,148 @@
+defaults:
+  - simulation: default
+  - framework: default
+  - rollouts: default
+  - evaluation: default
+  - resources: default
+  - hydra: default
+  - exploration: stochastic_sampling
+  - training: ppo_with_custom_model
+  - environment: marl_damage_aware_always_dig
+  - _self_
+
+reward_mix_coeff: ??
+environment:
+  env_config:
+    reward_cls_partial:
+      mixing_coefficient: ${reward_mix_coeff}
+
+algo:
+  name: PPO
+  # Specify list of RLlib callbacks to use during training.
+  callbacks:
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.InitializeSimfire
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.RenderEnv
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.LandSavedMetric
+  checkpoint_path: null
+
+rollouts:
+  # NOTE: MultiAgentComplexObsHarness DOES NOT normalize returned observations!
+  # So, use the MeanStdFilter to ensure observations are normalized.
+  # See the MeanStdObservationFilterCAgentConnector class for more:
+  # https://github.com/ray-project/ray/blob/ad48682b4ec78a5699ba89a7c8a69327c264e47b/rllib/connectors/agent/mean_std_filter.py#L23
+  enable_connectors: true
+  observation_filter: MeanStdFilter
+
+  batch_mode: complete_episodes # truncate_episodes
+  # Scale experiment as desired
+  num_rollout_workers: 3
+  num_envs_per_worker: 4
+
+cli:
+  mode: train
+  data_dir: /simharness
+
+hydra:
+  run:
+    dir: ${cli.data_dir}/experiments/${now:%Y-%m-%d}-exp2_ss_128_always_dig_use_DL_rs_${resample_interval}_reward_mix_coeff_${reward_mix_coeff}
+
+# Total number of fire scenarios is:
+# - For train, op_loc.sample_size.train * fire_initial_position.sampler.sample_size.train
+# - For eval, op_loc.sample_size.eval * fire_initial_position.sampler.sample_size.eval
+# - Op locations will be fixed for the duration of the experiment.
+resample_interval: ??
+simulation:
+  screen_size: 128
+  # TODO: Consolidate below controls into a "fire_generation" section, or similar.
+  # NOTE: Assume samples are selected randomly from the BurnMD dataset
+  operational_locations:
+    # Option to use hard-coded tr and eval locations.
+    use_fixed_locations: true
+    # Configure the sampling of lon, lat coords used for operational location (s).
+    burnmd_dataset_path: /simharness/data/burnmd_TL_flat.json
+    # NOTE: When `use_fixed_locations == true`, the following are used, but there is NOT
+    # a check to verify that the fixed locations used adhere to the sample_size specs.
+    sample_size:
+      train: 3
+      eval: 2
+    independent_eval: true
+  fire_initial_position:
+    # Configure the generation of candidate initial fire positions.
+    generator:
+      # If true, then all possible fire initial positions will be included in the
+      # generated "dataset".
+      make_all_positions: true # FIXME!
+      # Number of candidate initial fire positions to generate. Ignored when
+      # `make_all_postions == true`.
+      output_size: 4096 # FIXME!
+      # The root location to save the generated dataset.
+      save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
+    # To disable usage of generator, simply set to null.
+    # Configure the sampling of new initial fire positions.
+    sampler:
+      # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
+      # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
+      resample_interval: ${resample_interval}
+      # Number of samples to draw from the distribution, ie. take `sample_size` initial
+      # fire positions and distribute them across the respective RolloutWorker's.
+      sample_size:
+        train: 4
+        eval: 4
+      # If false, then eval scenarios are drawn from the same distribution as
+      # training scenarios. This behavior is usually not desired, but can be
+      # useful for debugging purposes, ie. seeing how well the trained policy
+      # performs on a scenario from the training distribution.
+      independent_eval: true
+      # Filter generated "dataset" using the following condition.
+      # NOTE: This is applied to the generated dataset, not the sampled positions.
+      # For more information on the query string to evaluate, see:
+      # - https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html#pandas.DataFrame.query
+      # Examples:
+      # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
+      # - "(A < elapsed_steps) & (C < percent_area_burned)"
+      # query: "50 < elapsed_steps < 150"
+      # query: "0.10 < percent_area_burned" # FIXME: usign easy query to test
+      query: "(300 < elapsed_steps < 700) | (0.10 < percent_area_burned)" # FIXME!
+      # Number of samples available in resulting "dataset" after filtering with `query`.
+      # NOTE: This allows the user to control the total number of distinct fire positions
+      # that will be used to produce sample batches (or trajectories) of experiences. If
+      # set to `None`, the population size will be equal to the size of the generated
+      # "dataset" after filtering with `query`.
+      # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
+      population_size: 512 # FIXME!
+  simfire:
+    fire:
+      diagonal_spread: true
+
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: ${evaluation.evaluation_interval}
+
+stop_conditions:
+  training_iteration: 10000
+  timesteps_total: 2000000000
+  episodes_total: 1000000
+  episode_reward_mean: 10000000
+
+
+resources:
+  num_gpus: 0.01
+  num_gpus_per_worker: 0.07
+
+debugging:
+  log_level: INFO
+  logger_config:
+    type:
+      _target_: hydra.utils.get_class
+      path: ray.tune.logger.UnifiedLogger
+    logdir: ${hydra:run.dir}
+
+evaluation:
+  evaluation_interval: 30
+  evaluation_duration: ${evaluation.evaluation_num_workers}
+  evaluation_duration_unit: episodes
+  evaluation_num_workers: 8

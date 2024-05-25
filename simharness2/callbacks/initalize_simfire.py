@@ -403,7 +403,7 @@ class InitializeSimfire(DefaultCallbacks):
                 "(`simulation.operational_location.sample_size.eval`) and the number "
                 "of scenarios per location "
                 "(`simulation.fire_initial_position.sampler.sample_size.eval)."
-            )
+            ).format(self.total_eval_scenarios, eval_envs)
             raise ValueError(msg)
         elif self.total_eval_scenarios < eval_envs:
             msg = (

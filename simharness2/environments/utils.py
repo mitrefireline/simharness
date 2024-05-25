@@ -179,13 +179,13 @@ def get_operational_locations(
                 "latitude": 33.45668970600008,
                 "longitude": -111.38328979099998,
             },
-            "Colorado_2020_Middle_Fork": {
-                "state": "Colorado",
-                "year": 2020,
-                "fire_name": "Middle_Fork",
-                "latitude": 40.69293914600007,
-                "longitude": -106.82737089599999,
-            },
+            # "Colorado_2020_Middle_Fork": {
+            #     "state": "Colorado",
+            #     "year": 2020,
+            #     "fire_name": "Middle_Fork",
+            #     "latitude": 40.69293914600007,
+            #     "longitude": -106.82737089599999,
+            # },
             "Oregon_2020_242": {
                 "state": "Oregon",
                 "year": 2020,
@@ -210,13 +210,13 @@ def get_operational_locations(
                 "latitude": 36.247191016000045,
                 "longitude": -120.67104600799996,
             },
-            "Colorado_2020_Middle_Fork": {
-                "state": "Colorado",
-                "year": 2020,
-                "fire_name": "Middle_Fork",
-                "latitude": 40.69293914600007,
-                "longitude": -106.82737089599999,
-            },
+            # "Colorado_2020_Middle_Fork": {
+            #     "state": "Colorado",
+            #     "year": 2020,
+            #     "fire_name": "Middle_Fork",
+            #     "latitude": 40.69293914600007,
+            #     "longitude": -106.82737089599999,
+            # },
         }
 
     else:
