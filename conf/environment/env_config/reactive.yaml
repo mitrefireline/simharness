@@ -7,7 +7,7 @@ movements: [none, up, down, left, right]
 interactions: [fireline, none, wetline]
 attributes: [fire_map, elevation, w_0, sigma, delta, M_x]
 normalized_attributes: [elevation]
-agent_speed: 9
+agent_speed: 1
 # Defines the class that will be used to monitor and track `ReactiveHarness`.
 harness_analytics_partial:
   _target_: simharness2.analytics.harness_analytics.ReactiveHarnessAnalytics

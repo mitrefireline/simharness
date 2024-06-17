@@ -47,7 +47,7 @@ cli:
 
 hydra:
   run:
-    dir: ${cli.data_dir}/experiments/${now:%Y-%m-%d}-exp2_ss_128_always_dig_use_DL_rs_${resample_interval}_reward_mix_coeff_${reward_mix_coeff}
+    dir: ${cli.data_dir}/experiments/${now:%Y-%m-%d}-exp2_ss_128_always_dig_use_DL_rs_${resample_interval}_reward_mix_coeff_${reward_mix_coeff}_agentSpeed1_windSpeed5
 
 # Total number of fire scenarios is:
 # - For train, op_loc.sample_size.train * fire_initial_position.sampler.sample_size.train
