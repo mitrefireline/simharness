@@ -1,8 +1,3 @@
-defaults:
-  - _self_
-  # Override value (s) to use eval simulation instead of train simulation, etc.
-  - env_config: reactive
-
 # The environment specifier. This can either be a tune-registered env, via
 # `tune.register_env([name], lambda env_ctx: [env object])`, or a string specifier of an
 # RLlib supported type. In the latter case, RLlib will try to interpret the specifier as
@@ -12,4 +7,13 @@ env: ${environment.env}
 
 # Arguments dict passed to the env creator as an `EnvContext` object
 # NOTE: Any arguments that are also specified in `reactive.yaml` will be overridden.
-env_config: ${environment.env_config}
+# env_config: ${environment.env_config}
+env_config:
+  in_evaluation: True
+  # Defines the class that will be used to monitor and track `ReactiveHarness`.
+  # NOTE: Override train settings to enable saving of data during evaluation.
+  harness_analytics_partial:
+    sim_analytics_partial:
+      save_history: true
+
+num_envs_per_worker: 1

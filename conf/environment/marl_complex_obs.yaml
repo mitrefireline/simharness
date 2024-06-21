@@ -4,6 +4,7 @@ defaults:
 
 env: simharness2.environments.MultiAgentComplexObsReactiveHarness
 env_config:
+  in_evaluation: false
   sim:
     _target_: simfire.sim.simulation.FireSimulation
     config:

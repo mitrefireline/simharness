@@ -1,3 +1,4 @@
+in_evaluation: false
 sim:
   _target_: simfire.sim.simulation.FireSimulation
   config:
