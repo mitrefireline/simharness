@@ -148,6 +148,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
     stop_cond = cfg.stop_conditions
+    root_checkpoint_dir = os.path.join(algo.logdir, "checkpoints")
     # Run training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
         LOGGER.info(f"Training iteration {i}.")
@@ -155,7 +156,8 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         LOGGER.debug(f"{pretty_print(result)}\n")
 
         if i % cfg.checkpoint.checkpoint_frequency == 0:
-            save_result: _TrainingResult = algo.save()
+            checkpoint_dir = os.path.join(root_checkpoint_dir, f"checkpoint_{i}")
+            save_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
             path_to_checkpoint = save_result.checkpoint.path
             LOGGER.info(
                 "An Algorithm checkpoint has been created inside directory: "
@@ -171,8 +173,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
             mean_rew = result["episode_reward_mean"]
             LOGGER.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
             break
-
-    final_result: _TrainingResult = algo.save()
+    final_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
     model_path = final_result.checkpoint.path
     LOGGER.info(f"The final model has been saved inside directory: {model_path}.")
     algo.stop()
@@ -326,8 +327,8 @@ def main(cfg: DictConfig) -> None:
             ckpt_path = cfg.algo.checkpoint_path
             LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
 
-            if not os.path.isfile(ckpt_path):
-                raise ValueError(f"{ckpt_path} is not a valid file path.")
+            if not os.path.isdir(ckpt_path):
+                raise ValueError(f"{ckpt_path} is not a valid directory path.")
 
             algo.restore(checkpoint_path=ckpt_path)
 
