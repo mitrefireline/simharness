@@ -1,9 +1,9 @@
 in_evaluation: false
-sim:
-  _target_: simfire.sim.simulation.FireSimulation
-  config:
-    _target_: simfire.utils.config.Config
-    config_dict: ${simulation.simfire}
+sim_init_cfg:
+  simfire_cls:
+    _target_: hydra.utils.get_class
+    path: simfire.sim.simulation.FireSimulation
+  config_dict: ${simulation.simfire}
 
 movements: [none, up, down, left, right]
 interactions: [none, fireline]

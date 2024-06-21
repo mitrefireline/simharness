@@ -8,6 +8,7 @@ from pprint import pformat
 from dataclasses import dataclass, field
 
 from simfire.utils.config import Config
+from simfire.sim.simulation import Simulation
 from simharness2.utils import fire_data
 
 if TYPE_CHECKING:
@@ -302,7 +303,7 @@ def set_operational_location(
 
 
 def prepare_fire_map_data(
-    sim: "FireSimulation",
+    sim_init_cfg: Dict[str, Any],
     fire_pos_cfg: Dict[str, Any],
     location: BurnMDOperationalLocation,
     return_train_data: bool = True,
@@ -317,7 +318,8 @@ def prepare_fire_map_data(
     return_eval_data should be set to False.
 
     Arguments:
-        sim: The FireSimulation object to use for generating the fire map data.
+        sim_init_cfg: The configuration used to initialize the FireSimulation object.
+            This dictionary should contain 2 keys: `simfire_cls` and `config_dict`.
         fire_pos_cfg: The configuration for the fire initial position data.
         location: The operational location to use for the simulation.
         return_train_data: Whether to return the training data.
@@ -327,6 +329,11 @@ def prepare_fire_map_data(
     generator_cfg = fire_pos_cfg.get("generator")
     sampler_cfg = fire_pos_cfg.get("sampler")
 
+    # Use provided simulation info to create a simulation object.
+    sim = create_fire_simulation_from_config(sim_init_cfg)
+    # FIXME: Ideally we would pass the sim_init_cfg into set_operational_location, but
+    # just build the object here for now. It's redundant, but avoids further refactoring
+    # until we have experimentation results for the benchmark paper.
     # Set the operational location for the simulation.
     sim = set_operational_location(sim, location)
     try:
@@ -339,8 +346,6 @@ def prepare_fire_map_data(
         logger.debug(f"Total generator runtime: {total_runtime/60:.2f} minutes")
 
         # Down sample the dataset using the provided configuration for `sampler`.
-        # FIXME: One idea is to always return train_data, eval_data, but if the location
-        # is only used for training, then eval_data is None or an empty recarray.
         train_data, eval_data = fire_data.filter_fire_initial_position_data(
             fire_df=fire_df,
             logdir=logdir,
@@ -355,9 +360,24 @@ def prepare_fire_map_data(
     return train_data, eval_data
 
 
-def check_fire_init_pos_is_static(sim: "FireSimulation") -> None:
+def create_fire_simulation_from_config(sim_init_cfg: Dict[str, Any]) -> "FireSimulation":
+    """Create a FireSimulation object from the provided configuration."""
+    sim_cls = sim_init_cfg.get("simfire_cls")
+    if sim_cls is None:
+        raise ValueError(
+            "The simulation class must be present in the `sim` "
+            "dictionary. This is usually specified via the "
+            "`simfire_cls` key in `environment.env_config.sim`."
+        )
+    elif not issubclass(sim_cls, Simulation):
+        raise ValueError("The simulation class must be a subclass of `Simulation`.")
+    sim_cfg = sim_init_cfg.get("config_dict")
+    return sim_cls(Config(config_dict=sim_cfg))
+
+
+def check_fire_init_pos_is_static(sim_config: Dict[str, Any]) -> None:
     """Ensure the `fire.fire_initial_position.type` is static."""
-    fire_init_pos_type = sim.config.yaml_data["fire"]["fire_initial_position"]["type"]
+    fire_init_pos_type = sim_config["fire"]["fire_initial_position"]["type"]
     if fire_init_pos_type != "static":
         msg = (
             "Invalid value for `fire.fire_initial_position.type`: "
@@ -366,10 +386,13 @@ def check_fire_init_pos_is_static(sim: "FireSimulation") -> None:
         raise ValueError(msg)
 
 
-def check_terrain_is_operational(sim: "FireSimulation") -> None:
+def check_terrain_is_operational(sim_config: Dict[str, Any]) -> None:
     """Ensure `topography.type` and `fuel.type` are operational for `terrain`."""
-    layer_types = sim.get_layer_types()
-    if not all(l_type == "operational" for l_type in layer_types.values()):
+    terrain_cfg = sim_config["terrain"]
+    fuel_type = terrain_cfg["fuel"]["type"]
+    topo_type = terrain_cfg["topography"]["type"]
+    layer_types = [fuel_type, topo_type]
+    if not all(l_type == "operational" for l_type in layer_types):
         msg = (
             "Invalid value for `terrain.topography.type` or `terrain.fuel.type`: "
             f"{layer_types}. The values must BOTH be `operational`."

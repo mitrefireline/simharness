@@ -25,7 +25,10 @@ import ray
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
-from simfire.sim.simulation import FireSimulation
+
+from simfire.sim.simulation import Simulation, FireSimulation
+from simfire.utils.config import Config
+from simharness2.environments.utils import create_fire_simulation_from_config
 
 import simharness2.environments.utils as env_utils
 
@@ -69,8 +72,8 @@ def main(cfg: DictConfig) -> None:
     # up (possibly) downloading unnecessary data and building the sim object, which will
     # just be updated later anyways. Okay for now, but fix later if time permits.
     env_cfg = instantiate(cfg.environment.env_config, _convert_="partial")
-    sim: FireSimulation = env_cfg.get("sim")
-
+    # Use provided simulation info to create a simulation object.
+    sim: FireSimulation = create_fire_simulation_from_config(env_cfg.get("sim_init_cfg"))
     # Validate the configuration for the `FireSimulation` object.
     env_utils.check_terrain_is_operational(sim)
     env_utils.check_fire_init_pos_is_static(sim)

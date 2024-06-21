@@ -57,14 +57,14 @@ class FireHarness(Harness[AnyFireSimulation]):
     def __init__(
         self,
         *,
-        sim: AnyFireSimulation,
+        sim_init_cfg: Dict[str, Any],
         attributes: List[str],
         normalized_attributes: List[str],
         movements: List[str],
         interactions: List[str],
         action_space_cls: Callable,
         in_evaluation: bool = False,
-        benchmark_sim: Optional[AnyFireSimulation] = None,
+        benchmark_sim_init_cfg: Dict[str, Any] = None,
         harness_analytics_partial: Optional[partial] = None,
         reward_cls_partial: Optional[partial] = None,
         num_agents: int = 1,
@@ -74,14 +74,17 @@ class FireHarness(Harness[AnyFireSimulation]):
         **kwargs,
     ):
         super().__init__(
-            sim=sim,
+            sim_init_cfg=sim_init_cfg,
             attributes=attributes,
             normalized_attributes=normalized_attributes,
             in_evaluation=in_evaluation,
         )
         # TODO: Define `benchmark_sim` in `DamageAwareReactiveHarness`.
         # Define attributes that are specific to the FireHarness.
-        self.benchmark_sim = benchmark_sim
+        # Use provided benchmark simulation info to create a simulation object.
+        self.benchmark_sim = env_utils.create_fire_simulation_from_config(
+            benchmark_sim_init_cfg
+        )
         # TODO: use more apt name, ex: `available_movements`, `possible_movements`.
         self.movements = copy.deepcopy(movements)  # FIXME: is deepcopy necessary?
         # TODO: use more apt name, ex: `available_interactions`, `possible_interactions`.
@@ -614,7 +617,11 @@ class FireHarness(Harness[AnyFireSimulation]):
         logger.debug(f"Operational location at index {loc_idx} will be used.")
 
         # Prepare the environment and simulation for the selected operational location.
-        logger.info(f"Setting self._op_loc to {locations[loc_idx]}...")
+        w_idx, v_idx = (
+            self.rllib_env_context.worker_index,
+            self.rllib_env_context.vector_index,
+        )
+        logger.info(f"({w_idx}, {v_idx}) Setting self._op_loc to {locations[loc_idx]}...")
         self._op_loc = locations[loc_idx]
 
         # TODO: Create MR for simfire to add `set_operational_location` method and
@@ -671,6 +678,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         logger.info(f"Setting simulation fire initial position to {init_pos}...")
         self.sim.set_fire_initial_position(init_pos)
         if self.benchmark_sim:
+            logger.info(f"Setting benchmark_sim fire initial position to {init_pos}...")
             self.benchmark_sim.set_fire_initial_position(init_pos)
 
         # TODO: Decide on how to indicate that fire scenario is "new"; works for now.

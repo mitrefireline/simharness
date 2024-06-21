@@ -8,11 +8,13 @@ import gymnasium as gym
 import numpy as np
 from ray.rllib.utils.typing import ResultDict
 from simfire.sim.simulation import Simulation
+from simharness2.environments.utils import create_fire_simulation_from_config
 
 if TYPE_CHECKING:
     from simharness2.environments.utils import RLlibEnvContextMetadata
 
 logger = logging.getLogger(__name__)
+# TODO: Remove `AnySimulation` and generics from environments subpkg.
 AnySimulation = TypeVar("AnySimulation", bound=Simulation)
 
 
@@ -20,13 +22,14 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
     def __init__(
         self,
         *,
-        sim: AnySimulation,
+        sim_init_cfg: Dict[str, Any],
         attributes: List[str],
         normalized_attributes: List[str],
         in_evaluation: bool = False,
         **kwargs,
     ):
-        self.sim = sim
+        # Use provided simulation info to create a simulation object.
+        self.sim = create_fire_simulation_from_config(sim_init_cfg)
 
         self.attributes = attributes
         # TODO: Maybe use `attributes_to_normalize` over `normalized_attributes`?
