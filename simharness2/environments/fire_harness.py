@@ -138,7 +138,11 @@ class FireHarness(Harness[AnyFireSimulation]):
         self._fire_diagonal_spread = self.sim.config.fire.diagonal_spread
         # TODO: Decide default value. Setting to False allows _initialize_simfire()
         # to be the only method that should change this to True?
-        self._new_fire_scenario = False
+        # NOTE: If default is False, then ray/rllib/utils/pre_checks/env.py:check_env()
+        # method will fail, because we DO NOT run the benchmark and therefore do not have
+        # the data needed! So, set to True for now, and we can figure out how to be less
+        # redundant later on.
+        self._new_fire_scenario = True
 
     def get_observation_space(self) -> spaces.Space:
         """TODO."""

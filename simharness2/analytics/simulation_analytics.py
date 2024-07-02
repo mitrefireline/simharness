@@ -52,6 +52,13 @@ class SimulationData:
     # track if this is the first simulation step occuring in episode
     first_step: bool = True
 
+    # Set default values for data stored in `update()` call.
+    burned: np.uint16 = 0
+    unburned: np.uint16 = 0
+    burning: np.uint16 = 0
+    burn_rate: np.float16 = 0
+    size: np.uint16 = 0
+
     def __post_init__(self, save_history):
         """TODO"""
         # Create a deque that is (optionally) used to aggregate data across timesteps.

@@ -42,6 +42,7 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
 
     def get_initial_state(self) -> np.ndarray:
         """TODO."""
+        # TODO: Consolidate usage of np.float32 into constant, then re-use.
         fire_map = self.prepare_fire_map(place_agents=False)
         fire_map = np.expand_dims(fire_map, axis=-1).astype(np.float32)
         # Build MARL obs - position array will be different for each agent.
@@ -52,7 +53,7 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
             marl_obs[ag_id] = OrderedDict(
                 {
                     FIRE_MAP_KEY: fire_map,
-                    AGENT_POSITION_KEY: np.asarray(pos_state),
+                    AGENT_POSITION_KEY: np.asarray(pos_state, dtype=np.float32),
                 }
             )
             # marl_obs[ag_id] = {
@@ -120,7 +121,7 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
             marl_obs[ag_id] = OrderedDict(
                 {
                     FIRE_MAP_KEY: fire_map,
-                    AGENT_POSITION_KEY: np.asarray(pos_state),
+                    AGENT_POSITION_KEY: np.asarray(pos_state, dtype=np.float32),
                 }
             )
         # Note: Setting to ordered dict bc spaces.Dict.sample() returns ordered dict.
