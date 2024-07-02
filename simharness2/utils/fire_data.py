@@ -46,6 +46,7 @@ def filter_fire_initial_position_data(
     return_train_data: bool = True,
     return_eval_data: bool = True,
     independent_eval: bool = True,
+    seed: int = None,
     **kwargs,
 ) -> Tuple[np.recarray, np.recarray]:
     """TODO"""
@@ -91,8 +92,15 @@ def filter_fire_initial_position_data(
     # Extract data to be used for evaluation.
     # TODO: Allow for user-provided evaluation dataset?
     # FIXME: The conditional logic here is convoluted and should be simplified.
+    train_sample_kwargs = {"n": population_size, "replace": False}
+    eval_sample_kwargs = {"n": eval_size, "replace": False}
+    # Ensure that the random state is set to a fixed value for reproducibility.
+    if seed is not None:
+        train_sample_kwargs["random_state"] = seed
+        eval_sample_kwargs["random_state"] = seed
+
     if return_eval_data and return_train_data:
-        eval_df: pd.DataFrame = subset_fire_df.sample(n=eval_size, replace=False)
+        eval_df: pd.DataFrame = subset_fire_df.sample(**eval_sample_kwargs)
         # Ensure the evaluation data cannot be sampled again (ie for training data).
         if independent_eval:
             train_df: pd.DataFrame = subset_fire_df.drop(eval_df.index)
@@ -101,13 +109,13 @@ def filter_fire_initial_position_data(
 
         # Downsample the training data to have exactly `population_size` total samples.
         if population_size:
-            train_df: pd.DataFrame = train_df.sample(n=population_size, replace=False)
+            train_df: pd.DataFrame = train_df.sample(**train_sample_kwargs)
     elif return_eval_data:
-        eval_df: pd.DataFrame = subset_fire_df.sample(n=eval_size, replace=False)
+        eval_df: pd.DataFrame = subset_fire_df.sample(**eval_sample_kwargs)
     elif return_train_data:
         train_df = subset_fire_df
         if population_size:
-            train_df: pd.DataFrame = train_df.sample(n=population_size, replace=False)
+            train_df: pd.DataFrame = train_df.sample(**train_sample_kwargs)
 
     # Convert filtered train/eval "dataset" to a structured NumPy array (for zero-copy).
     if return_train_data:

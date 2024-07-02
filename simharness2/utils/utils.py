@@ -1,13 +1,16 @@
 from typing import TYPE_CHECKING
 import logging
 from itertools import chain
+from collections import namedtuple
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
     from ray.rllib.algorithms.algorithm import Algorithm
+    from ray.rllib.evaluation.worker_set import WorkerSet
 
 
 logger = logging.getLogger(__name__)
+EnvCounts = namedtuple("EnvCounts", ["total_envs", "envs_per_worker"])
 
 
 def validate_evaluation_config(algo_cfg: "AlgorithmConfig"):
@@ -102,38 +105,27 @@ def validate_rollouts_config(algo_cfg: "AlgorithmConfig"):
         raise ValueError(msg)
 
 
-def get_total_training_envs(algorithm: "Algorithm") -> int:
-    """Return the total number of training envs.
+def get_total_envs(worker_set: "WorkerSet") -> EnvCounts:
+    """Return the total number of envs in the respective WorkerSet.
 
-    The `foreach_env` call will return a nested list. Each index in `train_envs`
-    corresponds to each `worker_index` in `algorithm.workers`. Each index contains a list
-    of sub-environments contained within the respective worker. The `*train_envs` syntax
+    The `foreach_env` call will return a nested list. Each index contains a list
+    of sub-environments contained within the respective worker. The `*envs` syntax
     expands the nested list into individual args to `chain()`, which concatenates them
     together into one long list, and `len()` returns its length.
 
     Arguments:
-        algorithm: The rllib `Algorithm` instance.
+        worker_set: The rllib `WorkerSet` instance.
+
+    Returns:
+        A `namedtuple` that contains the total number of envs and the number of envs
+        per worker.
     """
-    train_envs = algorithm.workers.foreach_env(lambda env: env)
-    return len(list(chain(*train_envs)))
 
+    envs = worker_set.foreach_env(lambda env: env)
+    total_envs = len(list(chain(*envs)))
+    envs_per_worker = max([len(worker_envs) for worker_envs in envs])
 
-def get_total_evaluation_envs(algorithm: "Algorithm") -> int:
-    """Return the total number of evaluation envs.
-
-    The `foreach_env` call will return a nested list. Each index in `eval_envs`
-    corresponds to each `worker_index` in `algorithm.evaluation_workers`. Each index
-    contains a list of sub-environments contained within the respective worker. The
-    `*eval_envs` syntax expands the nested list into individual args to `chain()`, which
-    concatenates them together into one long list, and `len()` returns its length.
-
-    NOTE: The number of evaluation envs is equal to the number of evaluation
-    workers, enforced by the current implementation of `validate_evaluation_config`.
-    Once callbacks, such as `InitializeSimfire`, are updated to handle
-    `eval_duration / num_eval_workers > 1`, this method will need to be updated.
-    """
-    eval_envs = algorithm.evaluation_workers.foreach_env(lambda env: env)
-    return len(list(chain(*eval_envs)))
+    return EnvCounts(total_envs=total_envs, envs_per_worker=envs_per_worker)
 
 
 def has_local_worker(algo_cfg: "AlgorithmConfig") -> bool:
@@ -158,3 +150,13 @@ def has_local_worker(algo_cfg: "AlgorithmConfig") -> bool:
             "`create_env_on_local_worker` must be a boolean value."
         )
         raise ValueError(msg)
+
+
+def get_default_seed() -> int:
+    """Return the default seed value for reproducibility.
+
+    The default seed is arbitrary, and was chosen by generating a random 128-bit number:
+      import secrets
+      secrets.randbits(128)
+    """
+    return 223203939272683461891947593725839432272
