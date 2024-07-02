@@ -12,7 +12,7 @@ display:
 
 simulation:
   update_rate: 1
-  runtime: 24hr
+  runtime: 15hr
   headless: true
   record: true
   save_data: false
@@ -22,7 +22,7 @@ simulation:
   sf_home: ${oc.env:SF_HOME}
 
 mitigation:
-  ros_attenuation: False
+  ros_attenuation: false
 
 operational:
   seed:
@@ -50,11 +50,11 @@ fire:
           122, # x position
           122 # y position
         ]]
-  max_fire_duration: 4
+  max_fire_duration: 10
   diagonal_spread: true
 
 environment:
-  moisture: 0.03
+  moisture: 0.001
 
 wind:
   function: simple  # ${simulation.wind.function}
@@ -68,7 +68,7 @@ wind:
     speed: 19
     direction: north
   simple:
-    speed: 1
+    speed: 5
     direction: 135.0
   perlin:
     speed:
@@ -77,13 +77,13 @@ wind:
       octaves: 3
       persistence: 0.7
       lacunarity: 2.0
-      min: 7
-      max: 47
+      range_min: 7
+      range_max: 47
     direction:
       seed: 650
       scale: 1500
       octaves: 2
       persistence: 0.9
       lacunarity: 1.0
-      min: 0.0
-      max: 360.0
+      range_min: 0.0
+      range_max: 360.0
