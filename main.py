@@ -31,6 +31,7 @@ from ray.tune.result_grid import ResultGrid
 from ray.rllib.env import MultiAgentEnv
 from ray.rllib.algorithms.callbacks import make_multi_callbacks
 from ray.train._internal.checkpoint_manager import _TrainingResult
+from ray.rllib.utils import merge_dicts
 
 from simfire.enums import BurnStatus
 
@@ -147,6 +148,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
     stop_cond = cfg.stop_conditions
+    root_checkpoint_dir = os.path.join(algo.logdir, "checkpoints")
     # Run training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
         LOGGER.info(f"Training iteration {i}.")
@@ -154,7 +156,8 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         LOGGER.debug(f"{pretty_print(result)}\n")
 
         if i % cfg.checkpoint.checkpoint_frequency == 0:
-            save_result: _TrainingResult = algo.save()
+            checkpoint_dir = os.path.join(root_checkpoint_dir, f"checkpoint_{i}")
+            save_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
             path_to_checkpoint = save_result.checkpoint.path
             LOGGER.info(
                 "An Algorithm checkpoint has been created inside directory: "
@@ -170,8 +173,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
             mean_rew = result["episode_reward_mean"]
             LOGGER.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
             break
-
-    final_result: _TrainingResult = algo.save()
+    final_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
     model_path = final_result.checkpoint.path
     LOGGER.info(f"The final model has been saved inside directory: {model_path}.")
     algo.stop()
@@ -192,20 +194,19 @@ def _instantiate_config(
         debug_settings: Settings needed for debugging.
         exploration_cfg: RLlib exploration configurations.
     """
+    # Assume eval env cfg takes train env cfg, then overrides with eval k,v pairs.
+    train_env_cfg = OmegaConf.to_container(cfg.environment.env_config)
+    eval_env_cfg = OmegaConf.to_container(cfg.evaluation.evaluation_config.env_config)
+    eval_env_cfg = merge_dicts(train_env_cfg, eval_env_cfg)
+    cfg.evaluation.evaluation_config.env_config = eval_env_cfg
+
     # Instantiate the env and eval settings objects from the config.
     # NOTE: We are instantiating to a NEW object on purpose; otherwise a
     # `TypeError` will be raised when attempting to log the cfg to Aim.
+    LOGGER.info("Instantiating environment settings (with partial conversion)...")
     env_settings = instantiate(cfg.environment, _convert_="partial")
+    LOGGER.info("Instantiating evaluation settings (with partial conversion)...")
     eval_settings = instantiate(cfg.evaluation, _convert_="partial")
-
-    # FIXME: Fire scenario configuration disabled for now. Fix this in new MR.
-    # Get the operational fires we want to run evaluation with
-    # operational_fires = get_default_operational_fires(cfg)
-
-    # Inject operational fires into the evaluation settings
-    # eval_settings["evaluation_config"]["env_config"].update(
-    #     {"scenarios": operational_fires}
-    # )
 
     # Prepare exploration options for the algorithm
     exploration_cfg = OmegaConf.to_container(
@@ -326,8 +327,8 @@ def main(cfg: DictConfig) -> None:
             ckpt_path = cfg.algo.checkpoint_path
             LOGGER.info(f"Creating an algorithm instance from {ckpt_path}.")
 
-            if not os.path.isfile(ckpt_path):
-                raise ValueError(f"{ckpt_path} is not a valid file path.")
+            if not os.path.isdir(ckpt_path):
+                raise ValueError(f"{ckpt_path} is not a valid directory path.")
 
             algo.restore(checkpoint_path=ckpt_path)
 
