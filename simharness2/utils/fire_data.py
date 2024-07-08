@@ -163,7 +163,7 @@ def generate_fire_initial_position_data(
         # Ensure all positions have been generated, and if not, generate them.
         if missing_pos > 0:
             logger.warning(
-                f"Expected {output_size} positions, but only found {len(coords)}."
+                f"Expected {output_size} positions, but only found {len(pos_df)}."
             )
             curr_pos = [tuple(row) for row in pos_df[["x", "y"]].values]
             # NOTE: excluding the current positions, so we must update output_size!
