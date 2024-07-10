@@ -266,8 +266,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     # TODO: Support usage of RLlib’s “new API stack”.
     # Prevent ValueError raised by RLlib RLModule API when explore_cfg is provided.
     if explore_cfg:
-        algo_cfg.rl_module(_enable_rl_module_api=False)
-        algo_cfg.training(_enable_learner_api=False)
+        algo_cfg.experimental(_enable_new_api_stack=False)
 
     algo_cfg = (
         algo_cfg.training(**cfg.training)
@@ -310,7 +309,7 @@ def main(cfg: DictConfig) -> None:
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
     # ray.init(address="auto", log_to_driver=False)
-    ray.init()
+    ray.init(address="local")
 
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir

@@ -362,6 +362,9 @@ def prepare_fire_map_data(
 
 def create_fire_simulation_from_config(sim_init_cfg: Dict[str, Any]) -> "FireSimulation":
     """Create a FireSimulation object from the provided configuration."""
+    if sim_init_cfg is None:
+        logger.warning("The simulation configuration is not provided. Returning None.")
+        return
     sim_cls = sim_init_cfg.get("simfire_cls")
     if sim_cls is None:
         raise ValueError(

@@ -1,0 +1,3 @@
+exploration_config:
+  type: StochasticSampling
+explore: true
