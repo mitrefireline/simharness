@@ -93,10 +93,21 @@ simulation:
   operational_locations:
     # Path to the flattened BurnMD dataset.
     burnmd_dataset_path: ${oc.env:SH_HOME}/data/burnmd_TL_flat.json
+    resample_interval: -1
     sample_size:
       train: 2
       eval: 1
     independent_eval: true
+    # Number of operational locations from BurnMD that are used to create a population
+    # of locations that will be sampled from every `resample_interval` episodes.
+    # NOTE: This allows the user to control the total number of distinct operational
+    # locations that will be used to produce sample batches (or trajectories) of 
+    # experiences. If set to `None`, the entire BurnMD dataset will be used.
+    # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
+    # NOTE: Assume samples are selected randomly from the BurnMD dataset (using the
+    # seed, if provided).
+    population_size: 6
+    seed: ${debugging.seed}
   fire_initial_position:
     # Configure the generation of candidate initial fire positions.
     generator:
@@ -141,3 +152,4 @@ simulation:
       # "dataset" after filtering with `query`.
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
       population_size: 8 # FIXME!
+      seed: ${debugging.seed}
