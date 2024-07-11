@@ -14,9 +14,9 @@ documentation = "https://mitrefireline.github.io/simharness"
 
 [tool.poetry.dependencies]
 python = "~3.9"
-ray = {version = "2.6.2", extras = ["rllib"]}
-gymnasium = "0.26.3"
-simfire = "^1.5.5"
+ray = {version = "~2.10.0", extras = ["default", "rllib", "tune"]}
+gymnasium = "^0.26.3"
+simfire = "~2.0"
 aim = "^3.17.5"
 hydra-core = "^1.3.2"
 torch = "^2.1.1"
