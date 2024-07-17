@@ -10,11 +10,13 @@ from dataclasses import dataclass, field
 from simfire.utils.config import Config
 from simfire.sim.simulation import Simulation
 from simharness2.utils import fire_data
+from simharness2.utils.utils import get_default_seed
 
 if TYPE_CHECKING:
     from ray.rllib.env.env_context import EnvContext
     from simfire.sim.simulation import FireSimulation
     from simharness2.environments.fire_harness import FireHarness
+    from numpy.random import Generator
 
 
 logger = logging.getLogger(__name__)
@@ -133,43 +135,60 @@ def set_harness_env_context(harness: "FireHarness", env_context: "EnvContext"):
 
 def get_operational_locations(
     cfg: Dict[str, Any],
-    num_train_locs: int,
     num_eval_locs: int,
-    seed: int,
+    num_train_locs: int = None,
+    prng: "Generator" = None,
     fire_year: int = None,
 ) -> Tuple[List[BurnMDOperationalLocation], List[BurnMDOperationalLocation]]:
-    """Sample operational locations from the BurnMD dataset.
+    """Sample operational locations from the BurnMD dataset for training and evaluation.
 
-    To sample operational locations by a specific year, set the `fire_year` parameter.
-    Otherwise, samples will be taken from all available years.
+    This function samples a specified number of operational locations from the BurnMD
+    dataset, which can be filtered by a specific fire year. The function supports
+    sampling with or without ensuring that evaluation locations are independent
+    (mutually exclusive) from training locations.
 
-    If the `independent_eval` flag is set to `True` in the provided
-    operational locations config, then it is guranteed that the training and
-    evaluation locations will be mutually exclusive. Otherwise, the locations used
-    for evaluation may overlap with those used for training. In the latter case, it
-    is recommended to use mutually exclusive fire initial positions for training and
-    evaluation.
+    Notes:
+        - If `independent_eval` is set to `True` in the `cfg` dictionary, the function
+          ensures that the training and evaluation locations are mutually exclusive.
+          Otherwise, evaluation locations may overlap with training locations.
+        - The behavior when `num_train_locs` is None is to use all available locations
+          for training after reserving the specified number for evaluation.
+        - Specifying a `fire_year` filters the dataset to only include locations from
+          that year.
+        - The function logs the sampled train and eval locations for transparency.
 
-    NOTE: If the `independent_eval` flag is not provided, the default
-    behavior is to use distinct locations for training and evaluation.
+    TODO (Test Cases to implement):
+        - num_eval_locs > num_train_locs with independent_eval == False should raise a
+          ValueError.
+        - Correct behavior when num_train_locs is None (use all locations for training).
+        - Correct behavior when fire_year is specified, and when it is None.
+        - Specifying a seed should result in reproducible sampling.
+        - independent_eval == False should result in eval_locs being a subset of
+          train_locs.
 
-    FIXME: I see 2 options for sampling locs when `independent_eval` is
-    False. Option 1 is to ensure eval_locs.issubset(train_locs), ie. we only evaluate
-    on locations that we have trained on. Option 2 is to allow eval_locs to be a
-    superset of train_locs, ie. we evaluate on locations that we may not have trained
-    on. We should decide which option to go with - for now, using option 1. An error
-    will be raised if num_eval_locs > num_train_locs.
-
-    TODO: Is above default behavior what we want? Should we enforce the flag?
-    TODO: Add support for sampling locations from a custom dataset.
-    TODO: Maybe move this method to `simharness2.environments.utils`?
+    Parameters:
+        cfg: A dictionary containing configuration parameters, including the path to the
+            BurnMD dataset.
+        num_eval_locs: The number of locations to sample for evaluation.
+        num_train_locs: The number of locations to sample for training. If None, all
+            remaining locations after sampling for evaluation are used for training.
+        seed: An optional seed for the random number generator to ensure reproducibility.
+        fire_year: An optional year to filter the operational locations by fire year.
 
     Returns:
-        train_locs: List of `BurnMDOperationalLocation` objects for training.
-        eval_locs: List of `BurnMDOperationalLocation` objects for evaluation.
+        A tuple containing two lists:
+            - The first contains `BurnMDOperationalLocation` objects for training.
+            - The second contains `BurnMDOperationalLocation` objects for evaluation.
+
+    Raises:
+        ValueError: If the number of evaluation locations requested exceeds the number of
+            training locations when independent evaluation is not enabled. Also raised if
+            the total number of locations to sample exceeds the number of available
+            locations in the BurnMD dataset.
+
     """
-    # Set the seed for the random number generator
-    random.seed(seed)
+    if prng is None:
+        prng = np.random.default_rng(get_default_seed())
 
     # Load BurnMD data to use for sampling random operational locations.
     burnmd_fp = cfg.get("burnmd_dataset_path")
@@ -189,6 +208,13 @@ def get_operational_locations(
 
     # Get the total number of locations to sample
     independent_eval_locs = cfg.get("independent_eval", True)
+    # We need enough locations for both training and eval.
+    if num_train_locs is None and independent_eval_locs:
+        num_train_locs = len(burnmd_op_locs) - num_eval_locs
+    # We only need enough locations for training (since eval is a subset).
+    elif num_train_locs is None and not independent_eval_locs:
+        num_train_locs = len(burnmd_op_locs)
+
     if independent_eval_locs:
         total_locations = num_train_locs + num_eval_locs
     else:
@@ -201,8 +227,8 @@ def get_operational_locations(
                 "ensures that the evaluation locations are a subset of the training "
                 "locations."
             )
-        # Use the maximum of the two values to ensure we have enough locations.
-        total_locations = max(num_train_locs, num_eval_locs)
+
+        total_locations = num_train_locs
 
     # Validate the number of locations to sample
     if total_locations > len(burnmd_op_locs):
@@ -213,7 +239,7 @@ def get_operational_locations(
 
     # Randomly sample keys from the dictionary
     logger.info(f"Sampling {total_locations} operational locations from BurnMD...")
-    sampled_keys = random.sample(list(burnmd_op_locs.keys()), total_locations)
+    sampled_keys = prng.choice(list(burnmd_op_locs.keys()), total_locations).tolist()
 
     # Split the sampled keys into train and eval sets
     if independent_eval_locs:
@@ -455,4 +481,5 @@ def validate_fire_init_config(
                     f"`sampler.population_size`, which is {sampler_population_size}."
                 )
                 raise ValueError(msg)
+
         return fire_pos_cfg

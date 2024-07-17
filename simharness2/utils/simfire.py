@@ -1,4 +1,5 @@
 """Utilities for parsing `simfire.utils.config.Config` objects."""
+
 import json
 import logging
 from hashlib import sha256
@@ -71,6 +72,19 @@ def parse_config(cfg: Config) -> Dict[str, any]:
     params_subset.update(_get_wind_params(flat_cfg))
 
     return unflatten_dict(params_subset, delimiter=DELIMITER)
+
+
+def get_fire_map_size(config_dict: Dict[str, Any]) -> int:
+    """Return the expected size (area in pixels) of the fire map.
+
+    Arguments:
+        config_dict: Dictionary containing simfire configuration parameters.
+
+    Returns:
+        The product of the fire map's width and height.
+    """
+    screen_size = config_dict["area"]["screen_size"]
+    return screen_size[0] * screen_size[1]
 
 
 def _get_area_params(flat_cfg: Dict[str, Any]) -> Dict[str, Any]:
