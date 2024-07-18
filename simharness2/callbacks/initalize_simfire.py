@@ -4,7 +4,7 @@ we should fix a convention and ensure this is documented (op vs. operational), e
 TODO: Decide if we are happy with current usage of properties. If not, refactor.
 """
 
-from typing import TYPE_CHECKING, Dict, Any, List, Literal, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Any, List, Literal, Optional, Tuple, Union
 import logging
 from itertools import chain
 from pprint import pformat
@@ -23,7 +23,7 @@ from simharness2.environments import utils as env_utils
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
     from ray.rllib.evaluation.worker_set import WorkerSet
-    from simharness2.environments.utils import BurnMDOperationalLocation
+    from simharness2.environments.utils import BurnMDOperationalLocation, EnvFireContext
     from numpy.random import Generator
 
 
@@ -47,7 +47,7 @@ class InitializeSimfire(DefaultCallbacks):
         # For each operational location's UID, this will store each sampled fire
         # position - the value will be the number of times it has been sampled
         # (ie. total episodes trained w/ the op loc + fire start pos pair).
-        self.fire_pos_counter: Dict[str, Dict[Tuple[int, int], int]] = {}
+        self.fire_pos_counter: Dict[str, Dict[str, int]] = {}
 
         # This will store each operational location's UID (see BurnMDOperationalLocation)
         # and the value will be a dict with "train" and "eval" keys. The value for each
@@ -84,6 +84,14 @@ class InitializeSimfire(DefaultCallbacks):
                 "current": None,
             },
             "eval": None,
+        }
+
+        # Define map to store the current
+        self._env_id_to_env_fire_context: Dict[
+            str, Dict[Tuple[int, int], "EnvFireContext"]
+        ] = {
+            "train": {},
+            "eval": {},
         }
 
         # Helper attributes to track local worker existence and env count per worker.
@@ -124,7 +132,7 @@ class InitializeSimfire(DefaultCallbacks):
         eval_workers = algorithm.evaluation_workers
 
         # Perform setup behavior wrt operational locations.
-        self._prepare_operational_locations()
+        self._prepare_operational_locations(logdir)
         self._set_operational_location_foreach_env(train_workers, env_type="train")
         self._set_operational_location_foreach_env(eval_workers, env_type="eval")
 
@@ -132,6 +140,10 @@ class InitializeSimfire(DefaultCallbacks):
         train_data, eval_data = self._prepare_fire_initial_positions(env_config, logdir)
         self._set_fire_initial_position_foreach_env(train_data, train_workers, "train")
         self._set_fire_initial_position_foreach_env(eval_data, eval_workers, "eval")
+
+        # Store each sub env's simfire config, in case we need to restart the env.
+        self._store_fire_context_foreach_env(algorithm.workers, "train")
+        self._store_fire_context_foreach_env(algorithm.evaluation_workers, "eval")
 
         # Put data into the distributed object store, and store the respective refs.
         self.fire_init_pos_array_object_refs["train"] = ray.put(train_data)
@@ -163,6 +175,7 @@ class InitializeSimfire(DefaultCallbacks):
 
         # Handle resampling of operational locations.
         resample_fire_pos = False
+        new_fire_scenario = False
         if self.locations_resample_interval == -1:
             logger.debug(
                 "The `locations_resample_interval` is set to -1, so the current train "
@@ -177,6 +190,7 @@ class InitializeSimfire(DefaultCallbacks):
             )
             # If locations are resampled, force resampling of fire initial positions.
             resample_fire_pos = True
+            new_fire_scenario = True
 
         # Handle resampling of fire initial positions.
         if self.fire_init_pos_resample_interval == -1:
@@ -186,7 +200,7 @@ class InitializeSimfire(DefaultCallbacks):
             )
         elif resample_fire_pos or curr_iter % self.fire_init_pos_resample_interval == 0:
             logger.info(
-                f"Re-initializing each simulation after training iteration: {curr_iter}"
+                f"Re-sampling each fire init pos after training iter: {curr_iter}"
             )
             train_data = ray.get(self.fire_init_pos_array_object_refs["train"])
             self._set_fire_initial_position_foreach_env(
@@ -194,6 +208,73 @@ class InitializeSimfire(DefaultCallbacks):
             )
             # Put data back into the distributed object store and store the ref.
             self.fire_init_pos_array_object_refs["train"] = ray.put(train_data)
+            new_fire_scenario = True
+
+        if new_fire_scenario:
+            logger.info("Storing the updated fire context for each sub environment...")
+            self._store_fire_context_foreach_env(algorithm.workers, "train")
+
+    def on_workers_recreated(
+        self,
+        *,
+        algorithm: "Algorithm",
+        worker_set: "WorkerSet",
+        worker_ids: List[int],
+        is_evaluation: bool,
+        **kwargs,
+    ) -> None:
+        """Callback run after one or more workers have been recreated.
+
+        This method is called when one or more workers in the worker set have been
+        recreated. It allows for custom logic to be executed on the recreated workers,
+        such as setting properties or reinitializing environments.
+
+        Method logic specific to InitializeSimfire callback:
+        1. Determine the env type based on whether it is an evaluation worker set.
+        2. Set the `rllib_env_context` for each environment within the worker set.
+        3. Update the sub-environment context to indicate that the worker has been
+           recreated. This is done because of an apparent bug in RLlib code.
+        4. Reinitialize the simulation for the recreated environments using the
+           configuration snapshot.
+
+        Arguments:
+            algorithm: Reference to the Algorithm instance.
+            worker_set: The WorkerSet object in which the workers in question reside.
+                You can use the
+                `worker_set.foreach_worker(remote_worker_ids=..., local_worker=False)`
+                method call to execute custom code on the recreated (remote) workers.
+                Note that the local worker is never recreated as a failure of this would
+                also crash the Algorithm.
+            worker_ids: The list of (remote) worker IDs that have been recreated.
+            is_evaluation: Whether `worker_set` is the evaluation WorkerSet (located in
+                `Algorithm.evaluation_workers`) or not.
+            **kwargs: Additional keyword arguments.
+        """
+        env_type = "eval" if is_evaluation else "train"
+        # Set `rllib_env_context` for each env (needed w/in `env._set_fire_initial_position`).
+        self._set_rllib_context_foreach_env(
+            worker_set, self._has_local_worker[env_type], worker_ids=worker_ids
+        )
+        # Update the sub env context; it seems rllib has a bug where the recreated workers
+        # have the boolean as false, although they've been recreated.
+        worker_set.foreach_worker(
+            lambda w: w.foreach_env(
+                lambda env: setattr(env.rllib_env_context, "recreated_worker", True)
+            ),
+            local_worker=False,
+            remote_worker_ids=worker_ids,
+        )
+
+        # Use config "snapshot" to reinitialize simulation for the recreated (sub) envs.
+        worker_set.foreach_worker(
+            lambda w: w.foreach_env(
+                lambda env: env._configure_fire_for_recreated_worker(
+                    self._env_id_to_env_fire_context[env_type]
+                )
+            ),
+            local_worker=self._has_local_worker[env_type],
+            remote_worker_ids=worker_ids,
+        )
 
     def prepare_context_from_algorithm(self, algorithm: "Algorithm") -> None:
         """Configures the `rllib_env_context` for each train (eval) env.
@@ -204,7 +285,7 @@ class InitializeSimfire(DefaultCallbacks):
         # Determine if local worker is present for training (evaluation) WorkerSet.
         self._initialize_worker_flags(algorithm)
 
-        # Set `rllib_env_context` for each env (needed w/in `env._initialize_simfire`).
+        # Set `rllib_env_context` for each env (needed w/in `env._set_fire_initial_position`).
         self._set_rllib_context_foreach_env(
             algorithm.workers, self._has_local_worker["train"]
         )
@@ -243,7 +324,7 @@ class InitializeSimfire(DefaultCallbacks):
         self.op_locations["eval"] = eval_locs
 
         # Optionally save the operational locations to disk.
-        if self.op_locs_cfg.get("save_data") and logdir is not None:
+        if self.op_locs_cfg.get("save_json_data") and logdir is not None:
             # Prepare the output directory.
             if self.op_locs_cfg.get("save_subdir"):
                 outdir = os.path.join(logdir, self.op_locs_cfg["save_subdir"])
@@ -258,7 +339,8 @@ class InitializeSimfire(DefaultCallbacks):
             all_locs_hr = {"train": population_train_locs_hr, "eval": eval_locs_hr}
 
             with open(locs_fpath, "w", encoding="utf-8") as f:
-                f.write(json.dumps(all_locs_hr, indent=4))
+                json.dump(all_locs_hr, f, indent=4)
+
             logger.info(f"Saved operational locations to: {locs_fpath}")
 
     def _get_operational_location_dict(
@@ -275,7 +357,11 @@ class InitializeSimfire(DefaultCallbacks):
         ]
 
     def _set_operational_location_foreach_env(
-        self, worker_set: "WorkerSet", env_type: Literal["train", "eval"]
+        self,
+        worker_set: "WorkerSet",
+        env_type: Literal["train", "eval"],
+        worker_ids: Optional[List[int]] = None,
+        locs_to_use: Optional[List["BurnMDOperationalLocation"]] = None,
     ) -> None:
         # Prepare inputs to use based on the respective env type.
         if env_type == "train":
@@ -283,9 +369,12 @@ class InitializeSimfire(DefaultCallbacks):
         else:
             num_fire_pos_in_sample = self.num_eval_fire_init_pos
 
+        # Sample locations from the population, if not provided.
+        if locs_to_use is None:
+            locs_to_use = self._sample_locations_from_population(env_type)
+
         # Duplicate the locations to use for each fire position in the sample.
         # This is crucial to ensure (relatively) even distribution across envs!
-        locs_to_use = self._sample_locations_from_population(env_type)
         duplicated_locs = InitializeSimfire._duplicate_items(
             locs_to_use, num_fire_pos_in_sample
         )
@@ -300,7 +389,9 @@ class InitializeSimfire(DefaultCallbacks):
                 )
             ),
             local_worker=self._has_local_worker[env_type],
+            remote_worker_ids=worker_ids,
         )
+
         self._update_op_locs_counter(locs_used, env_type)
 
     def _sample_locations_from_population(
@@ -356,7 +447,7 @@ class InitializeSimfire(DefaultCallbacks):
 
         # Optionally save the raw data arrays to disk.
         outdir = ""
-        if self.fire_pos_cfg["sampler"].get("save_data") and logdir is not None:
+        if self.fire_pos_cfg["sampler"].get("save_raw_data") and logdir is not None:
             # Prepare the output directory.
             if self.fire_pos_cfg["sampler"].get("save_subdir"):
                 outdir = os.path.join(logdir, self.fire_pos_cfg["sampler"]["save_subdir"])
@@ -372,7 +463,7 @@ class InitializeSimfire(DefaultCallbacks):
             logger.info(f"Saved eval data array to: {raw_eval_fpath}")
 
         # Optionally save the fire initial position data in a human-readable format.
-        if self.fire_pos_cfg["sampler"].get("save_json") and logdir is not None:
+        if self.fire_pos_cfg["sampler"].get("save_json_data") and logdir is not None:
             # Prepare and save fire initial position data.
             train_fire_data_hr = self._get_fire_initial_position_dict(train_arrays)
             eval_fire_data_hr = self._get_fire_initial_position_dict(eval_arrays)
@@ -380,17 +471,17 @@ class InitializeSimfire(DefaultCallbacks):
             all_fire_data_hr = {"train": train_fire_data_hr, "eval": eval_fire_data_hr}
             fire_data_fpath = os.path.join(outdir, "fire_initial_positions.json")
             with open(fire_data_fpath, "w", encoding="utf-8") as f:
-                f.write(json.dumps(all_fire_data_hr, indent=4))
+                json.dump(all_fire_data_hr, f, indent=4)
 
         return train_array, eval_array
 
     def _get_fire_initial_position_dict(
         self, data_arrays: Dict[str, np.ndarray]
     ) -> Dict[str, Tuple[int, int]]:
-        """Get a dict representation of the operational locations for the env_type."""
+        """Get a dict representation of the fire initial positions for the env_type."""
         fire_data = {}
         for loc_uid, loc_data in data_arrays.items():
-            fire_data[loc_uid] = [(int(pos.x), int(pos.y)) for pos in loc_data]
+            fire_data[loc_uid] = [f"({int(pos.x)}, {int(pos.y)})" for pos in loc_data]
 
         return fire_data
 
@@ -418,7 +509,7 @@ class InitializeSimfire(DefaultCallbacks):
         # Set the fire initial position for each sub environment, then update counters.
         fire_pos_used = worker_set.foreach_worker(
             lambda w: w.foreach_env(
-                lambda env: env._initialize_simfire(
+                lambda env: env._set_fire_initial_position(
                     data=data_subset,
                     num_envs_per_worker=self._envs_per_worker[env_type],
                     loc_to_idx=self.op_loc_to_fire_array_idx[env_type],
@@ -426,10 +517,35 @@ class InitializeSimfire(DefaultCallbacks):
             ),
             local_worker=self._has_local_worker[env_type],
         )
+
         # FIXME: Design of fire_pos_counter dict doesn't distinguish b/w train and eval.
         # For now, only update counter for training envs.
         if env_type == "train":
             self._update_fire_pos_counter(fire_pos_used, env_type)
+
+    def _store_fire_context_foreach_env(
+        self, worker_set: "WorkerSet", env_type: Literal["train", "eval"]
+    ) -> None:
+        """Store a snapshot of the fire config used for each sub environment.
+
+        By subset, we mean the config options that are relevant to this callback, ie.
+        `operational` settings and `fire` settings. In the future, there may be other
+        settings that are relevant to the callback.
+
+        Arguments:
+            worker_set: The WorkerSet obj containing the sub environments of interest.
+            env_type: The type of environment, either "train" or "eval".
+        """
+        env_configs = worker_set.foreach_worker(
+            lambda w: w.foreach_env(lambda env: env._build_fire_context()),
+            local_worker=self._has_local_worker[env_type],
+        )
+
+        # Update mapping of env to current fire init pos. Useful for restarts.
+        start_val = 0 if self._has_local_worker[env_type] else 1
+        for w_idx, w_cfgs in enumerate(env_configs, start=start_val):
+            for v_idx, cfg in enumerate(w_cfgs):
+                self._env_id_to_env_fire_context[env_type][(w_idx, v_idx)] = cfg
 
     def _update_op_locs_counter(
         self,
@@ -470,6 +586,8 @@ class InitializeSimfire(DefaultCallbacks):
         )
         # TODO: Optimize this to scale when sample size is large.
         for loc_uid, pos in chain(*fire_pos_used):
+            # Ensure key is a str - JSON serialization requires this!
+            pos = str(pos)
             # Update the counter, assuming the loc UID has been added.
             if self.fire_pos_counter.get(loc_uid):
                 if self.fire_pos_counter[loc_uid].get(pos):
@@ -501,10 +619,13 @@ class InitializeSimfire(DefaultCallbacks):
             algorithm.evaluation_config
         )
 
-    def _set_rllib_context_foreach_env(self, worker_set: "WorkerSet", local_worker: bool):
+    def _set_rllib_context_foreach_env(
+        self, worker_set: "WorkerSet", local_worker: bool, worker_ids: List[int] = None
+    ):
         worker_set.foreach_worker(
             lambda w: w.foreach_env_with_context(env_utils.set_harness_env_context),
             local_worker=local_worker,
+            remote_worker_ids=worker_ids,
         )
 
     @staticmethod
@@ -730,66 +851,3 @@ class InitializeSimfire(DefaultCallbacks):
                 "increase the total number of evaluation scenarios."
             ).format(eval_envs, self.total_eval_scenarios)
             logger.warning(msg)
-
-    def on_workers_recreated(
-        self,
-        *,
-        algorithm: "Algorithm",
-        worker_set: "WorkerSet",
-        worker_ids: List[int],
-        is_evaluation: bool,
-        **kwargs,
-    ) -> None:
-        """Callback run after one or more workers have been recreated.
-
-        You can access (and change) the worker(s) in question via the following code
-        snippet inside your custom override of this method:
-
-        Note that any "worker" inside the algorithm's `self.worker` and
-        `self.evaluation_workers` WorkerSets are instances of a subclass of EnvRunner.
-
-        .. testcode::
-            from ray.rllib.algorithms.callbacks import DefaultCallbacks
-
-            class MyCallbacks(DefaultCallbacks):
-                def on_workers_recreated(
-                    self,
-                    *,
-                    algorithm,
-                    worker_set,
-                    worker_ids,
-                    is_evaluation,
-                    **kwargs,
-                ):
-                    # Define what you would like to do on the recreated
-                    # workers:
-                    def func(w):
-                        # Here, we just set some arbitrary property to 1.
-                        if is_evaluation:
-                            w._custom_property_for_evaluation = 1
-                        else:
-                            w._custom_property_for_training = 1
-
-                    # Use the `foreach_workers` method of the worker set and
-                    # only loop through those worker IDs that have been restarted.
-                    # Note that we set `local_worker=False` to NOT include it (local
-                    # workers are never recreated; if they fail, the entire Algorithm
-                    # fails).
-                    worker_set.foreach_worker(
-                        func,
-                        remote_worker_ids=worker_ids,
-                        local_worker=False,
-                    )
-
-        Args:
-            algorithm: Reference to the Algorithm instance.
-            worker_set: The WorkerSet object in which the workers in question reside.
-                You can use a `worker_set.foreach_worker(remote_worker_ids=...,
-                local_worker=False)` method call to execute custom
-                code on the recreated (remote) workers. Note that the local worker is
-                never recreated as a failure of this would also crash the Algorithm.
-            worker_ids: The list of (remote) worker IDs that have been recreated.
-            is_evaluation: Whether `worker_set` is the evaluation WorkerSet (located
-                in `Algorithm.evaluation_workers`) or not.
-        """
-        pass

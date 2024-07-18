@@ -106,7 +106,7 @@ class Harness(gym.Env, ABC, Generic[AnySimulation]):
                 "context is set before accessing it. This can be done by calling the "
                 "`set_harness_env_context()` method defined in "
                 "`simharness2/environments/utils.py`. For example usage, please refer to "
-                "the `InitializeSimfire.on_algorithm_init()` method in "
+                "the `InitializeSimfire._set_rllib_context_foreach_env()` method in "
                 "`simharness2/callbacks/initialize_simfire.py`."
             )
         return self._rllib_env_context

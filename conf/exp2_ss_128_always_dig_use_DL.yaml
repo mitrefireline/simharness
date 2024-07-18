@@ -81,8 +81,8 @@ simulation:
     # seed, if provided).
     population_size: 12
     seed: ${debugging.seed}
-    # Save the raw generated train (eval) "dataset" as .npy files.
-    save_data: true
+    # Save the operational locations in JSON format.
+    save_json_data: true
     # Optionally specify a subdir within the artifact directory to save the generated
     # "dataset" files. Default is 'initialize_simfire'.
     save_subdir: initialize_simfire
@@ -135,7 +135,7 @@ simulation:
       # Save the raw generated train (eval) "dataset" as .npy files.
       save_raw_data: true
       # Save a JSON file containing the sampled fire positions.
-      save_json: true
+      save_json_data: true
       # Optionally specify a subdir within the artifact directory to save the generated
       # "dataset" files. Default is 'initialize_simfire'.
       save_subdir: initialize_simfire

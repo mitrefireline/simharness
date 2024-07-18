@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import time
 import logging
 import json
@@ -15,6 +15,7 @@ from simharness2.utils.utils import get_default_seed
 if TYPE_CHECKING:
     from ray.rllib.env.env_context import EnvContext
     from simfire.sim.simulation import FireSimulation
+    from simfire.utils.config import OperationalConfig
     from simharness2.environments.fire_harness import FireHarness
     from numpy.random import Generator
 
@@ -48,6 +49,41 @@ class BurnMDOperationalLocation:
     def lat_lon(self) -> Tuple[float, float]:
         """Return the latitude and longitude of the operational location."""
         return self.latitude, self.longitude
+
+
+@dataclass
+class EnvFireContext:
+    """Dataclass to store the context of the environment's fire config."""
+
+    # Environment identification fields
+    worker_index: int
+    vector_index: int
+
+    # Fire environment context fields
+    fire_initial_position: Tuple[int, int]
+    burnmd_operational_location: Optional[BurnMDOperationalLocation] = None
+    operational_config: Optional["OperationalConfig"] = None
+
+    @property
+    def operational_year_used(self) -> int:
+        """Return the year of the operational data used for the current environment.
+
+        This is for convenience, but also to highlight that the operational year used
+        may differ from the year of the BurnMD fire scenario data. The reason is that,
+        by default, the operational data year is set to:
+        - the year prior to the BurnMD fire scenario year, ie. year - 1.
+        """
+        return self.operational_config.year
+
+    @property
+    def env_uid(self) -> Tuple[int, int]:
+        """Return the unique identifier for the current environment.
+
+        The unique identifier is a tuple of the worker and vector indices. Technically,
+        this uid is not unique across train and eval envs, but it will be unique within
+        the context of the env type (ie. the truth of self.in_evaluation).
+        """
+        return self.worker_index, self.vector_index
 
 
 @dataclass
