@@ -101,6 +101,7 @@ class MixedForwardAreaSavedReward(MixedLocalAreaSavedReward):
         init_pos = agent.initial_position
         return _manhatten_dist(cur_pos, init_pos) - _manhatten_dist(prev_pos, init_pos)
 
+
 class MixedLocalAreaSavedRewardWithFirePenalty(MixedLocalAreaSavedReward):
     def __init__(
         self,
@@ -113,13 +114,13 @@ class MixedLocalAreaSavedRewardWithFirePenalty(MixedLocalAreaSavedReward):
         super().__init__(
             harness_analytics=harness_analytics,
             mixing_coefficient=mixing_coefficient,
-            **kwargs
+            **kwargs,
         )
 
     def get_local_reward(self, agent: ReactiveAgent) -> float:
         reward = super().get_local_reward(agent)
         fire_map = self.harness_analytics.sim_analytics.sim.fire_map
         burning = fire_map == BurnStatus.BURNING
-        if burning[agent.cur_pos]:
+        if burning[agent.current_position]:
             reward -= self._fire_penalty
         return reward

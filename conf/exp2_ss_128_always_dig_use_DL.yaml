@@ -7,7 +7,7 @@ defaults:
   - hydra: default
   - exploration: default
   - training: ppo_with_custom_model
-  - environment: marl_damage_aware
+  - environment: marl_damage_aware_fire_penalty
   - _self_
 
 # reward_mix_coeff: ??

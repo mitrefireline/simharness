@@ -1,0 +1,7 @@
+defaults:
+  - marl_damage_aware
+  - _self_
+
+env_config:
+  reward_cls_partial:
+    _target_: simharness2.rewards.MixedLocalAreaSavedRewardWithFirePenalty
