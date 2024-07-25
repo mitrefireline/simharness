@@ -16,7 +16,7 @@ documentation = "https://mitrefireline.github.io/simharness"
 python = "~3.9"
 ray = {version = "2.10.0", extras = ["default", "rllib", "tune"]}
 gymnasium = "0.28.1"
-simfire = "^1.5.5"
+simfire = "~2.0"
 aim = "^3.17.5"
 hydra-core = "^1.3.2"
 torch = "^2.1.1"
