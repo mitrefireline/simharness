@@ -254,13 +254,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         "wetline": BurnStatus.WETLINE,
         "scratchline": BurnStatus.SCRATCHLINE,
     }
-    agent_id_start = (
-        max(set([int(v) for k, v in interacts_map.items() if k in interacts])) + 1
-    )
-    agent_id_stop = agent_id_start + num_agents
-    sim_agent_ids = np.arange(agent_id_start, agent_id_stop)
-    # FIXME: Usage of "agent_{}" doesn't allow us to delineate agents groups.
-    agent_ids = {f"agent_{i}" for i in sim_agent_ids}
+    agent_ids = {"agent"}
 
     algo_cfg = get_trainable_cls(cfg.algo.name).get_default_config()
     # TODO: Support usage of RLlib’s “new API stack”.
@@ -291,7 +285,7 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     if issubclass(env_cls, MultiAgentEnv):
         algo_cfg = algo_cfg.multi_agent(
             policies=agent_ids,
-            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+            policy_mapping_fn=(lambda agent_id, *args, **kwargs: "agent"),
         )
 
     return algo_cfg
