@@ -42,16 +42,6 @@ FIRE_MAP_ATTRIBUTES = ["fire_map", "fire_map_with_agents"]
 BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
 SIMFIRE_ATTRIBUTES = FireSimulation.supported_attributes()
 
-# Below fields help with reporting each environment's "fire" settings.
-env_fields = [
-    "worker_index",
-    "vector_index",
-    "burnmd_operational_location",
-    "operational_data_year",
-    "fire_initial_position",
-]
-FireEnvContext = namedtuple("FireEnvContext", env_fields)
-
 
 class FireHarness(Harness[AnyFireSimulation]):
     def __init__(
@@ -136,13 +126,15 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         # Indicator flag to determine if fire in the sim can spread diagonally.
         self._fire_diagonal_spread = self.sim.config.fire.diagonal_spread
-        # TODO: Decide default value. Setting to False allows _initialize_simfire()
+        # TODO: Decide default val. Setting to False allows _set_fire_initial_position()
         # to be the only method that should change this to True?
         # NOTE: If default is False, then ray/rllib/utils/pre_checks/env.py:check_env()
         # method will fail, because we DO NOT run the benchmark and therefore do not have
         # the data needed! So, set to True for now, and we can figure out how to be less
         # redundant later on.
         self._new_fire_scenario = True
+        # Fire context will be initialized from external callback, InitializeSimfire.
+        self.fire_context: env_utils.EnvFireContext
 
     def get_observation_space(self) -> spaces.Space:
         """TODO."""
@@ -598,97 +590,166 @@ class FireHarness(Harness[AnyFireSimulation]):
     def _set_operational_location(
         self,
         *,
-        locations: List["BurnMDOperationalLocation"],
-        num_envs_per_worker: int,
+        locations: Optional[List["BurnMDOperationalLocation"]] = None,
+        num_envs_per_worker: int = None,
+        location_to_use: Optional["BurnMDOperationalLocation"] = None,
     ) -> str:
-        """Sets the operational location for the current environment.
+        """Set the operational location for the current environment.
 
-        Args:
-            locations: A list of `BurnMDOperationalLocation` objects that will be sampled
-                from to set the operational location for the current environment.
-            num_envs_per_worker: The number of sub environments per worker.
+        This method sets the operational location for the current environment by either
+        selecting from a provided list of operational locations based on an even
+        distribution algorithm or using a directly provided operational location. The
+        selected operational location is then used to update the simulation and, if
+        present, the benchmark simulation.
+    
+        Note:
+        - This method updates the operational location for both the simulation instance (`self.sim`)
+            and, if available, the benchmark simulation instance (`self.benchmark_sim`).
+        - The operational location is essential for configuring the simulation environment
+            and influences various simulation parameters and behaviors.
+
+        Arguments:
+            locations: An optional list of `BurnMDOperationalLocation` objects. If 
+                provided, one of these locations will be selected based on an even
+                distribution algorithm that considers the number of environments per
+                worker. This argument is mutually exclusive with `location_to_use`.
+            num_envs_per_worker: The number of environments contained within each worker.
+                This is used to calculate the index of the operational location to use
+                from the `locations` list, ensuring an even distribution of locations
+                across environments. This arg is required if `locations` is provided.
+            location_to_use: An optional `BurnMDOperationalLocation` object. If provided,
+                this location is directly used as the operational location for the
+                current environment. This arg is mutually exclusive with `locations`.
 
         Returns:
-            The `uid` of the operational location that was selected for the current
-            environment. This value is structured as f"{state}_{year}_{fire_name}". For
-            example, "Oregon_2020_White_River".
+            The `uid` of the operational location that was selected or provided for the
+            current environment. The `uid` is structured as "state_year_fireName", 
+            e.g., "Oregon_2020_White_River".
+
+        Raises:
+            ValueError: If neither `locations` nor `location_to_use` is provided.
         """
-        # Get the index of the operational location to use for the current environment.
-        logger.debug(f"There are {len(locations)} operational locations provided.")
-        loc_idx = self._get_even_distribution_index(
-            data_length=len(locations), num_envs_per_worker=num_envs_per_worker
-        )
-        logger.debug(f"Operational location at index {loc_idx} will be used.")
+        if locations is None and location_to_use is None:
+            raise ValueError("Either `locations` or `location_to_use` must be provided.")
+        elif locations is not None:
+            logger.info("Selecting operational location from provided locations...")
+            # Get the index of the operational location to use for the current environment.
+            logger.debug(f"There are {len(locations)} operational locations provided.")
+            loc_idx = self._get_even_distribution_index(
+                data_length=len(locations), num_envs_per_worker=num_envs_per_worker
+            )
+            logger.debug(f"Operational location at index {loc_idx} will be used.")
+            location_to_use = locations[loc_idx]
+        else:
+            logger.info("Using provided operational location...")
 
         # Prepare the environment and simulation for the selected operational location.
         w_idx, v_idx = (
             self.rllib_env_context.worker_index,
             self.rllib_env_context.vector_index,
         )
-        logger.info(f"({w_idx}, {v_idx}) Setting self._op_loc to {locations[loc_idx]}...")
-        self._op_loc = locations[loc_idx]
+        logger.info(
+            f"({w_idx}, {v_idx}) Setting self._burnmd_op_loc to {location_to_use}..."
+        )
+        self._burnmd_op_loc = location_to_use
 
         # TODO: Create MR for simfire to add `set_operational_location` method and
         # optimize/update the logic of `reset_terrain()`.
         logger.info("Updating self.sim with selected operational location...")
-        self.sim = env_utils.set_operational_location(self.sim, self._op_loc)
+        self.sim = env_utils.set_operational_location(self.sim, self._burnmd_op_loc)
         if self.benchmark_sim:
             logger.info(
                 "Updating self.benchmark_sim with selected operational location..."
             )
             self.benchmark_sim = env_utils.set_operational_location(
-                self.benchmark_sim, self._op_loc
+                self.benchmark_sim, self._burnmd_op_loc
             )
 
-        return self._op_loc.uid
+        return self._burnmd_op_loc.uid
 
-    def _initialize_simfire(
+    def _set_fire_initial_position(
         self,
         *,
-        data: np.recarray,
-        num_envs_per_worker: int,
+        data: Optional[np.recarray] = None,
+        num_envs_per_worker: int = None,
         loc_to_idx: Dict[str, int] = None,
+        position: Optional[Tuple[int, int]] = None,
     ) -> Tuple[str, Tuple[int, int]]:
         """Update the `fire_initial_position` for the `FireSimulation` instance.
 
+        This method selects the initial position of the fire based on either a provided
+        position or by selecting from a dataset of fire scenarios. If a dataset is
+        provided, it selects a scenario based on the environment index to ensure even
+        distribution across different environments. The selected fire position is then
+        set for both the simulation and, if present, the benchmark simulation.
+
+        Note:
+            - If `data` is a 2D array, it is assumed that the first axis is used to
+                select an array for the respective operation location.
+            - This method updates the `fire_initial_position` for both the simulation
+                instance and, if available, the benchmark simulation instance.
+
         Arguments:
-            data: A np.recarray containing the sample of fire scenarios to choose from.
+            data: An optional numpy recarray containing the sample of fire scenarios to
+                choose from. If provided, the method selects the fire initial position
+                based on the scenarios in this dataset. If not provided, the `position`
+                argument must be specified.
             num_envs_per_worker: The number of environments that are contained within
-                each worker. This helps determine the index of the fire scenario that
-                should be used for the current environment.
+                each worker. This is used to determine the index of the fire scenario
+                that should be used for the current environment, ensuring an even
+                distribution of scenarios across environments.
+            loc_to_idx: An optional dictionary mapping operation location identifiers to
+                indices within the `data` array. This is required if `data` is a 2D
+                array, to select the appropriate row for the operation location.
+            position: An optional tuple specifying the (x, y) coordinates of the fire's
+                initial position. If provided, this position is used directly to set the
+                fire's initial position. If not provided, the `data` argument must be
+                specified.
 
         Returns:
-            The selected initial position of the fire, as a tuple of (x, y) coordinates.
+            A tuple containing the operation location UID and the selected initial
+            position of the fire as a tuple of (x, y) coordinates.
+
+        Raises:
+            ValueError: If neither `data` nor `position` is provided.
+            NotImplementedError: If the `data` shape is not 2D, and the method is
+                expected to handle such cases in future implementations.
         """
-        # Get the index of the fire scenario to use for the current environment.
-        fire_idx = self._get_even_distribution_index(
-            data_length=data.shape[-1], num_envs_per_worker=num_envs_per_worker
-        )
+        if data is None and position is None:
+            raise ValueError("Either `data` or `position` must be provided.")
+        elif data is not None:
+            logger.info("Selecting fire initial position from provided data...")
+            # Get the index of the fire scenario to use for the current environment.
+            fire_idx = self._get_even_distribution_index(
+                data_length=data.shape[-1], num_envs_per_worker=num_envs_per_worker
+            )
 
-        # TODO: Maybe create custom recarray to use for type hints on attributes?
-        # If 2D array, assume first axis is used to get arr for respective op location
-        if len(data.shape) == 2:
-            op_loc_idx = loc_to_idx[self._op_loc.uid]
-            fire_pos_arr = data[op_loc_idx, fire_idx]
+            # TODO: Maybe create custom recarray to use for type hints on attributes?
+            # If 2D array, assume first axis is used to get arr for respective op location
+            if len(data.shape) == 2:
+                op_loc_idx = loc_to_idx[self._burnmd_op_loc.uid]
+                fire_pos_arr = data[op_loc_idx, fire_idx]
+            else:
+                # FIXME: We should probably raise an error if the shape is not 2D?
+                # But, we also might want to allow usage of this method from elsewhere,
+                # ie. not solely from the `InitializeSimfire` callback.
+                fire_pos_arr = data[fire_idx]
+
+            # Use the fire scenario to initialize the `FireSimulation`.
+            fire_pos_arr = fire_pos_arr.view(type=np.recarray)
+            position = (fire_pos_arr.x, fire_pos_arr.y)
         else:
-            # FIXME: We should probably raise an error if the shape is not 2D?
-            # But, we also might want to allow usage of this method from elsewhere,
-            # ie. not solely from the `InitializeSimfire` callback.
-            fire_pos_arr = data[fire_idx]
+            logger.info(f"Using provided fire initial position: {position}...")
 
-        # Use the fire scenario to initialize the `FireSimulation`.
-        fire_pos_arr = fire_pos_arr.view(type=np.recarray)
-        init_pos = (fire_pos_arr.x, fire_pos_arr.y)
-        logger.info(f"Setting simulation fire initial position to {init_pos}...")
-        self.sim.set_fire_initial_position(init_pos)
+        logger.debug(f"Setting simulation fire initial position to {position}...")
+        self.sim.set_fire_initial_position(position)
         if self.benchmark_sim:
-            logger.info(f"Setting benchmark_sim fire initial position to {init_pos}...")
-            self.benchmark_sim.set_fire_initial_position(init_pos)
+            logger.debug(f"Setting benchmark_sim fire initial position to {position}...")
+            self.benchmark_sim.set_fire_initial_position(position)
 
-        # TODO: Decide on how to indicate that fire scenario is "new"; works for now.
         self._new_fire_scenario = True
 
-        return self._op_loc.uid, init_pos
+        return self._burnmd_op_loc.uid, position
 
     def _get_even_distribution_index(
         self, *, data_length: int, num_envs_per_worker: int
@@ -721,8 +782,8 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         return idx
 
-    def _get_fire_env_context(self) -> FireEnvContext:
-        """Return fire-specific environment context. See FireEnvContext for details."""
+    def _build_fire_context(self) -> env_utils.EnvFireContext:
+        """Build fire-specific environment context. See EnvFireContext for details."""
         # If context has not been set, return values of (-1, -1) and log error.
         try:
             env_context = self.rllib_env_context
@@ -735,25 +796,66 @@ class FireHarness(Harness[AnyFireSimulation]):
         fuel_type = self.sim.config.terrain.fuel_type
         topo_type = self.sim.config.terrain.topography_type
         if fuel_type == "operational" or topo_type == "operational":
-            if not hasattr(self, "_op_loc") or self._op_loc is None:
+            if not hasattr(self, "_burnmd_op_loc") or self._burnmd_op_loc is None:
                 raise AttributeError(
                     f"The fuel type ({fuel_type}) or topography type ({topo_type}) is "
                     "set to 'operational', but the SimHarness environment does not have "
-                    f"self._op_loc set. The FireHarness._set_operational_location() "
+                    f"self._burnmd_op_loc set. The FireHarness._set_operational_location() "
                     "method can be used to set this attribute."
                 )
-            burnmd_op_loc = self._op_loc
-            op_data_year = self.sim.config.operational.year
+            burnmd_op_loc = self._burnmd_op_loc
+            op_config = self.sim.config.operational
         # TODO: "Fallback" behavior in case functional is used - decide default values.
         else:
             burnmd_op_loc = None
-            op_data_year = None
+            op_config = None
 
         # Get the initial position of the fire for the current environment.
-        fire_initial_position = self.sim.config.fire.fire_initial_position
-        return FireEnvContext(
-            w_i, v_i, burnmd_op_loc, op_data_year, fire_initial_position
+        fire_init_pos = self.sim.config.fire.fire_initial_position
+        self.fire_context = env_utils.EnvFireContext(
+            worker_index=w_i,
+            vector_index=v_i,
+            fire_initial_position=fire_init_pos,
+            burnmd_operational_location=burnmd_op_loc,
+            operational_config=op_config,
         )
+        return self.fire_context
+
+    def _configure_fire_for_recreated_worker(
+        self,
+        env_to_fire_context: Dict[Tuple[int, int], env_utils.EnvFireContext],
+    ) -> None:
+        """Update the `FireSimulation` with the configuration data for the current env.
+
+        Arguments:
+            env_to_simfire_config: A dictionary mapping the environment uid (namely, the
+                pair of worker and vector indices) to a snapshot of the fire context that
+                was present prior to worker failure.
+        """
+        env_context = self.rllib_env_context
+        env_id = env_context.worker_index, env_context.vector_index
+        fire_context = env_to_fire_context[env_id]
+
+        logger.info(f"Updating `self.sim` with fire context for env_id={env_id}...")
+        # Handle op location and fire initial position for the current environment.
+        self._set_operational_location(
+            location_to_use=fire_context.burnmd_operational_location
+        )
+        self._set_fire_initial_position(position=fire_context.fire_initial_position)
+        # FIXME: Below would be doing the above, but manually instead of calling method.
+        # position = fire_context.fire_initial_position
+        # logger.info(f"Setting simulation fire initial position to {position}...")
+        # self.sim.set_fire_initial_position(position)
+        # if self.benchmark_sim:
+        #     logger.info(f"Setting benchmark_sim fire initial position to {position}...")
+        #     self.benchmark_sim.set_fire_initial_position(position)
+
+        # Ensure that harness attributes are correctly updated.
+        self._new_fire_scenario = True
+
+        # Verify that the operational configs match.
+        if self.sim.config.operational != fire_context.operational_config:
+            raise AssertionError("Operational configs do not match!")
 
     def _setup_harness_analytics(self, analytics_partial: partial) -> None:
         """Instantiates `harness_analytics` used to monitor this `ReactiveHarness` obj.

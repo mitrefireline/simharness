@@ -38,8 +38,8 @@ rollouts:
 
   batch_mode: complete_episodes # truncate_episodes
   # Scale experiment as desired
-  num_rollout_workers: 2
-  num_envs_per_worker: 4
+  num_rollout_workers: 4
+  num_envs_per_worker: 2
 
 cli:
   mode: train
@@ -47,7 +47,7 @@ cli:
 
 hydra:
   run:
-    dir: ${cli.data_dir}/debug_experiments/${now:%Y-%m-%d}-TEST-MR-63
+    dir: ${cli.data_dir}/debug_experiments/${now:%Y-%m-%d_%H-%M-%S}
 
 # Total number of fire scenarios is:
 # - For train, op_loc.sample_size.train * fire_initial_position.sampler.sample_size.train
@@ -66,9 +66,9 @@ simulation:
     burnmd_dataset_path: /simharness/data/burnmd_TL_flat.json
     # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
     # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
-    resample_interval: -1
+    resample_interval: 4
     sample_size:
-      train: 2
+      train: 4
       eval: 1
     independent_eval: true
     # Number of operational locations from BurnMD that are used to create a population
@@ -81,8 +81,10 @@ simulation:
     # seed, if provided).
     population_size: 12
     seed: ${debugging.seed}
-    # Save the raw generated train (eval) "dataset" as .npy files.
-    save_data: true
+    # Save the operational locations in JSON format.
+    save_json_data: true
+    # Save the distribution of the sampled operational locations.
+    save_op_locs_counter: true
     # Optionally specify a subdir within the artifact directory to save the generated
     # "dataset" files. Default is 'initialize_simfire'.
     save_subdir: initialize_simfire
@@ -122,8 +124,8 @@ simulation:
       # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
       # - "(A < elapsed_steps) & (C < percent_area_burned)"
       # query: "50 < elapsed_steps < 150"
-      # query: "0.10 < percent_area_burned" # FIXME: usign easy query to test
-      query: "0.01 < percent_area_burned" # FIXME!
+      query: "0.10 < percent_area_burned" # FIXME: usign easy query to test
+      # query: "0.01 < percent_area_burned" # FIXME!
       # Number of samples available in resulting "dataset" after filtering with `query`.
       # NOTE: This allows the user to control the total number of distinct fire positions
       # that will be used to produce sample batches (or trajectories) of experiences. If
@@ -132,10 +134,13 @@ simulation:
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
       population_size: 32 # FIXME!
       seed: ${debugging.seed}
+      # TODO: Ideally we could encapsulate all below options into a SaveConfig.
       # Save the raw generated train (eval) "dataset" as .npy files.
       save_raw_data: true
       # Save a JSON file containing the sampled fire positions.
-      save_json: true
+      save_json_data: true
+      # Save the distribution of the sampled fire positions.
+      save_fire_pos_counter: true
       # Optionally specify a subdir within the artifact directory to save the generated
       # "dataset" files. Default is 'initialize_simfire'.
       save_subdir: initialize_simfire
@@ -167,6 +172,6 @@ debugging:
 
 evaluation:
   evaluation_interval: 1
-  evaluation_duration: 1
+  evaluation_duration: 10
   evaluation_duration_unit: episodes
   evaluation_num_workers: 1
