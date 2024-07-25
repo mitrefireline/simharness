@@ -48,11 +48,15 @@ class InitializeSimfire(DefaultCallbacks):
         # position - the value will be the number of times it has been sampled
         # (ie. total episodes trained w/ the op loc + fire start pos pair).
         self.fire_pos_counter: Dict[str, Dict[str, int]] = {}
+        # This will store the output directory used to save counter data in JSON format.
+        self.fire_pos_counter_save_dir: str = None
 
         # This will store each operational location's UID (see BurnMDOperationalLocation)
         # and the value will be a dict with "train" and "eval" keys. The value for each
         # key will be the number of envs that have been seeded with this loc.
         self.op_locs_counter: Dict[str, Dict[str, int]] = {}
+        # This will store the output directory used to save counter data in JSON format.
+        self.op_locs_counter_save_dir: str = None
 
         # This will be used to access the correct index of the 2D fire pos array.
         self.op_loc_to_fire_array_idx: Dict[str, Dict[str, int]] = {
@@ -149,6 +153,10 @@ class InitializeSimfire(DefaultCallbacks):
         self.fire_init_pos_array_object_refs["train"] = ray.put(train_data)
         self.fire_init_pos_array_object_refs["eval"] = ray.put(eval_data)
 
+        # Prepare save paths for the counter data, then save the initial state.
+        self._prepare_save_paths(logdir)
+        self._save_counter_data()
+
     def on_train_result(
         self,
         *,
@@ -213,6 +221,8 @@ class InitializeSimfire(DefaultCallbacks):
         if new_fire_scenario:
             logger.info("Storing the updated fire context for each sub environment...")
             self._store_fire_context_foreach_env(algorithm.workers, "train")
+            logger.info("Saving the updated counter data...")
+            self._save_counter_data()
 
     def on_workers_recreated(
         self,
@@ -306,6 +316,42 @@ class InitializeSimfire(DefaultCallbacks):
             env_config
         )
         self._initialize_prngs()
+
+    def _prepare_save_paths(self, logdir: str = None) -> None:
+        if self.op_locs_cfg.get("save_op_locs_counter"):
+            # Prepare the output directory.
+            if self.op_locs_cfg.get("save_subdir"):
+                outdir = os.path.join(logdir, self.op_locs_cfg["save_subdir"])
+            else:
+                outdir = os.path.join(logdir, "initialize_simfire")
+            os.makedirs(outdir, exist_ok=True)
+            logger.info(f"Operational locations counter will be saved to: {outdir}")
+            self.op_locs_counter_save_dir = outdir
+
+        if self.fire_pos_cfg["sampler"].get("save_fire_pos_counter"):
+            # Prepare the output directory.
+            if self.fire_pos_cfg["sampler"].get("save_subdir"):
+                outdir = os.path.join(logdir, self.fire_pos_cfg["sampler"]["save_subdir"])
+            else:
+                outdir = os.path.join(logdir, "initialize_simfire")
+            os.makedirs(outdir, exist_ok=True)
+            logger.info(f"Fire initial positions counter will be saved to: {outdir}")
+            self.fire_pos_counter_save_dir = outdir
+
+    def _save_counter_data(self) -> None:
+        # Write current state of op_locs_counter to a file.
+        if self.op_locs_cfg.get("save_op_locs_counter"):
+            fpath = os.path.join(self.op_locs_counter_save_dir, "op_locs_counter.json")
+            logger.info("Dumping current state of `self.op_locs_counter` to JSON file.")
+            with open(fpath, "w", encoding="utf-8") as f:
+                json.dump(self.op_locs_counter, f, indent=4)
+
+        # Write current state of fire_pos_counter to a file.
+        if self.fire_pos_cfg["sampler"].get("save_fire_pos_counter"):
+            fpath = os.path.join(self.fire_pos_counter_save_dir, "fire_pos_counter.json")
+            logger.info("Dumping current state of `self.fire_pos_counter` to JSON file.")
+            with open(fpath, "w", encoding="utf-8") as f:
+                json.dump(self.fire_pos_counter, f, indent=4)
 
     def _prepare_operational_locations(self, logdir: str = None) -> None:
         """Prepare the operational locations 'dataset' for training and evaluation."""

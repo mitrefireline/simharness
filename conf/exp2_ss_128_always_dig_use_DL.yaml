@@ -83,6 +83,8 @@ simulation:
     seed: ${debugging.seed}
     # Save the operational locations in JSON format.
     save_json_data: true
+    # Save the distribution of the sampled operational locations.
+    save_op_locs_counter: true
     # Optionally specify a subdir within the artifact directory to save the generated
     # "dataset" files. Default is 'initialize_simfire'.
     save_subdir: initialize_simfire
@@ -132,10 +134,13 @@ simulation:
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
       population_size: 32 # FIXME!
       seed: ${debugging.seed}
+      # TODO: Ideally we could encapsulate all below options into a SaveConfig.
       # Save the raw generated train (eval) "dataset" as .npy files.
       save_raw_data: true
       # Save a JSON file containing the sampled fire positions.
       save_json_data: true
+      # Save the distribution of the sampled fire positions.
+      save_fire_pos_counter: true
       # Optionally specify a subdir within the artifact directory to save the generated
       # "dataset" files. Default is 'initialize_simfire'.
       save_subdir: initialize_simfire
