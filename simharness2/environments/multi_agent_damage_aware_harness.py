@@ -103,7 +103,7 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
             #   - Update bench sim analytics (update_bench_after_one_simulation_step)
             #   - Store each bench fire map at the sim step in self._bench_firemaps
             self._run_benchmark()
-            # Don't rerun benchsim until _initialize_simfire() is called again.
+            # Don't rerun benchsim until _set_fire_initial_position() is called again.
             self._new_fire_scenario = False
 
         return initial_state, infos

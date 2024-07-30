@@ -3,7 +3,7 @@
 import logging
 import os
 from math import log
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import List, TYPE_CHECKING, Dict, Optional, Union
 import time
 from itertools import chain
 
@@ -20,6 +20,7 @@ import simharness2.utils.utils as utils
 
 if TYPE_CHECKING:
     from ray.rllib.algorithms.algorithm import Algorithm
+    from ray.rllib.evaluation.worker_set import WorkerSet
     from simfire.sim.simulation import FireSimulation
 
     from simharness2.environments.fire_harness import FireHarness
@@ -80,6 +81,8 @@ class RenderEnv(DefaultCallbacks):
             lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
             local_worker=self.has_local_eval_worker,
         )
+
+    # def _set_trial_logdir_foreach_env(self, worker_set:)
 
     def on_episode_created(
         self,
@@ -278,7 +281,7 @@ class RenderEnv(DefaultCallbacks):
         curr_eval_iter = {iter for iter in chain(*eval_iters)}
         if len(curr_eval_iter) > 1:
             logger.warning(f"Multiple evaluation iterations detected: {curr_eval_iter}.")
-        else:
+        elif len(curr_eval_iter) == 1:
             logger.info(f"Current evaluation iteration set to: {curr_eval_iter.pop()}")
 
     def on_train_result(
@@ -305,4 +308,26 @@ class RenderEnv(DefaultCallbacks):
         algorithm.workers.foreach_worker(
             lambda w: w.foreach_env(lambda env: setattr(env, "current_result", result)),
             local_worker=self.has_local_train_worker,
+        )
+
+    def on_workers_recreated(
+        self,
+        *,
+        algorithm: "Algorithm",
+        worker_set: "WorkerSet",
+        worker_ids: List[int],
+        is_evaluation: bool,
+        **kwargs,
+    ) -> None:
+        # Make the trial result path accessible to each env (for gif saving).
+        logdir = algorithm.logdir
+        if is_evaluation:
+            has_local_worker = self.has_local_eval_worker
+        else:
+            has_local_worker = self.has_local_train_worker
+
+        worker_set.foreach_worker(
+            lambda w: w.foreach_env(lambda env: setattr(env, "trial_logdir", logdir)),
+            local_worker=has_local_worker,
+            remote_worker_ids=worker_ids,
         )
