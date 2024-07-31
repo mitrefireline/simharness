@@ -7,7 +7,7 @@ defaults:
   - hydra: default
   - exploration: default
   - training: ppo_with_custom_model
-  - environment: marl_damage_aware
+  - environment: marl_damage_aware_fire_penalty
   - _self_
 
 # reward_mix_coeff: ??
@@ -171,7 +171,7 @@ debugging:
     logdir: ${hydra:run.dir}
 
 evaluation:
-  evaluation_interval: 1
+  evaluation_interval: 20
   evaluation_duration: 10
   evaluation_duration_unit: episodes
   evaluation_num_workers: 1
