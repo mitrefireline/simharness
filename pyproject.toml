@@ -3,7 +3,7 @@ requires = ["poetry-core>=1.0.0", "swig=^4.1.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "simharness"
+name = "simharness2"
 version = "1.0.0"
 description = "A modular reinforcement learning wrapper capable of automatically generating land management strategies within SimFire to reduce the overall damage to an area."
 authors = ["Aidan Fennelly <afennelly@mitre.org>", "Alex Tapley <atapley@mitre.org>", "Dhanuj Gandikota <dgandikota@mitre.org>", "Tim Welsh <twelsh@mitre.org>"]
@@ -14,9 +14,9 @@ documentation = "https://mitrefireline.github.io/simharness"
 
 [tool.poetry.dependencies]
 python = "~3.9"
-ray = {version = "~2.10.0", extras = ["default", "rllib", "tune"]}
-gymnasium = "^0.26.3"
-simfire = "~2.0"
+ray = {version = "2.10.0", extras = ["default", "rllib", "tune"]}
+gymnasium = "0.28.1"
+simfire = "~2"
 aim = "^3.17.5"
 hydra-core = "^1.3.2"
 torch = "^2.1.1"

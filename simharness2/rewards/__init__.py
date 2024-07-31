@@ -7,6 +7,7 @@ from simharness2.rewards.area_saved_reward import AreaSavedReward
 from simharness2.rewards.mixed_local_global_reward import (
     MixedLocalAreaSavedReward,
     MixedForwardAreaSavedReward,
+    MixedLocalAreaSavedRewardWithFirePenalty,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "AreaSavedReward",
     "MixedLocalAreaSavedReward",
     "MixedForwardAreaSavedReward",
+    "MixedLocalAreaSavedRewardWithFirePenalty",
 ]
