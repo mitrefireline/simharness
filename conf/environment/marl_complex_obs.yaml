@@ -13,7 +13,7 @@ env_config:
   movements: [none, up, down, left, right]
   interactions: [none, fireline]
   # TODO: Need better way of aligning yaml spec with constant keys in code.
-  attributes: [fire_map, agent_pos]
+  attributes: [fire_map, agent_pos, elevation, w_0, sigma, delta, M_x]
   normalized_attributes: []
   agent_speed: 4
   num_agents: 3

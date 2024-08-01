@@ -26,7 +26,8 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
         # TODO: Make this check more general, ie. not included in every subclass?
         # Validate that the attributes provided are supported by this harness.
         curr_cls = self.__class__
-        bad_attributes = get_unsupported_attributes(self.attributes, curr_cls)
+        attrs_to_check = self.attributes + self.sim_attributes
+        bad_attributes = get_unsupported_attributes(attrs_to_check, curr_cls)
         if bad_attributes:
             msg = (
                 f"The {curr_cls.__name__} class does not support the "
@@ -38,13 +39,21 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
     def supported_attributes() -> List[str]:
         """Return the full list of attributes supported by the harness."""
         # TODO: Expand to include SimFire data layers, when ready.
-        return [FIRE_MAP_KEY, AGENT_POSITION_KEY]
+        return [FIRE_MAP_KEY, AGENT_POSITION_KEY] + FireSimulation.supported_attributes()
 
     def get_initial_state(self) -> np.ndarray:
         """TODO."""
-        # TODO: Consolidate usage of np.float32 into constant, then re-use.
         fire_map = self.prepare_fire_map(place_agents=False)
-        fire_map = np.expand_dims(fire_map, axis=-1).astype(np.float32)
+
+        if self.sim_attributes:
+            sim_data = self.sim.get_attribute_data()
+            sim_data_to_use = [
+                arr for attr_name, arr in sim_data.items() if attr_name in self.attributes
+            ]
+            fire_map = np.stack([fire_map] + sim_data_to_use, axis=-1).astype(np.float32)
+        else:
+            fire_map = np.expand_dims(fire_map, axis=-1).astype(np.float32)
+
         # Build MARL obs - position array will be different for each agent.
         marl_obs = {}
         for ag_id in self._agent_ids:
@@ -100,7 +109,12 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
 
         low = min(cat_vals)
         high = max(cat_vals)
-        obs_shape = self.sim.fire_map.shape + (1,)
+
+        num_channels = 1 + len(self.sim_attributes)
+        obs_shape = self.sim.fire_map.shape + (num_channels,)
+
+        # FIXME: Manually setting low and high to -inf, +inf for now.
+        low, high = float("-inf"), float("inf")
         return spaces.Box(low=low, high=high, shape=obs_shape, dtype=np.float32)
 
     def _get_position_observation_space(self) -> spaces.Box:
@@ -111,7 +125,16 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
     def _update_state(self):
         """Modify environment's state to contain updates from the current timestep."""
         # Copy the fire map from the simulation so we don't overwrite it.
-        fire_map = np.expand_dims(np.copy(self.sim.fire_map), axis=-1).astype(np.float32)
+        fire_map = np.copy(self.sim.fire_map)
+
+        if self.sim_attributes:
+            sim_data = self.sim.get_attribute_data()
+            sim_data_to_use = [
+                arr for attr_name, arr in sim_data.items() if attr_name in self.attributes
+            ]
+            fire_map = np.stack([fire_map] + sim_data_to_use, axis=-1).astype(np.float32)
+        else:
+            fire_map = np.expand_dims(fire_map, axis=-1).astype(np.float32)
 
         # Build MARL obs - position array will be different for each agent.
         marl_obs = {}
