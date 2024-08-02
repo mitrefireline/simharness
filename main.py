@@ -302,8 +302,8 @@ def main(cfg: DictConfig) -> None:
     # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
-    # ray.init(address="auto", log_to_driver=False)
-    ray.init(address="local")
+    ray.init(address="auto", log_to_driver=False)
+    #ray.init(address="local")
 
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir

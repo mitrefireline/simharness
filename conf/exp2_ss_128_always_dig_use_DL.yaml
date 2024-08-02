@@ -38,8 +38,8 @@ rollouts:
 
   batch_mode: complete_episodes # truncate_episodes
   # Scale experiment as desired
-  num_rollout_workers: 4
-  num_envs_per_worker: 2
+  num_rollout_workers: 8
+  num_envs_per_worker: 4
 
 cli:
   mode: train
@@ -68,8 +68,8 @@ simulation:
     # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
     resample_interval: 4
     sample_size:
-      train: 4
-      eval: 1
+      train: 8
+      eval: 5
     independent_eval: true
     # Number of operational locations from BurnMD that are used to create a population
     # of locations that will be sampled from every `resample_interval` episodes.
@@ -124,7 +124,7 @@ simulation:
       # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
       # - "(A < elapsed_steps) & (C < percent_area_burned)"
       # query: "50 < elapsed_steps < 150"
-      query: "0.10 < percent_area_burned" # FIXME: usign easy query to test
+      query: "0.30 < percent_area_burned" # FIXME: usign easy query to test
       # query: "0.01 < percent_area_burned" # FIXME!
       # Number of samples available in resulting "dataset" after filtering with `query`.
       # NOTE: This allows the user to control the total number of distinct fire positions
@@ -174,4 +174,4 @@ evaluation:
   evaluation_interval: 20
   evaluation_duration: 10
   evaluation_duration_unit: episodes
-  evaluation_num_workers: 1
+  evaluation_num_workers: 5
