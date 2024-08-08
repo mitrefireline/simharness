@@ -80,7 +80,7 @@ simulation:
     # NOTE: Assume samples are selected randomly from the BurnMD dataset (using the
     # seed, if provided).
     population_size: null
-    seed: 248492519740077316912950596540773403631
+    seed: 62562
     # Save the operational locations in JSON format.
     save_json_data: true
     # Save the distribution of the sampled operational locations.
@@ -133,7 +133,7 @@ simulation:
       # "dataset" after filtering with `query`.
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
       population_size: 32 # FIXME!
-      seed: 205825209688650047526689225343099410255
+      seed: 2055410255
       # TODO: Ideally we could encapsulate all below options into a SaveConfig.
       # Save the raw generated train (eval) "dataset" as .npy files.
       save_raw_data: true
@@ -162,7 +162,7 @@ resources:
   num_gpus_per_worker: 0.07
 
 debugging:
-  seed: 212904690035738418172889890023121240923
+  seed: 2129240923
   log_level: INFO
   logger_config:
     type:
