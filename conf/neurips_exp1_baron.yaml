@@ -1,0 +1,177 @@
+defaults:
+  - simulation: default
+  - framework: default
+  - rollouts: default
+  - evaluation: default
+  - resources: default
+  - hydra: default
+  - exploration: stochastic_sampling
+  - training: ppo_with_custom_model
+  - environment: marl_damage_aware_fire_penalty
+  - _self_
+
+# reward_mix_coeff: ??
+environment:
+  env_config:
+    reward_cls_partial:
+      mixing_coefficient: 0.95
+
+algo:
+  name: PPO
+  # Specify list of RLlib callbacks to use during training.
+  callbacks:
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.InitializeSimfire
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.RenderEnv
+    - _target_: hydra.utils.get_class
+      path: simharness2.callbacks.LandSavedMetric
+  checkpoint_path: null
+
+rollouts:
+  # NOTE: MultiAgentComplexObsHarness DOES NOT normalize returned observations!
+  # So, use the MeanStdFilter to ensure observations are normalized.
+  # See the MeanStdObservationFilterCAgentConnector class for more:
+  # https://github.com/ray-project/ray/blob/ad48682b4ec78a5699ba89a7c8a69327c264e47b/rllib/connectors/agent/mean_std_filter.py#L23
+  enable_connectors: true
+  observation_filter: MeanStdFilter
+
+  batch_mode: complete_episodes # truncate_episodes
+  # Scale experiment as desired
+  num_rollout_workers: 8
+  num_envs_per_worker: 4
+
+cli:
+  mode: train
+  data_dir: /data/lslab2/fireline/simharness
+
+hydra:
+  run:
+    dir: ${cli.data_dir}/experiments/neurips_paper/${now:%Y-%m-%d_%H-%M-%S}
+
+# Total number of fire scenarios is:
+# - For train, op_loc.sample_size.train * fire_initial_position.sampler.sample_size.train
+# - For eval, op_loc.sample_size.eval * fire_initial_position.sampler.sample_size.eval
+# - Op locations will be fixed for the duration of the experiment.
+# TODO: Maybe we should rename `population_size` to `train_population_size` or similar,
+#   since the naming is not clear that this is ONLY for training scenarios.
+# TODO: Consolidate controls into a "fire_generation" section, or similar.
+# TODO: Add logic to load manually specified operational locations, and same for fire
+#   initial positions.
+simulation:
+  screen_size: 128
+  # Configure the sampling of lon, lat coords used for operational location (s).
+  operational_locations:
+    # Path to the flattened BurnMD dataset.
+    burnmd_dataset_path: ${oc.env:SH_ROOT}/data/burnmd_TL_flat.json
+    # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
+    # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
+    resample_interval: 4
+    sample_size:
+      train: 8
+      eval: 4
+    independent_eval: true
+    # Number of operational locations from BurnMD that are used to create a population
+    # of locations that will be sampled from every `resample_interval` episodes.
+    # NOTE: This allows the user to control the total number of distinct operational
+    # locations that will be used to produce sample batches (or trajectories) of 
+    # experiences. If set to `None`, the entire BurnMD dataset will be used.
+    # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
+    # NOTE: Assume samples are selected randomly from the BurnMD dataset (using the
+    # seed, if provided).
+    population_size: null
+    seed: 248492519740077316912950596540773403631
+    # Save the operational locations in JSON format.
+    save_json_data: true
+    # Save the distribution of the sampled operational locations.
+    save_op_locs_counter: true
+    # Optionally specify a subdir within the artifact directory to save the generated
+    # "dataset" files. Default is 'initialize_simfire'.
+    save_subdir: initialize_simfire
+  
+  fire_initial_position:
+    # Configure the generation of candidate initial fire positions.
+    generator:
+      # If true, then all possible fire initial positions will be included in the
+      # generated "dataset".
+      make_all_positions: false # FIXME!
+      # Number of candidate initial fire positions to generate. Ignored when
+      # `make_all_postions == true`.
+      output_size: 1024
+      # The root location to save the generated dataset.
+      save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
+    # To disable usage of generator, simply set to null.
+    # Configure the sampling of new initial fire positions.
+    sampler:
+      # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
+      # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
+      resample_interval: 1
+      # Number of samples to draw from the distribution, ie. take `sample_size` initial
+      # fire positions and distribute them across the respective RolloutWorker's.
+      sample_size:
+        train: 4
+        eval: 2
+      # If false, then eval scenarios are drawn from the same distribution as
+      # training scenarios. This behavior is usually not desired, but can be
+      # useful for debugging purposes, ie. seeing how well the trained policy
+      # performs on a scenario from the training distribution.
+      independent_eval: true
+      # Filter generated "dataset" using the following condition.
+      # NOTE: This is applied to the generated dataset, not the sampled positions.
+      # For more information on the query string to evaluate, see:
+      # - https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html#pandas.DataFrame.query
+      # Examples:
+      # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
+      # - "(A < elapsed_steps) & (C < percent_area_burned)"
+      # query: "50 < elapsed_steps < 150"
+      query: "0.30 < percent_area_burned" # FIXME: usign easy query to test
+      # query: "0.01 < percent_area_burned" # FIXME!
+      # Number of samples available in resulting "dataset" after filtering with `query`.
+      # NOTE: This allows the user to control the total number of distinct fire positions
+      # that will be used to produce sample batches (or trajectories) of experiences. If
+      # set to `None`, the population size will be equal to the size of the generated
+      # "dataset" after filtering with `query`.
+      # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
+      population_size: 32 # FIXME!
+      seed: 205825209688650047526689225343099410255
+      # TODO: Ideally we could encapsulate all below options into a SaveConfig.
+      # Save the raw generated train (eval) "dataset" as .npy files.
+      save_raw_data: true
+      # Save a JSON file containing the sampled fire positions.
+      save_json_data: true
+      # Save the distribution of the sampled fire positions.
+      save_fire_pos_counter: true
+      # Optionally specify a subdir within the artifact directory to save the generated
+      # "dataset" files. Default is 'initialize_simfire'.
+      save_subdir: initialize_simfire
+
+# Specify configuration used to create the ray.air.CheckpointConfig object
+checkpoint:
+  # Frequency at which to save checkpoints (in terms of training iterations)
+  checkpoint_frequency: ${evaluation.evaluation_interval}
+
+stop_conditions:
+  training_iteration: 10000
+  timesteps_total: 2000000000
+  episodes_total: 1000000
+  episode_reward_mean: 10000000
+
+
+resources:
+  num_gpus: 0.01
+  num_gpus_per_worker: 0.07
+
+debugging:
+  seed: 212904690035738418172889890023121240923
+  log_level: INFO
+  logger_config:
+    type:
+      _target_: hydra.utils.get_class
+      path: ray.tune.logger.UnifiedLogger
+    logdir: ${hydra:run.dir}
+
+evaluation:
+  evaluation_interval: 20
+  evaluation_duration: 8
+  evaluation_duration_unit: episodes
+  evaluation_num_workers: 8
