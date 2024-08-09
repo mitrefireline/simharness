@@ -405,13 +405,6 @@
         "latitude": 32.785691092000036,
         "longitude": -116.77679174699995
     },
-    "California_2020_Rattlesnake": {
-        "state": "California",
-        "year": 2020,
-        "fire_name": "Rattlesnake",
-        "latitude": 36.524293863000025,
-        "longitude": -118.45810667199999
-    },
     "California_2020_Slink": {
         "state": "California",
         "year": 2020,
@@ -867,13 +860,6 @@
         "latitude": 38.030987399000026,
         "longitude": -114.11200770999994
     },
-    "Nevada_2020_Stewart_Canyon": {
-        "state": "Nevada",
-        "year": 2020,
-        "fire_name": "Stewart_Canyon",
-        "latitude": 37.39032650000007,
-        "longitude": -114.85149180899998
-    },
     "Nevada_2020_Lost": {
         "state": "Nevada",
         "year": 2020,
@@ -1209,13 +1195,6 @@
         "fire_name": "Kewa_Field",
         "latitude": 48.22282595200005,
         "longitude": -118.39765093399996
-    },
-    "Washington_2020_Kahlotus": {
-        "state": "Washington",
-        "year": 2020,
-        "fire_name": "Kahlotus",
-        "latitude": 46.63355483400005,
-        "longitude": -118.72265542699995
     },
     "Washington_2020_Palmer": {
         "state": "Washington",
