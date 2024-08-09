@@ -54,9 +54,9 @@ class FireHarness(Harness[AnyFireSimulation]):
         interactions: List[str],
         action_space_cls: Callable,
         in_evaluation: bool = False,
+        reward_init_cfg: Dict[str, Any],
         benchmark_sim_init_cfg: Dict[str, Any] = None,
         harness_analytics_partial: Optional[partial] = None,
-        reward_cls_partial: Optional[partial] = None,
         num_agents: int = 1,
         agent_speed: int = 1,
         agent_initialization_cls: Callable = None,
@@ -122,7 +122,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         # If provided, construct the class used to monitor this `ReactiveHarness` object.
         self._setup_harness_analytics(harness_analytics_partial)
         # If provided, construct the class used to perform reward calculation.
-        self._setup_reward_cls(reward_cls_partial)
+        self._setup_reward_cls(reward_init_cfg)
 
         # Indicator flag to determine if fire in the sim can spread diagonally.
         self._fire_diagonal_spread = self.sim.config.fire.diagonal_spread
@@ -886,7 +886,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         else:
             self.harness_analytics = None
 
-    def _setup_reward_cls(self, reward_cls_partial: partial) -> None:
+    def _setup_reward_cls(self, reward_init_cfg: Dict[str, Any]) -> None:
         """Instantiates the reward class used to perform reward calculation each episode.
 
         This method must be called AFTER `self._setup_harness_analytics()`, as the reward
@@ -894,10 +894,9 @@ class FireHarness(Harness[AnyFireSimulation]):
         constructor.
 
         Arguments:
-            reward_cls_partial: A `functools.partial` object that indicates the reward
-                class that will be used to perform reward calculation after each timestep
-                in an episode.
-
+            reward_init_cfg: A dictionary that contains the reward class to use for
+                reward calculation after each timestep, and it's respective input
+                arguments are expected under the 'kwargs' key.
         Raises:
             TypeError: If `harness_analytics_partial.keywords` does not contain a
                 `sim_data_partial` key with value of type `functools.partial`.
@@ -905,16 +904,13 @@ class FireHarness(Harness[AnyFireSimulation]):
                 See the above message for more details.
 
         """
-        # self.reward_cls: BaseReward
-        if reward_cls_partial:
-            try:
-                self.reward_cls = reward_cls_partial(
-                    harness_analytics=self.harness_analytics
-                )
-            except Exception as e:
-                raise e
-        else:
-            self.reward_cls = None
+        reward_cls = reward_init_cfg["reward_cls"]
+        reward_kwargs = reward_init_cfg["kwargs"]
+        if reward_kwargs is None:
+            reward_kwargs = {}
+
+        reward_kwargs.update({"harness_analytics": self.harness_analytics})
+        self.reward_cls = reward_cls(**reward_kwargs)
 
     def _get_non_interaction_disaster_categories(self) -> Dict[str, int]:
         """Get disaster categories that aren't interactions.
