@@ -13,8 +13,9 @@ defaults:
 # reward_mix_coeff: ??
 environment:
   env_config:
-    reward_cls_partial:
-      mixing_coefficient: 0.95
+    reward_init_cfg:
+      kwargs:
+        mixing_coefficient: 0.95
 
 algo:
   name: PPO

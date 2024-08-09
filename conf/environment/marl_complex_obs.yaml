@@ -22,10 +22,6 @@ env_config:
     path: simharness2.agents.FixedPositionAgentInitializer
   agent_initialization_kwargs:
     agent_pos: [[0, 64], [127, 64], [64, 127]]
-  # Defines the class that will be used to perform reward calculation at each timestep.
-  # reward_cls_partial:
-  #   _target_: simharness2.rewards.base_reward.AreaSavedPropReward
-  #   _partial_: true
   benchmark_sim: null
   # Defines the class that will be used to monitor and track `ReactiveHarness`.
   harness_analytics_partial:
@@ -43,9 +39,11 @@ env_config:
         interaction_types: ${....interactions}
 
   # Defines the class that will be used to perform reward calculation at each timestep.
-  reward_cls_partial:
-    _target_: simharness2.rewards.base_reward.SimpleReward
-    _partial_: true
+  reward_init_cfg:
+    reward_cls:
+      _target_: hydra.utils.get_class
+      path: simharness2.rewards.base_reward.SimpleReward
+    kwargs: null
 
   action_space_cls:
     _target_: hydra.utils.get_class
