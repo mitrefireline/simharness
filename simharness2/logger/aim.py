@@ -1,4 +1,5 @@
 """Module for using Aim with SimHarness2."""
+
 import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
@@ -131,7 +132,7 @@ class AimLoggerCallback(LoggerCallback):
         # cfg = GlobalHydra().config_loader()
         # run["hparams"] = cfg.load_configuration(config_name="config", over)
 
-        trial_ip = trial.get_runner_ip()
+        trial_ip = trial.get_ray_actor_ip()
         if trial_ip:
             run["trial_ip"] = trial_ip
         return run
@@ -146,7 +147,7 @@ class AimLoggerCallback(LoggerCallback):
             # Cleanup an existing run if the trial has been restarted
             self._trial_to_run[trial].close()
 
-        trial.init_logdir()
+        trial.init_local_path()
         self._trial_to_run[trial] = self._create_run(trial)
 
         if trial.evaluated_params:
