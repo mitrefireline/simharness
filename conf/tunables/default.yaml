@@ -1,10 +1,14 @@
-training:
-  lr:
-    type: loguniform
-    values: [0.0001, 0.01]
-  gamma:
+#training:
+#  lr:
+#    type: loguniform
+#    values: [0.0001, 0.01]
+#  gamma:
+#    type: uniform
+#    values: [0.5, 0.9]
+#  train_batch_size:
+#    type: choice
+#    values: [16, 32, 64, 128]
+reward:
+  mixing_coefficient:
     type: uniform
-    values: [0.5, 0.9]
-  train_batch_size:
-    type: choice
-    values: [16, 32, 64, 128]
+    values: [0.8, 0.99]

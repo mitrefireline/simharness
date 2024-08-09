@@ -80,7 +80,10 @@ def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) ->
 
             tunables[section_key][key] = sampler
 
-    algo_cfg.training(**tunables["training"])
+    if "training" in tunables:
+        algo_cfg.training(**tunables["training"])
+    if "reward" in tunables:
+        algo_cfg.env_config["reward_cls_partial"].update(**tunables["reward"])
 
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
