@@ -14,8 +14,13 @@ defaults:
 # reward_mix_coeff: ??
 # environment:
 #   env_config:
-#     reward_cls_partial:
-#       mixing_coefficient: ${reward_mix_coeff}
+#     # Defines the class that will be used to perform reward calculation at each timestep.
+#     reward_init_cfg:
+#       reward_cls:
+#         _target_: hydra.utils.get_class
+#         path: simharness2.rewards.base_reward.SimpleReward
+#       kwargs:
+#         mixing_coefficient: ${reward_mix_coeff}
 
 cli:
   # Specify the run mode. Supported options: train, tune, view
