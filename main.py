@@ -132,7 +132,6 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
         stop={**cfg.stop_conditions},
         callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
         failure_config=None,
-        sync_config=tune.SyncConfig(syncer=None),  # Disable syncing
         checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
         log_to_file=cfg.run.log_to_file,
     )
@@ -140,14 +139,16 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     # TODO make sure 'reward' is reported with tune.report()
     # TODO add this to config
     # Config for the tuning process (used for all trial runs)
-    # tune_config = tune.TuneConfig(num_samples=4)
+    tune_config = tune.TuneConfig(
+        metric="custom_metrics/land_saved_mean", mode="max", num_samples=20
+    )
 
     # Create a Tuner
     tuner = tune.Tuner(
         trainable=trainable_algo_str,
         param_space=param_space,
         run_config=run_config,
-        # tune_config=tune_config,
+        tune_config=tune_config,
     )
 
     results = tuner.fit()
