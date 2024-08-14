@@ -26,7 +26,7 @@ from ray import air, tune
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.tune.logger import pretty_print
-from ray.tune.registry import get_trainable_cls, register_env
+from ray.tune.registry import get_trainable_cls, register_env, register_trainable
 from ray.tune.result_grid import ResultGrid
 from ray.rllib.env import MultiAgentEnv
 from ray.rllib.algorithms.callbacks import make_multi_callbacks
@@ -144,8 +144,9 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     )
 
     # Create a Tuner
+    trainable_cls = get_trainable_cls(cfg.algo.name)
     tuner = tune.Tuner(
-        trainable=trainable_algo_str,
+        trainable=tune.with_parameters(trainable_cls, simharness_config=algo_cfg),
         param_space=param_space,
         run_config=run_config,
         tune_config=tune_config,
@@ -256,10 +257,16 @@ def _instantiate_config(
     env_cls = getattr(import_module(env_module), env_cls)
     register_env(cfg.environment.env, lambda config: env_cls(**config))
 
+    # If a "custom" algorithm is selected, we need to register it with Ray.
+    if cfg.algo.custom:
+        algo_module, algo_cls = cfg.algo.name.rsplit(".", 1)
+        algo_cls = getattr(import_module(algo_module), algo_cls)
+        register_trainable(cfg.algo.name, algo_cls)
+
     return env_settings, eval_settings, debug_settings, exploration_cfg
 
 
-def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
+def _build_algo_cfg(cfg: DictConfig) -> AlgorithmConfig:
     """Build the algorithm config and object for training an RLlib model.
 
     Args:
@@ -312,6 +319,14 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
         algo_cfg = algo_cfg.multi_agent(
             policies=agent_ids,
             policy_mapping_fn=(lambda agent_id, *args, **kwargs: "agent"),
+        )
+
+    # Update the value of `algo_class` if a custom algorithm is specified.
+    if cfg.algo.custom:
+        algo_cfg.algo_class = get_trainable_cls(cfg.algo.name)
+        LOGGER.info(
+            f"Custom algorithm selected: {cfg.algo.name}. The `algo_class` of "
+            f"`AlgorithmConfig` has been updated to:\n{algo_cfg.algo_class}."
         )
 
     return algo_cfg
