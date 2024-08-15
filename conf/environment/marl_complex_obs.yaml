@@ -10,12 +10,12 @@ env_config:
       _target_: hydra.utils.get_class
       path: simfire.sim.simulation.FireSimulation
     config_dict: ${simulation.simfire}
-  movements: [none, up, down, left, right]
-  interactions: [none, fireline]
+  movements: [up, down, left, right]
+  interactions: [fireline]
   # TODO: Need better way of aligning yaml spec with constant keys in code.
   attributes: [fire_map, agent_pos, elevation, w_0, sigma, delta, M_x]
   normalized_attributes: []
-  agent_speed: 1
+  agent_speed: 4
   num_agents: 3
   agent_initialization_cls:
     _target_: hydra.utils.get_class
