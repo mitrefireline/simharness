@@ -160,7 +160,7 @@ stop_conditions:
 
 resources:
   num_gpus: 0.01
-  num_gpus_per_worker: 0.07
+  num_gpus_per_worker: 0.01
 
 debugging:
   seed: 2129240923
