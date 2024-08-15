@@ -23,6 +23,8 @@ from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from ray import air, tune
+from ray.train import SyncConfig
+from ray.tune.schedulers import ASHAScheduler
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.tune.logger import pretty_print
@@ -133,15 +135,22 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
         callbacks=[AimLoggerCallback(cfg=cfg, **cfg.aim)],
         failure_config=None,
         checkpoint_config=air.CheckpointConfig(**cfg.checkpoint),
+        sync_config=SyncConfig(sync_artifacts=True),
         log_to_file=cfg.run.log_to_file,
     )
 
-    # TODO make sure 'reward' is reported with tune.report()
-    # TODO add this to config
     # Config for the tuning process (used for all trial runs)
-    tune_config = tune.TuneConfig(
-        metric="custom_metrics/land_saved_mean", mode="max", num_samples=20
+    # NOTE: We are using the default search algo, ie. random search
+    asha_scheduler = ASHAScheduler(
+        time_attr="training_iteration",
+        metric="custom_metrics/land_saved_mean",
+        mode="max",
+        max_t=100,
+        grace_period=20,
+        reduction_factor=4,
+        brackets=1,
     )
+    tune_config = tune.TuneConfig(scheduler=asha_scheduler, num_samples=20)
 
     # Create a Tuner
     tuner = tune.Tuner(
