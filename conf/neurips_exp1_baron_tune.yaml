@@ -5,6 +5,9 @@ defaults:
 cli:
   mode: tune
 
+stop_conditions:
+  training_iteration: 250
+
 # Specify configuration used to create the ray.air.RunConfig object
 run:
   # Name of the training run (directory name)

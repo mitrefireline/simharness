@@ -3,6 +3,6 @@ reward_init_cfg:
     mixing_coefficient:
       type: uniform
       values: [0.8, 0.99]
-    # fire_penalty:
-    #   type: loguniform
-    #   values: [0.01, 0.35]
+    fire_penalty:
+      type: loguniform
+      values: [0.01, 0.35]

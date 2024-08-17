@@ -81,7 +81,7 @@ simulation:
     # NOTE: Assume samples are selected randomly from the BurnMD dataset (using the
     # seed, if provided).
     population_size: null
-    seed: 62562
+    seed: 4012238851
     # Save the operational locations in JSON format.
     save_json_data: true
     # Save the distribution of the sampled operational locations.
@@ -98,7 +98,7 @@ simulation:
       make_all_positions: false # FIXME!
       # Number of candidate initial fire positions to generate. Ignored when
       # `make_all_postions == true`.
-      output_size: 1024
+      output_size: 4096
       # The root location to save the generated dataset.
       save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
     # To disable usage of generator, simply set to null.
@@ -125,7 +125,7 @@ simulation:
       # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
       # - "(A < elapsed_steps) & (C < percent_area_burned)"
       # query: "50 < elapsed_steps < 150"
-      query: "0.30 < percent_area_burned" # FIXME: usign easy query to test
+      query: "(0.10 < percent_area_burned < 0.40) | (300 < elapsed_steps < 800)" # FIXME: usign easy query to test
       # query: "0.01 < percent_area_burned" # FIXME!
       # Number of samples available in resulting "dataset" after filtering with `query`.
       # NOTE: This allows the user to control the total number of distinct fire positions
@@ -133,8 +133,8 @@ simulation:
       # set to `None`, the population size will be equal to the size of the generated
       # "dataset" after filtering with `query`.
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
-      population_size: 32 # FIXME!
-      seed: 2055410255
+      population_size: 512 # FIXME!
+      seed: 2055410855
       # TODO: Ideally we could encapsulate all below options into a SaveConfig.
       # Save the raw generated train (eval) "dataset" as .npy files.
       save_raw_data: true
@@ -152,7 +152,7 @@ checkpoint:
   checkpoint_frequency: ${evaluation.evaluation_interval}
 
 stop_conditions:
-  training_iteration: 10000
+  training_iteration: 1000
   timesteps_total: 2000000000
   episodes_total: 1000000
   episode_reward_mean: 10000000
@@ -176,3 +176,5 @@ evaluation:
   evaluation_duration: 8
   evaluation_duration_unit: episodes
   evaluation_num_workers: 8
+  # evaluation_config:
+  #   num_envs_per_worker: 8
