@@ -275,7 +275,9 @@ def get_operational_locations(
 
     # Randomly sample keys from the dictionary
     logger.info(f"Sampling {total_locations} operational locations from BurnMD...")
-    sampled_keys = prng.choice(list(burnmd_op_locs.keys()), total_locations).tolist()
+    sampled_keys = prng.choice(
+        list(burnmd_op_locs.keys()), total_locations, replace=False
+    ).tolist()
 
     # Split the sampled keys into train and eval sets
     if independent_eval_locs:
