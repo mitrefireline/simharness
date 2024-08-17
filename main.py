@@ -150,7 +150,11 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
         reduction_factor=4,
         brackets=1,
     )
-    tune_config = tune.TuneConfig(scheduler=asha_scheduler, num_samples=20)
+    # NOTE: Last exp failed with 8 concurrent trials. Decreasing in hopes of reducing
+    # memory and CPU load on baron.
+    tune_config = tune.TuneConfig(
+        scheduler=asha_scheduler, num_samples=20, max_concurrent_trials=6
+    )
 
     # Create a Tuner
     tuner = tune.Tuner(
@@ -338,7 +342,7 @@ def main(cfg: DictConfig) -> None:
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
     ray.init(address="auto")
-    #ray.init(address="local")
+    # ray.init(address="local")
 
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir
