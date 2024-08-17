@@ -57,18 +57,18 @@ environment:
   moisture: 0.001
 
 wind:
-  function: simple  # ${simulation.wind.function}
+  function: simple
   cfd:
     time_to_train: 1000
     iterations: 1
     scale: 1
     timestep_dt: 1.0
     diffusion: 0.0
-    viscosity: 0.0000001
+    viscosity: 1.0e-07
     speed: 19
     direction: north
   simple:
-    speed: 5
+    speed: 1.43
     direction: 135.0
   perlin:
     speed:
