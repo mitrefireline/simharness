@@ -519,3 +519,157 @@ def validate_fire_init_config(
                 raise ValueError(msg)
 
         return fire_pos_cfg
+
+
+FBFM13_IDX_TO_NAME = {
+    1: "ShortGrass",
+    2: "GrassTimberShrubOverstory",
+    3: "TallGrass",
+    4: "Chaparral",
+    5: "Brush",
+    6: "DormantBrushHardwoodSlash",
+    7: "SouthernRough",
+    8: "ClosedShortNeedleTimberLitter",
+    9: "HardwoodLongNeedlePineTimber",
+    10: "TimberLitterUnderstory",
+    11: "LightLoggingSlash",
+    12: "MediumLoggingSlash",
+    13: "HeavyLoggingSlash",
+}
+
+# The nested dictionary is structured as follows:
+# - Top level key is the integer value for the Fuel Model type.
+# - Inner key is the string value for the type of Hand Crew.
+# The data defined here is from:
+# https://www.fs.usda.gov/t-d/pubs//pdf/11511805.pdf and
+# https://www.frames.gov/documents/behaveplus/publications/NWCG_2021_FireLineProductionRates.pdf
+
+# Here is a rough overview of the 3 primary types of firefighting crews:
+## Type 1 are known as Interagency Hotshots Crews (IHC), faster production,
+# highly skilled, extensive training, advanced qualifications, and arduous
+# physical standards.
+## Type 2 Initial Attack (IA), The U.S. Forest Service has crews that function as a
+# normal Type 2 crews but can form into three or four separate squads of 4 – 6 people
+# capable to initial attack fires separately with a qualified incident commander each.
+## Type 2 crews do not have IA capability or do not meet the same standards as an IHC.
+# (source: https://www.fs.usda.gov/science-technology/fire/people/handcrews)
+
+# Here is a rough overview of "direct" and "indirect" control lines:
+## Direct: A strategy in which you are in direct contact with the fire. Used for lighter
+# fuels and for lower fire intensity — generally less than 4ft flame heights.
+## Indirect: Used when you can’t safely engage directly, because the fire rate of spread
+# (ROS) is significant. Several factors can accelerate the fire ROS. However, in general,
+# flame height between 4 to 8 ft and winds that are faster than 8 mph indicate a
+# significant fire ROS.
+# (source: https://www.firehouse.com/operations-training/wildland/article/21123912/wildland-fires-contain-control)
+# NOTE: We have access to the fire ROS w/in simfire. It would be interesting to try and
+# use the pixel ROS to dictate what sort of attack to take? ie. use
+#   self.sim.fire_manager.rate_of_spread[(y, x)]
+SUSTAINED_LINE_PRODUCTION_RATES = {
+    # ShortGrass
+    1: {
+        "type_1_direct": 1122,
+        "type_1_indirect": 627,
+        "type_2_direct": 627,
+        "type_2_indirect": 285,
+    },
+    # GrassTimberShrubOverstory
+    2: {
+        "type_1_direct": 1122,
+        "type_1_indirect": 627,
+        "type_2_direct": 627,
+        "type_2_indirect": 285,
+    },
+    # TallGrass
+    # No data collected in "Fireline Production Rates, 2011".
+    # Data used is based on various sources from pre-1980.
+    # No data values for indirect fireline construction!
+    3: {
+        "type_1_direct": 330,
+        "type_1_indirect": None,
+        "type_2_direct": 198,
+        "type_2_indirect": None,
+    },
+    # Chaparral
+    4: {
+        "type_1_direct": 436,
+        "type_1_indirect": 330,
+        "type_2_direct": 449,
+        "type_2_indirect": 264,
+    },
+    # Brush
+    5: {
+        "type_1_direct": 1089,
+        "type_1_indirect": 323,
+        "type_2_direct": 462,
+        "type_2_indirect": 277,
+    },
+    # DormantBrushHardwoodSlash
+    6: {
+        "type_1_direct": 1089,
+        "type_1_indirect": 323,
+        "type_2_direct": 462,
+        "type_2_indirect": 277,
+    },
+    # SouthernRough
+    # No data collected in "Fireline Production Rates, 2011".
+    # Data used is based on various sources from pre-1980.
+    # No data values for indirect fireline construction!
+    7: {
+        "type_1_direct": 264,
+        "type_1_indirect": None,
+        "type_2_direct": 132,
+        "type_2_indirect": None,
+    },
+    # ClosedShortNeedleTimberLitter
+    8: {
+        "type_1_direct": 693,
+        "type_1_indirect": 455,
+        "type_2_direct": 462,
+        "type_2_indirect": 376,
+    },
+    # HardwoodLongNeedlePineTimber
+    9: {
+        "type_1_direct": 693,
+        "type_1_indirect": 455,
+        "type_2_direct": 462,
+        "type_2_indirect": 376,
+    },
+    # TimberLitterUnderstory
+    10: {
+        "type_1_direct": 693,
+        "type_1_indirect": 455,
+        "type_2_direct": 462,
+        "type_2_indirect": 376,
+    },
+    # LightLoggingSlash
+    # No data collected in "Fireline Production Rates, 2011".
+    # Data used is based on various sources from pre-1980.
+    # No data values for indirect fireline construction!
+    11: {
+        "type_1_direct": 990,
+        "type_1_indirect": None,
+        "type_2_direct": 594,
+        "type_2_indirect": None,
+    },
+    # MediumLoggingSlash
+    # No data collected in "Fireline Production Rates, 2011".
+    # Data used is based on various sources from pre-1980.
+    # No data values for indirect fireline construction!
+    12: {
+        "type_1_direct": 462,
+        "type_1_indirect": None,
+        "type_2_direct": 264,
+        "type_2_indirect": None,
+    },
+    # HeavyLoggingSlash
+    # No data collected in "Fireline Production Rates, 2011".
+    # Data used is based on various sources from pre-1980.
+    # No data values for indirect fireline construction!
+    13: {
+        "type_1_direct": 330,
+        "type_1_indirect": None,
+        "type_2_direct": 198,
+        "type_2_indirect": None,
+    },
+}
