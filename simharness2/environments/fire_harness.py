@@ -3,7 +3,6 @@ import logging
 import os
 from abc import abstractmethod
 from collections import OrderedDict as ordered_dict
-from collections import namedtuple
 from functools import partial
 from typing import (
     Any,
@@ -24,6 +23,16 @@ from gymnasium import spaces
 from simfire.enums import BurnStatus
 from simfire.sim.simulation import FireSimulation
 from simfire.utils.config import Config
+from simfire.utils.layers import OperationalFuelLayer
+from simfire.enums import FuelModelToFuel
+from simfire.world.presets import (
+    NBAgriculture,
+    NBBarren,
+    NBNoData,
+    NBSnowIce,
+    NBUrban,
+    NBWater,
+)
 
 from simharness2.agents.agent import ReactiveAgent
 from simharness2.agents.initialization import AgentInitializer
@@ -41,6 +50,8 @@ AnyAgentInitializer = TypeVar("AnyAgentInitializer", bound=AgentInitializer)
 FIRE_MAP_ATTRIBUTES = ["fire_map", "fire_map_with_agents"]
 BENCHMARK_ATTRIBUTES = ["bench_fire_map", "bench_fire_map_final"]
 SIMFIRE_ATTRIBUTES = FireSimulation.supported_attributes()
+
+NONBURNABLE_FUEL_MODELS = [NBUrban, NBSnowIce, NBAgriculture, NBWater, NBBarren, NBNoData]
 
 
 class FireHarness(Harness[AnyFireSimulation]):
@@ -233,8 +244,50 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         # Parse the movement and interaction from the action, and store them.
         agent.latest_movement, agent.latest_interaction = self._parse_action(action)
-
         interact = self.interactions[agent.latest_interaction] != "none"
+
+        # WIP stuff while I figure out how to organize logic for realistic agent dyn.
+        # If agent should place a mitigation, we can start retrieval of info.
+        if interact:
+            fuel_value = self._get_fbfm13_value(agent.current_position)
+            fuel_model_type = FuelModelToFuel[fuel_value]
+            # Ensure we DISALLOW mitigation at current pos if pixel fuel is NB!!
+            if fuel_model_type in NONBURNABLE_FUEL_MODELS:
+                logger.info(
+                    f"The current position ({agent.current_position}) of agent "
+                    f"({agent.agent_id}) has a NONBURNABLE fuel model type of "
+                    f"{fuel_model_type}. Setting `interact` to False..."
+                )
+                interact = False
+            else:
+                # Note that each pixel is 30m x 30m (based on Landfire Data Layers), so
+                # 30m length is 2953ft.
+                line_length = 2953
+                production_rates = env_utils.SUSTAINED_LINE_PRODUCTION_RATES
+                # Retrieved rate will be in ft/hr for a 20-person crew.
+                current_rate = production_rates[fuel_value]["type_1_direct"]
+                # TODO: When agent is created, we should set it's "crew size" or similar.
+                crew_size = 5
+                crew_ft_per_hour = (current_rate / 20) * crew_size
+                # TODO: "hand crew" agent should have a "crew type".
+                #   - Type 1, Direct
+                #   - Type 1, Indirect
+                #   - Type 2, Direct
+                #   - Type 2, Indirect
+                # The agent will now spend the required time setting control line.
+                agent.is_ready = False
+
+        # TODO: Here is our key point in the implementation of realistic agent dynamics.
+        # If the agent has chosen to place a mitigation, then we must "start" the digging
+        # of a control line with length 2953ft. We will assume that digging a control
+        # line at the current pixel will not require digging up ALL 30m x 30m area.
+        # Instead, we can make the assumption that a control line placed on a single
+        # pixel will be 2953ft long in the "optimal" orientation and width. The core
+        # idea here is that we have a control line dug in the general 30m x 30m area.
+        # NOTE: We should NOT update the mitigation in simfire until the agent has
+        # completed the task, ie. sufficient time has elapsed using the fireline
+        # production rate tables.
+
         # Ensure that mitigations are only placed on squares with `UNBURNED` status
         if self._agent_pos_is_unburned(agent) and interact:
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
@@ -601,7 +654,7 @@ class FireHarness(Harness[AnyFireSimulation]):
         distribution algorithm or using a directly provided operational location. The
         selected operational location is then used to update the simulation and, if
         present, the benchmark simulation.
-    
+
         Note:
         - This method updates the operational location for both the simulation instance (`self.sim`)
             and, if available, the benchmark simulation instance (`self.benchmark_sim`).
@@ -609,7 +662,7 @@ class FireHarness(Harness[AnyFireSimulation]):
             and influences various simulation parameters and behaviors.
 
         Arguments:
-            locations: An optional list of `BurnMDOperationalLocation` objects. If 
+            locations: An optional list of `BurnMDOperationalLocation` objects. If
                 provided, one of these locations will be selected based on an even
                 distribution algorithm that considers the number of environments per
                 worker. This argument is mutually exclusive with `location_to_use`.
@@ -623,7 +676,7 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         Returns:
             The `uid` of the operational location that was selected or provided for the
-            current environment. The `uid` is structured as "state_year_fireName", 
+            current environment. The `uid` is structured as "state_year_fireName",
             e.g., "Oregon_2020_White_River".
 
         Raises:
@@ -927,6 +980,20 @@ class FireHarness(Harness[AnyFireSimulation]):
             if enum_name not in enum_names_for_sim_actions:
                 categories[enum_name] = enum_val
         return categories
+
+    def _get_fbfm13_value(self, position: Tuple[int, int]) -> int:
+        # Ensure fuel layer is of correct type.
+        if not isinstance(self.sim.terrain.fuel_layer, OperationalFuelLayer):
+            fuel_layer_type = type(self.sim.terrain.fuel_layer).__name__
+            raise TypeError(
+                "`sim.terrain.fuel_layer` must be an instance of "
+                f"`OperationalFuelLayer`, but it is {fuel_layer_type}"
+            )
+
+        fuel_layer: OperationalFuelLayer = self.sim.terrain.fuel_layer
+        fuel_value = fuel_layer.LandFireLatLongBox.fuel[position]
+        # TODO: Do we want to do any processing of the fuel value here? Return for now.
+        return fuel_value
 
 
 class ReactiveHarness(FireHarness[AnyFireSimulation]):

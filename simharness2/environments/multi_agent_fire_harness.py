@@ -77,8 +77,15 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         """Returns observations from ready agents."""
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
-        for agent_id, agent in self.agents.items():
-            self._do_one_agent_step(agent=agent, action=action_dict[agent_id])
+        for agent_id in action_dict.keys():
+            curr_agent = self.agents.get(agent_id)
+            self._do_one_agent_step(agent=curr_agent, action=action_dict[agent_id])
+
+        # After handling ready agents, we need to update progress for busy agents.
+        # This is crucial for us to know when the agent is done and needs an action
+        # at the next timestep.
+        busy_agent_ids = self._agent_ids - set(action_dict.keys())
+        self._handle_busy_agents(busy_agent_ids)
 
         if self.harness_analytics:
             self.harness_analytics.update_after_one_agent_step(
@@ -98,6 +105,9 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         terminated = self._should_terminate()
 
         # Calculate the timestep reward for each agent.
+        # TODO: Rllib states that "rewards for indiv agents will be added
+        # up to the point where a new action for that agent is needed", so
+        # we can include "busy" agents in the rewards dict, if desired.
         rewards = self.reward_cls.get_reward(
             timestep=self.timesteps,
             sim_run=sim_run,
@@ -125,6 +135,9 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         truncs = set()
         terms = set()
         for agent_id, agent in self.agents.items():
+            # Only return those agents' names that require actions at next timestep.
+            if not agent.is_ready:
+                continue
             # FIXME: Trunc/Term logic is the SAME for all agents.
             # We may not always want this, but it's a good starting point.
             truncateds[agent_id] = truncated
@@ -141,6 +154,8 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
+        # FIXME: The current return of self.state will not account for busy agent (s).
+        # We need to update/override self._update_state to fix this.
         return self.state, rewards, terminateds, truncateds, infos
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
@@ -175,3 +190,6 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
     # addressed in a future MR that refactors use of normalizing and min/maxes.
     def _get_min_maxes(self) -> OrderedDict[str, Dict[str, Tuple[int, int]]]:
         return {}
+
+    def _handle_busy_agents(self, agent_ids: str):
+        pass

@@ -58,6 +58,7 @@ class ReactiveAgent:
     fire_map_shape: Tuple[int, int]
 
     # Attributes with default values
+    is_ready: bool = True
     latest_movement: int = None
     latest_interaction: int = None
     mitigation_placed: bool = False
