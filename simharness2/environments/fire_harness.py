@@ -245,10 +245,12 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Parse the movement and interaction from the action, and store them.
         agent.latest_movement, agent.latest_interaction = self._parse_action(action)
         interact = self.interactions[agent.latest_interaction] != "none"
+        place_mitigation_in_simfire = True
 
         # WIP stuff while I figure out how to organize logic for realistic agent dyn.
         # If agent should place a mitigation, we can start retrieval of info.
         if interact:
+            # Fetch fuel info for curr position. This will dictate the production rate.
             fuel_value = self._get_fbfm13_value(agent.current_position)
             fuel_model_type = FuelModelToFuel[fuel_value]
             # Ensure we DISALLOW mitigation at current pos if pixel fuel is NB!!
@@ -260,44 +262,37 @@ class FireHarness(Harness[AnyFireSimulation]):
                 )
                 interact = False
             else:
-                # Note that each pixel is 30m x 30m (based on Landfire Data Layers), so
-                # 30m length is 2953ft.
-                line_length = 2953
+                # NOTE: Retrieved rate will be in ft/hr for a 20-person crew.
+                # Update current production rate for the agent.
                 production_rates = env_utils.SUSTAINED_LINE_PRODUCTION_RATES
-                # Retrieved rate will be in ft/hr for a 20-person crew.
                 current_rate = production_rates[fuel_value]["type_1_direct"]
-                # TODO: When agent is created, we should set it's "crew size" or similar.
-                crew_size = 5
-                crew_ft_per_hour = (current_rate / 20) * crew_size
-                # TODO: "hand crew" agent should have a "crew type".
-                #   - Type 1, Direct
-                #   - Type 1, Indirect
-                #   - Type 2, Direct
-                #   - Type 2, Indirect
+                agent.latest_production_rate = current_rate
                 # The agent will now spend the required time setting control line.
                 agent.is_ready = False
+                # If agent has completed the mitigation, we can update the sim.
+                place_mitigation_in_simfire = agent.dig_for_one_minute()
 
-        # TODO: Here is our key point in the implementation of realistic agent dynamics.
-        # If the agent has chosen to place a mitigation, then we must "start" the digging
-        # of a control line with length 2953ft. We will assume that digging a control
-        # line at the current pixel will not require digging up ALL 30m x 30m area.
-        # Instead, we can make the assumption that a control line placed on a single
-        # pixel will be 2953ft long in the "optimal" orientation and width. The core
-        # idea here is that we have a control line dug in the general 30m x 30m area.
-        # NOTE: We should NOT update the mitigation in simfire until the agent has
-        # completed the task, ie. sufficient time has elapsed using the fireline
-        # production rate tables.
+        # FIXME: Left off here. Working on the logic for the agent movement, when we are
+        # in the first timestep where agent selects to interact. Need to iron this out
+        # more before moving on to the next part of the logic.
 
         # Ensure that mitigations are only placed on squares with `UNBURNED` status
-        if self._agent_pos_is_unburned(agent) and interact:
+        if (
+            self._agent_pos_is_unburned(agent)
+            and interact
+            and place_mitigation_in_simfire
+        ):
             # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
             self._update_mitigation(agent)
         else:
             # Overwrite value from previous timestep.
             agent.mitigation_placed = False
 
-        # Update agent location on map
-        if self.movements[agent.latest_movement] != "none":
+        # Update agent location on map; Note that we should not move if ????
+        if (
+            self.movements[agent.latest_movement] != "none"
+            and place_mitigation_in_simfire
+        ):
             # NOTE: `agent.current_position` is updated in `_update_agent_position()`.
             self._update_agent_position(agent)
 

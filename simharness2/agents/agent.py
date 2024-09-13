@@ -13,6 +13,11 @@ logger.addHandler(handler)
 logger.propagate = False
 
 
+# Note that each pixel is 30m x 30m (based on Landfire Data Layers), so 30m length is
+# 2953ft. This is the expected length of any control line placed throughout the episode.
+CONTROL_LINE_LENGTH_IN_FT = 2953
+
+
 @dataclass
 class ReactiveAgent:
     """A simple agent that reacts to its environment.
@@ -57,8 +62,15 @@ class ReactiveAgent:
     # FIXME: Maybe use InitVar since we only need this to build array in post_init.
     fire_map_shape: Tuple[int, int]
 
-    # Attributes with default values
+    # Attributes relevant to "realistic" fireline production rates.
+    handcrew_size: int
     is_ready: bool = True
+    # NOTE: The production rate will be in ft/hr for a 20-person crew.
+    # The current_sustained_line_production_rate_per_minute property will convert this!
+    latest_production_rate: int = None
+    completed_mitigations: int = 0
+
+    # Attributes with default values
     latest_movement: int = None
     latest_interaction: int = None
     mitigation_placed: bool = False
@@ -72,6 +84,9 @@ class ReactiveAgent:
 
         # Create array used to store coords adjacent to "true" mitigations placed by.
         self.adj_to_mitigation = np.zeros(self.fire_map_shape, dtype=bool)
+
+        # Create a counter to track sustained line length.
+        self._current_sustained_line_length = 0
 
     @property
     def previous_position(self) -> Tuple[int, int]:
@@ -124,14 +139,50 @@ class ReactiveAgent:
         self._previous_position = self._current_position
         self._current_position = (value, self.y)
 
+    @property
+    def current_sustained_line_production_rate_per_minute(self) -> int:
+        """The current sustained line production rate in ft/MINUTE for the handcrew."""
+        if self.latest_production_rate is None:
+            logger.warning(
+                f"Agent {self.agent_id} has no production rate. "
+                "Returning 0 for current_sustained_line_production_rate_per_minute."
+            )
+            return 0
+        else:
+            rate_per_person = self.latest_production_rate / 20
+            rate_per_crew = rate_per_person * self.handcrew_size
+            return rate_per_crew / 60
+
     def reset(self):
         self.latest_movement = None
         self.latest_interaction = None
         self.mitigation_placed = False
         self.moved_off_map = False
+
+        self.is_ready = True
+        self.latest_production_rate = None
         self.__post_init__()
         # self.current_position = self.initial_position
         # self.reward = 0
+
+    def dig_for_one_minute(self) -> bool:
+        """Dig for one minute, then return whether mitigation is complete."""
+        # Increment the current sustained line length by the production rate.
+        self._current_sustained_line_length += (
+            self.current_sustained_line_production_rate_per_minute
+        )
+        # Decide if current control line is complete.
+        if self._current_sustained_line_length >= CONTROL_LINE_LENGTH_IN_FT:
+            logger.info(
+                f"Agent {self.agent_id} has completed a control line of length "
+                f"{CONTROL_LINE_LENGTH_IN_FT} ft."
+            )
+            self.completed_mitigations += 1
+            self._current_sustained_line_length = 0
+            self.is_ready = True
+            return True
+        else:
+            return False
 
     # def move(self, env: np.ndarray, direction: int) -> bool:
     #     """Moves the agent in the given direction if possible."""

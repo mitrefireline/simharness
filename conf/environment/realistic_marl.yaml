@@ -1,0 +1,57 @@
+defaults:
+  - default
+  - _self_
+
+env: simharness2.environments.MultiAgentComplexObsDamageAwareReactiveHarness
+env_config:
+  in_evaluation: false
+  sim_init_cfg:
+    simfire_cls:
+      _target_: hydra.utils.get_class
+      path: simfire.sim.simulation.FireSimulation
+    config_dict: ${simulation.simfire}
+  movements: [none, up, down, left, right]
+  interactions: [none, fireline]
+  # TODO: Need better way of aligning yaml spec with constant keys in code.
+  attributes: [fire_map, agent_pos, elevation, w_0, sigma, delta, M_x]
+  normalized_attributes: []
+  agent_speed: 1
+  num_agents: 3
+  # TODO: Eventually, create AgentConfig dataclass that helps initialize agent setup.
+  # For now, each agent has the same setup!
+  agent_crew_size: 5
+  agent_initialization_cls:
+    _target_: hydra.utils.get_class
+    path: simharness2.agents.FixedPositionAgentInitializer
+  agent_initialization_kwargs:
+    agent_pos: [[0, 64], [127, 64], [64, 127]]
+  benchmark_sim_init_cfg: ${.sim_init_cfg}
+  # Defines the class that will be used to monitor and track `ReactiveHarness`.
+  harness_analytics_partial:
+    _target_: simharness2.analytics.harness_analytics.ReactiveHarnessAnalytics
+    _partial_: true
+    # Defines the class that will be used to monitor and track `FireSimulation`.
+    sim_analytics_partial:
+      _target_: simharness2.analytics.simulation_analytics.FireSimulationAnalytics
+      _partial_: true
+      # Defines the class that will be used to monitor and track agent behavior.
+      agent_analytics_partial:
+        _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
+        _partial_: true
+        movement_types: ${....movements}
+        interaction_types: ${....interactions}
+
+  # Defines the class that will be used to perform reward calculation at each timestep.
+  reward_init_cfg:
+    reward_cls:
+      _target_: hydra.utils.get_class
+      path: simharness2.rewards.MixedLocalAreaSavedRewardWithFirePenalty
+    kwargs: null
+
+  action_space_cls:
+    _target_: hydra.utils.get_class
+    # path: gymnasium.spaces.MultiDiscrete
+    path: gymnasium.spaces.Discrete
+
+  fire_initial_position: ${simulation.fire_initial_position}
+  operational_locations: ${simulation.operational_locations}

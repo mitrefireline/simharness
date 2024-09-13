@@ -193,3 +193,7 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
 
     def _handle_busy_agents(self, agent_ids: str):
         pass
+        # update agent digging length
+
+        # check if agent has dug > desired length
+            # if yes, set agent.is_ready to True

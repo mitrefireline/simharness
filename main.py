@@ -303,7 +303,7 @@ def main(cfg: DictConfig) -> None:
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
     # ray.init(address="auto", log_to_driver=False)
-    ray.init(address="local")
+    ray.init(address="auto")
 
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir
