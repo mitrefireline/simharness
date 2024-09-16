@@ -58,17 +58,15 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
         marl_obs = {}
         for ag_id in self._agent_ids:
             curr_agent = self.agents[ag_id]
-            pos_state = curr_agent.initial_position
-            marl_obs[ag_id] = OrderedDict(
-                {
-                    FIRE_MAP_KEY: fire_map,
-                    AGENT_POSITION_KEY: np.asarray(pos_state, dtype=np.float32),
-                }
-            )
-            # marl_obs[ag_id] = {
-            #     FIRE_MAP_KEY: fire_map,
-            #     AGENT_POSITION_KEY: np.asarray(pos_state),
-            # }
+            # Only add agent obs to MA dict if agent is ready.
+            if curr_agent.is_ready:
+                pos_state = curr_agent.initial_position
+                marl_obs[ag_id] = OrderedDict(
+                    {
+                        FIRE_MAP_KEY: fire_map,
+                        AGENT_POSITION_KEY: np.asarray(pos_state, dtype=np.float32),
+                    }
+                )
 
         # Note: Returning ordered dict bc spaces.Dict.sample() returns ordered dict.
         # return OrderedDict(marl_obs)
@@ -127,6 +125,7 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
         # Copy the fire map from the simulation so we don't overwrite it.
         fire_map = np.copy(self.sim.fire_map)
 
+        # FIXME: Below seems suboptimal to do EVERY timestep?
         if self.sim_attributes:
             sim_data = self.sim.get_attribute_data()
             sim_data_to_use = [
@@ -140,13 +139,15 @@ class MultiAgentComplexObsReactiveHarness(MultiAgentFireHarness[AnyFireSimulatio
         marl_obs = {}
         for ag_id in self._agent_ids:
             curr_agent = self.agents[ag_id]
-            pos_state = curr_agent.current_position
-            marl_obs[ag_id] = OrderedDict(
-                {
-                    FIRE_MAP_KEY: fire_map,
-                    AGENT_POSITION_KEY: np.asarray(pos_state, dtype=np.float32),
-                }
-            )
+            # Only add agent obs to MA dict if agent is ready.
+            if curr_agent.is_ready:
+                pos_state = curr_agent.current_position
+                marl_obs[ag_id] = OrderedDict(
+                    {
+                        FIRE_MAP_KEY: fire_map,
+                        AGENT_POSITION_KEY: np.asarray(pos_state, dtype=np.float32),
+                    }
+                )
         # Note: Setting to ordered dict bc spaces.Dict.sample() returns ordered dict.
         # self.state = OrderedDict(marl_obs)
         self.state = marl_obs
