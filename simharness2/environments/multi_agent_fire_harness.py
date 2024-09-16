@@ -104,6 +104,27 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         truncated = self._should_truncate()
         terminated = self._should_terminate()
 
+        if terminated:
+            logger.info(
+                f"Episode has terminated with {len(busy_agent_ids)} busy agents. "
+                "All agents will be 'forced' ready to ensure they are included in the "
+                "final observation state returned."
+            )
+            # Force any busy agents to be ready.
+            for agent_id in busy_agent_ids:
+                self.agents[agent_id].is_ready = True
+            # Re call update state to ensure all agent states are included.
+            self._update_state()
+
+            # TODO: We can probably do this somewhere else.
+            total_mitigations = 0
+            for _, agent in self.agents.items():
+                total_mitigations += agent.completed_mitigations
+
+            logger.info(
+                f"Total mitigations completed across all agents: {total_mitigations}"
+            )
+
         # Calculate the timestep reward for each agent.
         # TODO: Rllib states that "rewards for indiv agents will be added
         # up to the point where a new action for that agent is needed", so
@@ -191,9 +212,29 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
     def _get_min_maxes(self) -> OrderedDict[str, Dict[str, Tuple[int, int]]]:
         return {}
 
-    def _handle_busy_agents(self, agent_ids: str):
-        pass
-        # update agent digging length
+    def _handle_busy_agents(self, agent_ids: set):
+        for agent_id in agent_ids:
+            agent = self.agents.get(agent_id)
 
-        # check if agent has dug > desired length
-            # if yes, set agent.is_ready to True
+            # Validate that agent's latest interaction is not None.
+            if self.interactions[agent.latest_interaction] != "none":
+                mitigation_complete = agent.dig_for_one_minute()
+                # Once mitigation is complete, the agent is allowed to:
+                # - place it on the fire map, and
+                # - update it's position on the map.
+                if agent.is_ready and mitigation_complete:
+                    logger.info(
+                        f"Agent {agent.agent_id} has completed the current mitigation. "
+                        "The current mitigation count for this agent is: "
+                        f"{agent.completed_mitigations}"
+                    )
+                    self._update_mitigation(agent)
+                else:
+                    # Overwrite value from previous timestep.
+                    agent.mitigation_placed = False
+
+                # Update agent location on map
+                move_str = self.movements[agent.latest_movement]
+                if agent.is_ready and move_str != "none":
+                    logger.info(f"Agent {agent.agent_id} is now moving {move_str}.")
+                    self._update_agent_position(agent)
