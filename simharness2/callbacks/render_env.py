@@ -31,16 +31,25 @@ TRAIN_KEY = "train"
 EVAL_KEY = "evaluation"
 # TODO: Add a config option to control rendering settings.
 # Switch to enable rendering of training environments.
-RENDER_TRAIN_ENVS = False
+RENDER_TRAIN_ENVS = True
 # NOTE: Probably better to use a dictionary so that "eval" and "train" are not forced to
 # use the same interval setup, but good enough for the time being. When this update is
 # added, the logic in RenderEnv.should_render_env will need to be updated accordingly.
 # Options: "log" or "linear"
-RENDER_INTERVAL_TYPE = "linear"
+RENDER_INTERVAL_TYPE = {
+    "train": "linear",
+    "eval": "linear",
+}
 # Set the base for the logarithmic interval
-LOGARITHMIC_BASE = 10
+LOGARITHMIC_BASE = {
+    "train": 10,
+    "eval": 10,
+}
 # Set the step size for the linear interval
-LINEAR_INTERVAL_STEP = 1  # 0
+LINEAR_INTERVAL_STEP = {
+    "train": 10,
+    "eval": 1,
+}
 
 
 class RenderEnv(DefaultCallbacks):
@@ -152,14 +161,23 @@ class RenderEnv(DefaultCallbacks):
             self.curr_iter = env.num_eval_iters
 
         logger.debug(f"Current iteration for {env_type}: {self.curr_iter}")
-        if env_type == TRAIN_KEY and RENDER_TRAIN_ENVS or env_type == EVAL_KEY:
+        # Handle rendering intervals separately for train/eval env.
+        if env_type == TRAIN_KEY and RENDER_TRAIN_ENVS:
             # Use specified interval type to determine if the env should be rendered.
-            if RENDER_INTERVAL_TYPE == "log":
+            if RENDER_INTERVAL_TYPE["train"] == "log":
                 # NOTE: +1 to avoid log(0) and to ensure the first iteration is rendered.
-                value = log(self.curr_iter + 1, LOGARITHMIC_BASE)
+                value = log(self.curr_iter + 1, LOGARITHMIC_BASE["train"])
                 return value.is_integer() and value > 0
-            elif RENDER_INTERVAL_TYPE == "linear":
-                return self.curr_iter % LINEAR_INTERVAL_STEP == 0
+            elif RENDER_INTERVAL_TYPE["train"] == "linear":
+                return self.curr_iter % LINEAR_INTERVAL_STEP["train"] == 0
+        elif env_type == EVAL_KEY:
+            # Use specified interval type to determine if the env should be rendered.
+            if RENDER_INTERVAL_TYPE["eval"] == "log":
+                # NOTE: +1 to avoid log(0) and to ensure the first iteration is rendered.
+                value = log(self.curr_iter + 1, LOGARITHMIC_BASE["eval"])
+                return value.is_integer() and value > 0
+            elif RENDER_INTERVAL_TYPE["eval"] == "linear":
+                return self.curr_iter % LINEAR_INTERVAL_STEP["eval"] == 0
 
     def on_episode_end(
         self,
