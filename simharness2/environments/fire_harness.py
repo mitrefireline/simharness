@@ -103,6 +103,7 @@ class FireHarness(Harness[AnyFireSimulation]):
 
         self.agent_speed = agent_speed
         self.num_agents = num_agents
+        self._handcrew_size = kwargs.get("agent_crew_size", 5)
         # Each sim_agent_id is used to "encode" the agent position within the `fire_map`
         # dimension of the returned observation of the environment. The intention is to
         # help the model learn/use the location of the respective agent on the fire_map.
@@ -245,55 +246,27 @@ class FireHarness(Harness[AnyFireSimulation]):
         # Parse the movement and interaction from the action, and store them.
         agent.latest_movement, agent.latest_interaction = self._parse_action(action)
         interact = self.interactions[agent.latest_interaction] != "none"
-        place_mitigation_in_simfire = True
 
-        # WIP stuff while I figure out how to organize logic for realistic agent dyn.
-        # If agent should place a mitigation, we can start retrieval of info.
-        if interact:
-            # Fetch fuel info for curr position. This will dictate the production rate.
-            fuel_value = self._get_fbfm13_value(agent.current_position)
-            fuel_model_type = FuelModelToFuel[fuel_value]
-            # Ensure we DISALLOW mitigation at current pos if pixel fuel is NB!!
-            if fuel_model_type in NONBURNABLE_FUEL_MODELS:
-                logger.info(
-                    f"The current position ({agent.current_position}) of agent "
-                    f"({agent.agent_id}) has a NONBURNABLE fuel model type of "
-                    f"{fuel_model_type}. Setting `interact` to False..."
-                )
-                interact = False
-            else:
-                # NOTE: Retrieved rate will be in ft/hr for a 20-person crew.
-                # Update current production rate for the agent.
-                production_rates = env_utils.SUSTAINED_LINE_PRODUCTION_RATES
-                current_rate = production_rates[fuel_value]["type_1_direct"]
-                agent.latest_production_rate = current_rate
-                # The agent will now spend the required time setting control line.
-                agent.is_ready = False
-                # If agent has completed the mitigation, we can update the sim.
-                place_mitigation_in_simfire = agent.dig_for_one_minute()
+        # Initiate process to dig line at current position, if conditions are met.
+        # Ensure that mitigations are only placed on squares with `UNBURNED` status.
+        mitigation_complete = False
+        if self._agent_pos_is_unburned(agent) and interact:
+            mitigation_complete = self._start_realistic_mitigation(agent)
 
-        # FIXME: Left off here. Working on the logic for the agent movement, when we are
-        # in the first timestep where agent selects to interact. Need to iron this out
-        # more before moving on to the next part of the logic.
-
-        # Ensure that mitigations are only placed on squares with `UNBURNED` status
-        if (
-            self._agent_pos_is_unburned(agent)
-            and interact
-            and place_mitigation_in_simfire
-        ):
-            # NOTE: `self.mitigation_placed` is updated in `_update_mitigation()`.
+        # NOTE: After calling `_start_realistic_mitigation()`, the agent will have it's
+        # `is_ready` status set to False until it has completed the mitigation. The agent
+        # CANNOT call `self._update_mitigation` or `self._update_agent_position` until
+        # the mitigation is complete.
+        # TODO: Maybe refactor below into other method to ease usage for implementation
+        # of realistic agent digging, etc.
+        if agent.is_ready and mitigation_complete:
             self._update_mitigation(agent)
         else:
             # Overwrite value from previous timestep.
             agent.mitigation_placed = False
 
-        # Update agent location on map; Note that we should not move if ????
-        if (
-            self.movements[agent.latest_movement] != "none"
-            and place_mitigation_in_simfire
-        ):
-            # NOTE: `agent.current_position` is updated in `_update_agent_position()`.
+        # Update agent location on map
+        if agent.is_ready and self.movements[agent.latest_movement] != "none":
             self._update_agent_position(agent)
 
     def _parse_action(self, action: np.ndarray) -> Tuple[int, int]:
@@ -311,6 +284,49 @@ class FireHarness(Harness[AnyFireSimulation]):
     def _agent_pos_is_unburned(self, agent: ReactiveAgent) -> bool:
         """Returns true if the space occupied by the agent has `BurnStatus.UNBURNED`."""
         return self.sim.fire_map[agent.row, agent.col] == BurnStatus.UNBURNED
+
+    def _start_realistic_mitigation(self, agent: ReactiveAgent) -> bool:
+        """Begin the process of placing a mitigation in the environment.
+
+        In this sense, realistic mitigation means that the agent will spend time
+        setting a control line, and the time spent (in minutes) will be determined
+        by the production rate of the agent's handcrew for the current fuel model type.
+        We are restricting the speed at which an agent can complete a control line on
+        the fire map.
+
+        Returns:
+            A boolean indicating whether the agent has completed the mitigation.
+            In general, this value should be false, as the agent will likely need
+            more than one timestep to complete the mitigation.
+        """
+        # Fetch fuel info for curr position. This will dictate the production rate.
+        fuel_value = self._get_fbfm13_value(agent.current_position)
+        fuel_model_type = FuelModelToFuel[fuel_value]
+        fuel_model_name = env_utils.FBFM13_IDX_TO_NAME[fuel_value]
+
+        # Ensure we DISALLOW mitigation at current pos if pixel fuel is NB!!
+        if fuel_model_type in NONBURNABLE_FUEL_MODELS:
+            logger.info(
+                f"The current position ({agent.current_position}) of agent "
+                f"({agent.agent_id}) has a NONBURNABLE fuel model type of "
+                f"'{fuel_model_name}'. Setting `interact` to False..."
+            )
+            return False
+        else:
+            # NOTE: Retrieved rate will be in ft/hr for a 20-person crew.
+            # FIXME: Hard-coded use of T1 Direct agent.
+            # Update current production rate for the agent.
+            production_rates = env_utils.SUSTAINED_LINE_PRODUCTION_RATES
+            current_rate = production_rates[fuel_value]["type_1_direct"]
+            agent.latest_production_rate = current_rate
+            # The agent will now spend the required time setting control line.
+            agent.is_ready = False
+            logger.info(
+                f"Agent {agent.agent_id} is starting to set a control line on "
+                f"fuel model '{fuel_model_name}' at position {agent.current_position}."
+            )
+            mitigation_complete = agent.dig_for_one_minute()
+            return mitigation_complete
 
     def _update_mitigation(self, agent: ReactiveAgent) -> None:
         """Interact with the environment by performing the provided interaction."""
@@ -489,11 +505,18 @@ class FireHarness(Harness[AnyFireSimulation]):
         """Create ReactiveAgent object (s) that will interact w/ the FireSimulation."""
         agent_ids = sorted(self._agent_ids, key=lambda x: int(x.split("_")[-1]))
         agent_initializer = initializer_cls(**initializer_kwargs)
-        return agent_initializer.initialize_agents(
+        agents = agent_initializer.initialize_agents(
             agent_ids=agent_ids,
             sim_ids=self._sim_agent_ids,
             fire_map_shape=self.sim.fire_map.shape,
+            handcrew_size=self._handcrew_size,
         )
+        # Ensure agent (s) start position is rendered on simfire fire_map.
+        agent_positions = [
+            (agent.col, agent.row, agent.sim_id) for agent in agents.values()
+        ]
+        self.sim.update_agent_positions(points=agent_positions)
+        return agents
 
     @property
     def default_agent_id(self) -> str:
