@@ -147,6 +147,9 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
         algo (Algorithm): Algorithm to train with.
         cfg (DictConfig): Hydra config with all required parameters for training.
     """
+    # This value gets overwritten somewhere along the way to build the algo. So,
+    # overwrite here and hope it avoids ALL the UserWarning errors.
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
     stop_cond = cfg.stop_conditions
     root_checkpoint_dir = os.path.join(algo.logdir, "checkpoints")
     # Run training loop and print results after each iteration
@@ -303,7 +306,7 @@ def main(cfg: DictConfig) -> None:
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
     # ray.init(address="auto", log_to_driver=False)
-    ray.init(address="auto")
+    ray.init(address="auto", runtime_env={"env_vars": dict(os.environ)})
 
     hydra_cfg = HydraConfig.get()
     storage_path = hydra_cfg.run.dir
@@ -349,4 +352,5 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     os.environ["SDL_VIDEODRIVER"] = "dummy"
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
     main()
