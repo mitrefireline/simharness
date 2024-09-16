@@ -63,6 +63,7 @@ class ReactiveAgent:
     fire_map_shape: Tuple[int, int]
 
     # Attributes relevant to "realistic" fireline production rates.
+    # NOTE: Some of these attributes can just be defined in __post_init__ ?
     handcrew_size: int
     is_ready: bool = True
     # NOTE: The production rate will be in ft/hr for a 20-person crew.
@@ -161,6 +162,7 @@ class ReactiveAgent:
 
         self.is_ready = True
         self.latest_production_rate = None
+        self.completed_mitigations = 0
         self.__post_init__()
         # self.current_position = self.initial_position
         # self.reward = 0
@@ -173,7 +175,7 @@ class ReactiveAgent:
         )
         # Decide if current control line is complete.
         if self._current_sustained_line_length >= CONTROL_LINE_LENGTH_IN_FT:
-            logger.info(
+            logger.debug(
                 f"Agent {self.agent_id} has completed a control line of length "
                 f"{CONTROL_LINE_LENGTH_IN_FT} ft."
             )

@@ -13,6 +13,7 @@ class AgentInitializer(ABC):
         agent_ids: List[str],
         sim_ids: np.ndarray,
         fire_map_shape: Tuple[int, int],
+        handcrew_size: int,
         **kwargs,
     ) -> Dict[str, ReactiveAgent]:
         pass
@@ -28,12 +29,15 @@ class FixedPositionAgentInitializer(AgentInitializer):
         agent_ids: List[str],
         sim_ids: np.ndarray,
         fire_map_shape: Tuple[int, int],
+        handcrew_size: int,
         **kwargs,
     ) -> Dict[str, ReactiveAgent]:
         agent_dict = {}
         for agent_str, pos, sim_id in zip(agent_ids, self._agent_pos, sim_ids):
             x, y = pos
-            agent = ReactiveAgent(agent_str, sim_id, (x, y), fire_map_shape)
+            agent = ReactiveAgent(
+                agent_str, sim_id, (x, y), fire_map_shape, handcrew_size=handcrew_size
+            )
             agent_dict[agent_str] = agent
         return agent_dict
 
@@ -49,19 +53,24 @@ class RandomPositionAgentInitializer(AgentInitializer):
         agent_ids: List[str],
         sim_ids: np.ndarray,
         fire_map_shape: Tuple[int, int],
+        handcrew_size: int,
         **kwargs,
     ) -> Dict[str, ReactiveAgent]:
         agent_dict = {}
         for agent_str, sim_id in zip(agent_ids, sim_ids):
             x = np.random.randint(self._x_range[0], self._x_range[1])
             y = np.random.randint(self._y_range[0], self._y_range[1])
-            agent = ReactiveAgent(agent_str, sim_id, (x, y), fire_map_shape)
+            agent = ReactiveAgent(
+                agent_str, sim_id, (x, y), fire_map_shape, handcrew_size=handcrew_size
+            )
             agent_dict[agent_str] = agent
         return agent_dict
 
 
 class RandomEdgeAgentInitializer(AgentInitializer):
-    def __init__(self, edges: List[str], x_range: List[int], y_range: List[int], **kwargs):
+    def __init__(
+        self, edges: List[str], x_range: List[int], y_range: List[int], **kwargs
+    ):
         self._edges = edges
         self._x_range = x_range
         self._y_range = y_range
@@ -92,11 +101,14 @@ class RandomEdgeAgentInitializer(AgentInitializer):
         agent_ids: List[str],
         sim_ids: np.ndarray,
         fire_map_shape: Tuple[int, int],
+        handcrew_size: int,
         **kwargs,
     ) -> Dict[str, ReactiveAgent]:
         agent_dict = {}
         for agent_str, edge, sim_id in zip(agent_ids, self._edges, sim_ids):
             pos = self._get_position(edge)
-            agent = ReactiveAgent(agent_str, sim_id, pos, fire_map_shape)
+            agent = ReactiveAgent(
+                agent_str, sim_id, pos, fire_map_shape, handcrew_size=handcrew_size
+            )
             agent_dict[agent_str] = agent
         return agent_dict
