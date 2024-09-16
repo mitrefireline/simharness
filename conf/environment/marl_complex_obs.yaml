@@ -11,7 +11,7 @@ env_config:
       path: simfire.sim.simulation.FireSimulation
     config_dict: ${simulation.simfire}
   movements: [none, up, down, left, right]
-  interactions: [none, fireline]
+  interactions: [fireline]
   # TODO: Need better way of aligning yaml spec with constant keys in code.
   attributes: [fire_map, agent_pos, elevation, w_0, sigma, delta, M_x]
   normalized_attributes: []

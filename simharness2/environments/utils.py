@@ -241,6 +241,12 @@ def get_operational_locations(
             if loc_data["year"] == fire_year
         }
         logger.info(f"Number of locations for year {fire_year}: {len(burnmd_op_locs)}")
+    else:
+        burnmd_op_locs = {
+            uid: loc_data
+            for uid, loc_data in burnmd_op_locs.items()
+            if loc_data["year"] == 2019 or loc_data["year"] == 2020 or loc_data["year"] == 2022
+        }
 
     # Get the total number of locations to sample
     independent_eval_locs = cfg.get("independent_eval", True)
@@ -308,15 +314,15 @@ def set_operational_location(
     sim: "FireSimulation", location: BurnMDOperationalLocation
 ) -> "FireSimulation":
     """Set the operational location for the provided FireSimulation object, sim."""
-    if location.year != 2020:
-        logger.warning(
-            f"Location {location.uid} is from year {location.year}, but currently we "
-            "only support using BurnMD data from wildfires in the year 2020. This "
-            "requirement ensures that we can load operational data collected in a year "
-            "PRIOR to the BurnMD fire year. The hope is that using data from a previous "
-            "year will provide a more realistic operational environment. This will be "
-            "addressed in a future MR."
-        )
+    #if location.year != 2020:
+    #    logger.warning(
+    #        f"Location {location.uid} is from year {location.year}, but currently we "
+    #        "only support using BurnMD data from wildfires in the year 2020. This "
+    #        "requirement ensures that we can load operational data collected in a year "
+    #        "PRIOR to the BurnMD fire year. The hope is that using data from a previous "
+    #        "year will provide a more realistic operational environment. This will be "
+    #        "addressed in a future MR."
+    #    )
 
     # TODO: Create MR for simfire to add `set_operational_location` method and
     # optimize/update the logic of `reset_terrain()`.
@@ -334,7 +340,7 @@ def set_operational_location(
             "latitude": location.latitude,
             "longitude": location.longitude,
             # NOTE: Forcing year to be the year prior to the BurnMD data year, ie. 2019.
-            "year": str(location.year - 1),
+            "year": str(location.year),
             # Setting H and W to "correct" operational values to prevent user error.
             "height": op_height,
             "width": op_width,
