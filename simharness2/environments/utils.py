@@ -535,6 +535,14 @@ FBFM13_IDX_TO_NAME = {
     11: "LightLoggingSlash",
     12: "MediumLoggingSlash",
     13: "HeavyLoggingSlash",
+    91: "NBUrban",
+    92: "NBSnowIce",
+    93: "NBAgriculture",
+    98: "NBWater",
+    99: "NBBarren",
+    -32768: "NBNoData",
+    -9999: "NBNoData",
+    32767: "NBNoData",
 }
 
 # The nested dictionary is structured as follows:
