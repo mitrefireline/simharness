@@ -75,6 +75,12 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
         MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict
     ]:
         """Returns observations from ready agents."""
+        # Ensure agent (s) start position is rendered on simfire fire_map.
+        if self.timesteps == 0:
+            agent_positions = [
+                (agent.col, agent.row, agent.sim_id) for agent in self.agents.values()
+            ]
+            self.sim.update_agent_positions(points=agent_positions)
         # TODO: Can we parallelize this method? If so, how? I'm not sure if that
         # will make sense wrt updating the sim, etc.?
         for agent_id in action_dict.keys():
