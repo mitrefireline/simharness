@@ -46,7 +46,9 @@ env_config:
     reward_cls:
       _target_: hydra.utils.get_class
       path: simharness2.rewards.MixedLocalAreaSavedRewardWithFirePenalty
-    kwargs: null
+    kwargs:
+      mixing_coefficient: 0.9
+      fire_penalty: 0.02
 
   action_space_cls:
     _target_: hydra.utils.get_class

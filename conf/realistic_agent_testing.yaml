@@ -33,8 +33,8 @@ rollouts:
 
   batch_mode: complete_episodes # truncate_episodes
   # Scale experiment as desired
-  num_rollout_workers: 0
-  num_envs_per_worker: 1
+  num_rollout_workers: 8
+  num_envs_per_worker: 4
 
 cli:
   mode: train
@@ -42,7 +42,7 @@ cli:
 
 hydra:
   run:
-    dir: ${cli.data_dir}/debug_experiments/realistic_agent/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${cli.data_dir}/experiments/realistic_agent/${now:%Y-%m-%d_%H-%M-%S}
 
 # Total number of fire scenarios is:
 # - For train, op_loc.sample_size.train * fire_initial_position.sampler.sample_size.train
@@ -61,10 +61,10 @@ simulation:
     burnmd_dataset_path: ${oc.env:SH_ROOT}/data/burnmd_TL_flat.json
     # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
     # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
-    resample_interval: -1
+    resample_interval: 4
     sample_size:
-      train: 1
-      eval: 1
+      train: 8
+      eval: 4
     independent_eval: true
     # Number of operational locations from BurnMD that are used to create a population
     # of locations that will be sampled from every `resample_interval` episodes.
@@ -74,8 +74,8 @@ simulation:
     # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
     # NOTE: Assume samples are selected randomly from the BurnMD dataset (using the
     # seed, if provided).
-    population_size: 2
-    seed: 62562
+    population_size: null
+    seed: 4012238851
     # Save the operational locations in JSON format.
     save_json_data: true
     # Save the distribution of the sampled operational locations.
@@ -92,7 +92,7 @@ simulation:
       make_all_positions: false # FIXME!
       # Number of candidate initial fire positions to generate. Ignored when
       # `make_all_postions == true`.
-      output_size: 1024
+      output_size: 4096
       # The root location to save the generated dataset.
       save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
     # To disable usage of generator, simply set to null.
@@ -100,12 +100,12 @@ simulation:
     sampler:
       # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
       # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
-      resample_interval: -1
+      resample_interval: 1
       # Number of samples to draw from the distribution, ie. take `sample_size` initial
       # fire positions and distribute them across the respective RolloutWorker's.
       sample_size:
-        train: 1
-        eval: 1
+        train: 4
+        eval: 2
       # If false, then eval scenarios are drawn from the same distribution as
       # training scenarios. This behavior is usually not desired, but can be
       # useful for debugging purposes, ie. seeing how well the trained policy
@@ -119,7 +119,7 @@ simulation:
       # - "A < elapsed_steps", "elapsed_steps < B", "A < elapsed_steps < B"
       # - "(A < elapsed_steps) & (C < percent_area_burned)"
       # query: "50 < elapsed_steps < 150"
-      query: "0.30 < percent_area_burned" # FIXME: usign easy query to test
+      query: (0.10 < percent_area_burned < 0.60) | (300 < elapsed_steps < 800) # FIXME: usign easy query to test
       # query: "0.01 < percent_area_burned" # FIXME!
       # Number of samples available in resulting "dataset" after filtering with `query`.
       # NOTE: This allows the user to control the total number of distinct fire positions
@@ -127,8 +127,8 @@ simulation:
       # set to `None`, the population size will be equal to the size of the generated
       # "dataset" after filtering with `query`.
       # - Applies to training ONLY; eval "dataset" size is equal to `sample_size.eval`.
-      population_size: 8 # FIXME!
-      seed: 2055410255
+      population_size: 512 # FIXME!
+      seed: 2055410855
       # TODO: Ideally we could encapsulate all below options into a SaveConfig.
       # Save the raw generated train (eval) "dataset" as .npy files.
       save_raw_data: true
@@ -146,7 +146,7 @@ checkpoint:
   checkpoint_frequency: ${evaluation.evaluation_interval}
 
 stop_conditions:
-  training_iteration: 10
+  training_iteration: 300
   timesteps_total: 2000000000
   episodes_total: 1000000
   episode_reward_mean: 10000000
@@ -154,7 +154,7 @@ stop_conditions:
 
 resources:
   num_gpus: 0.01
-  num_gpus_per_worker: 0.07
+  num_gpus_per_worker: 0.01
 
 debugging:
   seed: 2129240923
@@ -166,7 +166,7 @@ debugging:
     logdir: ${hydra:run.dir}
 
 evaluation:
-  evaluation_interval: 5
-  evaluation_duration: 1
+  evaluation_interval: 20
+  evaluation_duration: 8
   evaluation_duration_unit: episodes
-  evaluation_num_workers: 1
+  evaluation_num_workers: 8
