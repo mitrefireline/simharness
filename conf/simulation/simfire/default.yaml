@@ -68,7 +68,7 @@ wind:
     speed: 19
     direction: north
   simple:
-    speed: 5
+    speed: 1.43
     direction: 135.0
   perlin:
     speed:
