@@ -58,7 +58,7 @@ simulation:
   # Configure the sampling of lon, lat coords used for operational location (s).
   operational_locations:
     # Path to the flattened BurnMD dataset.
-    burnmd_dataset_path: ${oc.env:SH_ROOT}/data/burnmd_TL_flat.json
+    burnmd_dataset_path: ${oc.env:BURNMD_JSON_DATA_DIR}/burnmd_TL_flat.json
     # Get (new) random sample of size `sample_size` every `resample_interval` episodes.
     # NOTE: Evaluation scenarios are never resampled; this applies to training ONLY.
     resample_interval: 4
