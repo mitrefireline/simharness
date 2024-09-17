@@ -363,7 +363,7 @@ class InitializeSimfire(DefaultCallbacks):
             num_train_locs=self.num_train_locations_in_population,
             num_eval_locs=self.num_eval_locations,
             prng=self.prng_dict["operational_locations"],
-            fire_year=2020,
+            # fire_year=2020,
         )
         # Store the prepared operational locations for later use.
         self.op_locations["train"]["population"] = train_locs
@@ -455,7 +455,7 @@ class InitializeSimfire(DefaultCallbacks):
         )
         prng = self.prng_dict["operational_locations"]
         locs_to_use = self.op_locations["train"]["population"]
-        sampled_locs = prng.choice(locs_to_use, num_locs).tolist()
+        sampled_locs = prng.choice(locs_to_use, num_locs, replace=False).tolist()
         self.op_locations["train"]["current"] = sampled_locs
         return sampled_locs
 
