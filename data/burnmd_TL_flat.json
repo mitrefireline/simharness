@@ -48,13 +48,6 @@
         "latitude": 33.27443100000005,
         "longitude": -110.01612699999998
     },
-    "Arizona_2019_Ikes": {
-        "state": "Arizona",
-        "year": 2019,
-        "fire_name": "Ikes",
-        "latitude": 36.37311802000005,
-        "longitude": -112.37351699999999
-    },
     "Arizona_2019_River": {
         "state": "Arizona",
         "year": 2019,
@@ -75,20 +68,6 @@
         "fire_name": "Maroon",
         "latitude": 35.36135572000006,
         "longitude": -111.44360343499994
-    },
-    "Arizona_2019_Coldwater": {
-        "state": "Arizona",
-        "year": 2019,
-        "fire_name": "Coldwater",
-        "latitude": 34.53709100000003,
-        "longitude": -111.39660399999997
-    },
-    "Arizona_2019_Castle": {
-        "state": "Arizona",
-        "year": 2019,
-        "fire_name": "Castle",
-        "latitude": 36.58762400000006,
-        "longitude": -112.34559999999999
     },
     "Arizona_2020_Sawtooth": {
         "state": "Arizona",
@@ -257,13 +236,6 @@
         "fire_name": "Whaleback",
         "latitude": 40.680053213000065,
         "longitude": -120.88912350399994
-    },
-    "California_2019_Saddle_Ridge": {
-        "state": "California",
-        "year": 2019,
-        "fire_name": "Saddle_Ridge",
-        "latitude": 34.36038400000007,
-        "longitude": -118.57554484199994
     },
     "California_2019_Red_Bank": {
         "state": "California",
@@ -586,13 +558,6 @@
         "fire_name": "Flat_Top",
         "latitude": 43.002106827000034,
         "longitude": -113.13923796699999
-    },
-    "Idaho_2019_Shady": {
-        "state": "Idaho",
-        "year": 2019,
-        "fire_name": "Shady",
-        "latitude": 44.56647000000004,
-        "longitude": -115.05982799999998
     },
     "Idaho_2019_Horse_Butte": {
         "state": "Idaho",
@@ -930,13 +895,6 @@
         "latitude": 42.76872000000003,
         "longitude": -119.65293999999994
     },
-    "Oregon_2019_204_Cow": {
-        "state": "Oregon",
-        "year": 2019,
-        "fire_name": "204_Cow",
-        "latitude": 44.31753947100003,
-        "longitude": -118.48604784399998
-    },
     "Oregon_2020_White_River": {
         "state": "Oregon",
         "year": 2020,
@@ -1070,13 +1028,6 @@
         "latitude": 46.88033200000007,
         "longitude": -119.95674399999996
     },
-    "Washington_2019_Williams_Flats": {
-        "state": "Washington",
-        "year": 2019,
-        "fire_name": "Williams_Flats",
-        "latitude": 48.049004241000034,
-        "longitude": -118.63796667799994
-    },
     "Washington_2020_Saddle_Mountain": {
         "state": "Washington",
         "year": 2020,
@@ -1181,13 +1132,6 @@
         "fire_name": "Pedro_Mountain",
         "latitude": 42.39313950800005,
         "longitude": -106.91183174899999
-    },
-    "Wyoming_2019_Fishhawk": {
-        "state": "Wyoming",
-        "year": 2019,
-        "fire_name": "Fishhawk",
-        "latitude": 44.44007334400004,
-        "longitude": -109.89815622099997
     },
     "Wyoming_2020_Neiber": {
         "state": "Wyoming",
