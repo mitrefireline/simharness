@@ -125,3 +125,39 @@ class MixedLocalAreaSavedRewardWithFirePenalty(MixedLocalAreaSavedReward):
         if near_fire:
             reward -= self._fire_penalty
         return reward
+
+class MixedLocalAreaSavedRewardWithLineReward(MixedLocalAreaSavedRewardWithFirePenalty):
+    def __init__(
+        self,
+        harness_analytics: ReactiveHarnessAnalytics,
+        line_reward: float = 0.05,
+        **kwargs,
+    ):
+        self._line_reward = line_reward
+        super().__init__(
+            harness_analytics=harness_analytics,
+            mixing_coefficient=mixing_coefficient,
+            **kwargs,
+        )
+
+    def get_local_reward(self, agent: ReactiveAgent) -> float:
+        reward = super().get_local_reward(agent)
+        sim_analytics = self.harness_analytics.sim_analytics
+        agent_analytics = sim_analytics.agent_analytics
+        last_interaction = agent_analytics._interactions_types[agent.last_interaction]
+        if last_interaction == "mitigation":
+            found = False
+            x, y = agent.current_position
+            for dx in [-1, 0, 1]:
+                for dy = [-1, 0, 1]:
+                    if dx == 0 and dy == 0:
+                        continue
+                    square = sim_analytics.sim.fire_map[x+dx, y+dy]
+                    if square == BurnStatus.BURNING or square == BurnStatus.BURNED:
+                        found = True
+                        break
+                if found:
+                    break
+            if found:
+                reward += self._line_reward
+        return reward
