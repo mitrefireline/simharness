@@ -125,13 +125,6 @@
         "latitude": 33.62937726000007,
         "longitude": -110.79078170199995
     },
-    "Arizona_2020_Cow_Canyon": {
-        "state": "Arizona",
-        "year": 2020,
-        "fire_name": "Cow_Canyon",
-        "latitude": 33.62128000000007,
-        "longitude": -109.19000000099999
-    },
     "Arizona_2020_Wood_Springs_2": {
         "state": "Arizona",
         "year": 2020,
@@ -166,13 +159,6 @@
         "fire_name": "Valley",
         "latitude": 33.44414302100006,
         "longitude": -110.40374392199999
-    },
-    "Arizona_2020_Rockhouse": {
-        "state": "Arizona",
-        "year": 2020,
-        "fire_name": "Rockhouse",
-        "latitude": 33.16420090100007,
-        "longitude": -110.62271678399998
     },
     "Arizona_2020_Medicine": {
         "state": "Arizona",
@@ -342,26 +328,12 @@
         "latitude": 33.77431239800006,
         "longitude": -117.73605151299995
     },
-    "California_2020_Zogg": {
-        "state": "California",
-        "year": 2020,
-        "fire_name": "Zogg",
-        "latitude": 40.55095072000006,
-        "longitude": -122.70798018299996
-    },
     "California_2020_Mineral": {
         "state": "California",
         "year": 2020,
         "fire_name": "Mineral",
         "latitude": 36.247191016000045,
         "longitude": -120.67104600799996
-    },
-    "California_2020_River": {
-        "state": "California",
-        "year": 2020,
-        "fire_name": "River",
-        "latitude": 36.60432721900003,
-        "longitude": -121.69523710299995
     },
     "California_2020_Apple": {
         "state": "California",
@@ -384,13 +356,6 @@
         "latitude": 41.12240693200005,
         "longitude": -120.92087292199994
     },
-    "California_2020_Devil": {
-        "state": "California",
-        "year": 2020,
-        "fire_name": "Devil",
-        "latitude": 41.97255680200004,
-        "longitude": -123.29624217299994
-    },
     "California_2020_Lake": {
         "state": "California",
         "year": 2020,
@@ -411,13 +376,6 @@
         "fire_name": "Slink",
         "latitude": 38.58746623900004,
         "longitude": -119.65451799799996
-    },
-    "California_2020_Mountain_View": {
-        "state": "California",
-        "year": 2020,
-        "fire_name": "Mountain_View",
-        "latitude": 38.61706327200005,
-        "longitude": -119.48168049399999
     },
     "California_2020_Loyalton": {
         "state": "California",
@@ -495,27 +453,6 @@
         "fire_name": "Decker",
         "latitude": 38.48544700000008,
         "longitude": -106.03775567699995
-    },
-    "Colorado_2020_Middle_Fork": {
-        "state": "Colorado",
-        "year": 2020,
-        "fire_name": "Middle_Fork",
-        "latitude": 40.69293914600007,
-        "longitude": -106.82737089599999
-    },
-    "Colorado_2020_Calwood": {
-        "state": "Colorado",
-        "year": 2020,
-        "fire_name": "Calwood",
-        "latitude": 40.19965073900005,
-        "longitude": -105.39879869699996
-    },
-    "Colorado_2020_Williams_Fork": {
-        "state": "Colorado",
-        "year": 2020,
-        "fire_name": "Williams_Fork",
-        "latitude": 39.90400100100004,
-        "longitude": -106.07958393999996
     },
     "Colorado_2020_Grizzly_Creek": {
         "state": "Colorado",
@@ -670,13 +607,6 @@
         "fire_name": "Lake_Channel",
         "latitude": 42.72021568300005,
         "longitude": -113.23304999999999
-    },
-    "Idaho_2020_Porphyry": {
-        "state": "Idaho",
-        "year": 2020,
-        "fire_name": "Porphyry",
-        "latitude": 45.32371339000008,
-        "longitude": -115.48017718499995
     },
     "Idaho_2020_Buck": {
         "state": "Idaho",
@@ -909,13 +839,6 @@
         "latitude": 33.68641124000004,
         "longitude": -105.30268610999997
     },
-    "New Mexico_2020_Tadpole": {
-        "state": "New Mexico",
-        "year": 2020,
-        "fire_name": "Tadpole",
-        "latitude": 32.980758492000064,
-        "longitude": -108.30155216399999
-    },
     "New Mexico_2020_Good": {
         "state": "New Mexico",
         "year": 2020,
@@ -929,13 +852,6 @@
         "fire_name": "Cub",
         "latitude": 33.38207049300007,
         "longitude": -108.56756382599997
-    },
-    "New Mexico_2020_Vics_Peak": {
-        "state": "New Mexico",
-        "year": 2020,
-        "fire_name": "Vics_Peak",
-        "latitude": 33.67696431400003,
-        "longitude": -107.48085050999998
     },
     "Oregon_2018_Columbus": {
         "state": "Oregon",
@@ -1027,13 +943,6 @@
         "fire_name": "White_River",
         "latitude": 45.20296419300007,
         "longitude": -121.59721088399999
-    },
-    "Oregon_2020_Thielsen": {
-        "state": "Oregon",
-        "year": 2020,
-        "fire_name": "Thielsen",
-        "latitude": 43.243920486000036,
-        "longitude": -122.18740946699995
     },
     "Oregon_2020_242": {
         "state": "Oregon",
@@ -1195,13 +1104,6 @@
         "fire_name": "Kewa_Field",
         "latitude": 48.22282595200005,
         "longitude": -118.39765093399996
-    },
-    "Washington_2020_Palmer": {
-        "state": "Washington",
-        "year": 2020,
-        "fire_name": "Palmer",
-        "latitude": 48.95552663900003,
-        "longitude": -119.65649327299997
     },
     "Washington_2020_Taylor_Pond": {
         "state": "Washington",

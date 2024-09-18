@@ -1,0 +1,27 @@
+defaults:
+  - neurips_exp1_baron
+  - tunables: damage_aware_fire_penalty_reward
+
+cli:
+  mode: tune
+
+stop_conditions:
+  training_iteration: 250
+
+# Specify configuration used to create the ray.air.RunConfig object
+run:
+  # Name of the training run (directory name)
+  name: null
+  # Directory to store results in (will be local_dir/name)
+  storage_path: ${hydra:run.dir}
+  log_to_file: true
+
+# Specify configuration pass to the `AimLoggerCallback`
+aim:
+  run_hash: null
+  repo: ${cli.data_dir}/aim/neurips_paper
+  experiment: tune_reward_mixing_coeff
+  system_tracking_interval: null
+  log_system_params: true
+  capture_terminal_logs: true
+  log_hydra_config: false
