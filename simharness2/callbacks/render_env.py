@@ -31,7 +31,7 @@ TRAIN_KEY = "train"
 EVAL_KEY = "evaluation"
 # TODO: Add a config option to control rendering settings.
 # Switch to enable rendering of training environments.
-RENDER_TRAIN_ENVS = True
+RENDER_TRAIN_ENVS = False
 # NOTE: Probably better to use a dictionary so that "eval" and "train" are not forced to
 # use the same interval setup, but good enough for the time being. When this update is
 # added, the logic in RenderEnv.should_render_env will need to be updated accordingly.
