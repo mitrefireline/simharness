@@ -56,6 +56,13 @@ OmegaConf.register_new_resolver("square", lambda x: x**2)
 LOGGER = logging.getLogger(__name__)
 
 
+class CustomEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.uint16):
+            return int(obj)
+        return super().default(obj)
+
+
 def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> None:
     """Override the algo_cfg hyperparameters we would like to tune over.
 
@@ -155,7 +162,27 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
     # Run training loop and print results after each iteration
     for i in range(stop_cond.training_iteration):
         LOGGER.info(f"Training iteration {i}.")
-        result = algo.train()
+        try:
+            result = algo.train()
+        except ValueError as e:
+            # Get a snapshot of each environment so we can debug the specific failure.
+            LOGGER.info("There was an error!!")
+            initialize_simfire_callback = algo.callbacks._callback_list[0]
+            env_info_dict = initialize_simfire_callback._env_id_to_env_fire_context
+            env_info_json_fname = os.path.join(algo.logdir, "env_info_on_failure.json")
+            with open(env_info_json_fname, "w", encoding="utf-8") as f:
+                from dataclasses import asdict
+
+                env_info_dict["train"] = {
+                    str(k): asdict(v) for k, v in env_info_dict["train"].items()
+                }
+                env_info_dict["eval"] = {
+                    str(k): asdict(v) for k, v in env_info_dict["eval"].items()
+                }
+                json.dump(env_info_dict, f, indent=4, cls=CustomEncoder)
+
+            raise e
+
         LOGGER.debug(f"{pretty_print(result)}\n")
 
         if i % cfg.checkpoint.checkpoint_frequency == 0:
