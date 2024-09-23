@@ -503,10 +503,15 @@ class InitializeSimfire(DefaultCallbacks):
 
             raw_train_fpath = os.path.join(outdir, "train_arr.npy")
             raw_eval_fpath = os.path.join(outdir, "eval_arr.npy")
-            np.save(raw_train_fpath, train_data)
+            train_array.dump(raw_train_fpath)
             logger.info(f"Saved train data array to: {raw_train_fpath}")
-            np.save(raw_eval_fpath, eval_data)
+            eval_array.dump(raw_eval_fpath)
             logger.info(f"Saved eval data array to: {raw_eval_fpath}")
+
+            # Store the loc to idx mapping; otherwise, raw data is not usable.
+            loc_to_idx_fpath = os.path.join(outdir, "loc_to_idx.json")
+            with open(loc_to_idx_fpath, "w", encoding="utf-8") as f:
+                json.dump(self.op_loc_to_fire_array_idx, f, indent=4)
 
         # Optionally save the fire initial position data in a human-readable format.
         if self.fire_pos_cfg["sampler"].get("save_json_data") and logdir is not None:
