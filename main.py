@@ -32,6 +32,8 @@ from ray.rllib.env import MultiAgentEnv
 from ray.rllib.algorithms.callbacks import make_multi_callbacks
 from ray.train._internal.checkpoint_manager import _TrainingResult
 from ray.rllib.utils import merge_dicts
+from ray.rllib.utils.typing import EnvID
+from ray.rllib.evaluation.episode_v2 import EpisodeV2
 
 from simfire.enums import BurnStatus
 
