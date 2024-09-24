@@ -54,7 +54,6 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
         # Terminate episode early if burn damage in Agent Sim > final bench firemap
         if self.benchmark_sim:
             if self._terminate_if_greater_damage:
-                # breakpoint()
                 total_area = self.sim.fire_map.size
 
                 sim_data = self.harness_analytics.sim_analytics.data
@@ -70,6 +69,7 @@ class MultiAgentComplexObsDamageAwareReactiveHarness(
                         "Terminating episode early because the agents have caused more "
                         "burn damage than the final state of the benchmark fire map."
                     )
+                    logger.info(f"Current EnvFireContext: {self.fire_context}")
                     terminated = True
 
         return terminated
