@@ -176,8 +176,8 @@ class MultiAgentFireHarness(FireHarness[AnyFireSimulation], MultiAgentEnv):
             if terminated:
                 terms.add(agent_id)
 
-        terminateds["__all__"] = len(truncs) == self.num_agents
-        truncateds["__all__"] = len(terms) == self.num_agents
+        terminateds["__all__"] = len(terms) == self.num_agents
+        truncateds["__all__"] = len(truncs) == self.num_agents
 
         self.timesteps += 1  # increment AFTER method logic is performed (convention).
 
