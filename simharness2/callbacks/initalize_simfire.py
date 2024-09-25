@@ -15,6 +15,14 @@ import numpy as np
 import ray
 from ray import ObjectRef
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
+from ray.rllib.evaluation.episode import Episode
+from ray.rllib.evaluation.episode_v2 import EpisodeV2
+from ray.rllib.utils.typing import AgentID, EnvType, EpisodeType, PolicyID
+from ray.rllib.policy import Policy
+from ray.rllib.policy.sample_batch import SampleBatch
+import gymnasium as gym
+from ray.rllib.env.base_env import BaseEnv
+from ray.rllib.core.rl_module.rl_module import RLModule
 
 from simharness2.utils import utils
 from simharness2.utils import simfire as simfire_utils
@@ -25,6 +33,8 @@ if TYPE_CHECKING:
     from ray.rllib.evaluation.worker_set import WorkerSet
     from simharness2.environments.utils import BurnMDOperationalLocation, EnvFireContext
     from numpy.random import Generator
+
+    from ray.rllib.env.env_runner import EnvRunner
 
 
 logger = logging.getLogger(__name__)
@@ -284,6 +294,87 @@ class InitializeSimfire(DefaultCallbacks):
             ),
             local_worker=self._has_local_worker[env_type],
             remote_worker_ids=worker_ids,
+        )
+
+    def on_episode_start(
+        self,
+        *,
+        # TODO (sven): Deprecate Episode/EpisodeV2 with new API stack.
+        episode: Union[EpisodeType, Episode, EpisodeV2],
+        # TODO (sven): Deprecate this arg new API stack (in favor of `env_runner`).
+        worker: Optional["EnvRunner"] = None,
+        env_runner: Optional["EnvRunner"] = None,
+        # TODO (sven): Deprecate this arg new API stack (in favor of `env`).
+        base_env: Optional[BaseEnv] = None,
+        env: Optional[gym.Env] = None,
+        # TODO (sven): Deprecate this arg new API stack (in favor of `rl_module`).
+        policies: Optional[Dict[PolicyID, Policy]] = None,
+        rl_module: Optional[RLModule] = None,
+        env_index: int,
+        **kwargs,
+    ) -> None:
+        """Callback run right after an Episode has started.
+
+        This method gets called after a new Episode(V2) (old stack) or
+        SingleAgentEpisode/MultiAgentEpisode instance has been reset via the
+        `env.reset()` API by RLlib.
+
+        1) Episode(V2)/Single-/MultiAgentEpisode created: on_episode_created is called.
+        2) Respective sub-environment (gym.Env) is `reset()`.
+        3) Episode(V2)/Single-/MultiAgentEpisode starts: This callback is called.
+        4) Stepping through sub-environment/episode commences.
+
+        Args:
+            episode: The just started episode (after `env.reset()`). On the new API
+                stack, this will be a SingleAgentEpisode or MultiAgentEpisode object.
+                On the old API stack, this will be a Episode or EpisodeV2 object.
+            env_runner: Replaces `worker` arg. Reference to the current EnvRunner.
+            env: Replaces `base_env` arg.  The gym.Env (new API stack) or RLlib
+                BaseEnv (old API stack) running the episode. On the old stack, the
+                underlying sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            rl_module: Replaces `policies` arg. Either the RLModule (new API stack) or a
+                dict mapping policy IDs to policy objects (old stack). In single agent
+                mode there will only be a single policy/RLModule under the
+                `rl_module["default_policy"]` key.
+            env_index: The index of the sub-environment that is about to be reset
+                (within the vector of sub-environments of the BaseEnv).
+            kwargs: Forward compatibility placeholder.
+        """
+        episode_id = episode.episode_id
+        logdir = worker.config.logger_config.get("logdir")
+        pid = os.getpid()
+        worker_index = worker.worker_index
+        episode_id = episode.episode_id
+
+        if not logdir:
+            return
+
+        logdir = os.path.join(logdir, "env_episode_metadata")
+        os.makedirs(logdir, exist_ok=True)
+
+        # Create a unique filename for this worker
+        metadata_file = os.path.join(
+            logdir, f"worker_pid_{pid}_idx_{worker_index}_metadata.json"
+        )
+
+        # Load existing data or create new if file doesn't exist.
+        if os.path.exists(metadata_file):
+            with open(metadata_file, "r") as f:
+                data = json.load(f)
+        else:
+            data = {}
+
+        # Update the data: store only the current episode ID for this env_index.
+        data[str(env_index)] = episode_id
+
+        # Write updated data back to file, overwriting previous content.
+        with open(metadata_file, "w") as f:
+            json.dump(data, f, indent=2)
+
+        # You can add additional logging here if needed
+        logger.info(
+            f"Episode {episode_id} started in sub-env ({worker_index}, {env_index})."
         )
 
     def prepare_context_from_algorithm(self, algorithm: "Algorithm") -> None:
